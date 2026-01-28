@@ -1,5 +1,8 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
+body {
+    font-family: "Cairo", "Open Sans", sans-serif;
+}
 /* @custom-variant dark (&:is(.dark *));
 
 @theme inline {

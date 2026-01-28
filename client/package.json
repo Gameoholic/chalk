@@ -11,18 +11,28 @@
     },
     "dependencies": {
         "@tailwindcss/vite": "^4.1.18",
+        "lucide-react": "^0.563.0",
         "react": "^19.2.0",
+        "react-color": "^2.19.3",
+        "react-cool-dimensions": "^3.0.1",
         "react-dom": "^19.2.0",
-        "tailwindcss": "^4.1.18"
+        "tailwindcss": "^4.1.18",
+        "typescript-eslint": "^8.54.0"
     },
     "devDependencies": {
         "@eslint/js": "^9.39.1",
         "@types/react": "^19.2.5",
+        "@types/react-color": "^3.0.13",
         "@types/react-dom": "^19.2.3",
+        "@typescript-eslint/eslint-plugin": "^8.54.0",
+        "@typescript-eslint/parser": "^8.54.0",
         "@vitejs/plugin-react": "^5.1.1",
-        "eslint": "^9.39.1",
+        "eslint": "^9.39.2",
+        "eslint-config-prettier": "^10.1.8",
+        "eslint-plugin-next": "^0.0.0",
+        "eslint-plugin-prettier": "^5.5.5",
         "eslint-plugin-react-hooks": "^7.0.1",
-        "eslint-plugin-react-refresh": "^0.4.24",
+        "eslint-plugin-react-refresh": "^0.4.26",
         "globals": "^16.5.0",
         "prettier": "^3.8.1",
         "prettier-plugin-tailwindcss": "^0.7.2",
@@ -31,8 +41,8 @@
     "prettier": {
         "trailingComma": "es5",
         "tabWidth": 4,
-        "semi": false,
-        "singleQuote": true,
+        "semi": true,
+        "singleQuote": false,
         "plugins": [
             "prettier-plugin-tailwindcss"
         ]

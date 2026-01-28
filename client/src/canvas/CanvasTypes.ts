@@ -8,7 +8,6 @@ export type ObjectType = 'path' | 'rect' | 'ellipse' | 'text' | 'image'
 export interface BaseObject {
     id: string
     type: ObjectType
-    createdAt: Date
 }
 
 export interface ShapeObject extends BaseObject {
