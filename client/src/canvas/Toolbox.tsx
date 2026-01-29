@@ -1,8 +1,7 @@
 import React, { JSX, useState, useRef, useEffect } from "react";
-import { MousePointer, Square, Circle, Slash } from "lucide-react";
+import { MousePointer, Square, Circle, Slash, Pen } from "lucide-react";
 import { SketchPicker, ColorResult } from "react-color";
-
-type Tool = "select" | "line" | "rectangle" | "circle";
+import { Tool } from "./CanvasTypes";
 
 const Toolbox = ({
     onToolChange,
@@ -15,7 +14,7 @@ const Toolbox = ({
     onWidthChange: (width: number) => void;
     className: string;
 }) => {
-    const [selectedTool, setSelectedTool] = useState<Tool>("select");
+    const [selectedTool, setSelectedTool] = useState<Tool>("none");
     const [color, setColor] = useState<string>("rgba(0,0,0,1)");
     const [width, setWidth] = useState<number>(2);
     const [showColorPicker, setShowColorPicker] = useState<boolean>(false);
@@ -38,12 +37,16 @@ const Toolbox = ({
 
     const tools: { name: Tool; icon: JSX.Element }[] = [
         { name: "select", icon: <MousePointer size={20} /> },
+        { name: "pencil", icon: <Pen size={20} /> },
+        { name: "circle", icon: <Circle size={20} /> },
         { name: "line", icon: <Slash size={20} /> },
         { name: "rectangle", icon: <Square size={20} /> },
-        { name: "circle", icon: <Circle size={20} /> },
     ];
 
     const handleToolClick = (tool: Tool) => {
+        if (selectedTool === tool) {
+            tool = "none";
+        }
         setSelectedTool(tool);
         onToolChange(tool);
     };
@@ -54,7 +57,7 @@ const Toolbox = ({
         onColorChange(rgba);
     };
 
-    // Generate a 9x9 checkerboard grid
+    // Generate checkerboard grid for transparency
     const renderCheckerboard = () => {
         const squares = [];
         for (let row = 0; row < 4; row++) {

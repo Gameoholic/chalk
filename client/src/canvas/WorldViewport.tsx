@@ -5,33 +5,65 @@ import {
     Camera,
     PathObject,
     RectObject,
+    Tool,
     Vec2,
     WorldObject,
 } from "./CanvasTypes";
+import { v4 as uuidv4 } from "uuid";
 
-function CanvasWithCamera({ className = "" }: { className?: string }) {
-    // Automatically set camera size to this component's MAX allocated size
-    const { observe, unobserve, width, height, entry } = useDimensions({
-        onResize: ({ observe, unobserve, width, height, entry }) => {
-            setCamera({
-                position: { x: camera.position.x, y: camera.position.y },
-                size: { x: width, y: height },
-                zoom: camera.zoom,
-            });
-
-            unobserve(); // To stop observing the current target element
-            observe(); // To re-start observing the current target element
-        },
-    });
-
+function WorldViewport({
+    className = "",
+    selectedTool,
+    selectedColor,
+    selectedStroke,
+    onCameraChange,
+}: {
+    className?: string;
+    selectedTool: Tool;
+    selectedColor: string;
+    selectedStroke: number;
+    onCameraChange: (camera: Camera) => void;
+}) {
     // CAMERA
     const [camera, setCamera] = useState<Camera>({
         position: { x: 0, y: 0 },
         size: { x: 900, y: 900 },
         zoom: 1,
     });
+    function setCameraWrapper(camera: Camera) {
+        setCamera(camera);
+        onCameraChange(camera);
+    }
+
+    // Automatically set camera size to this component's MAX allocated size
+    const { observe, unobserve, width, height, entry } = useDimensions({
+        onResize: ({ observe, unobserve, width, height, entry }) => {
+            setCameraWrapper({
+                position: { x: camera.position.x, y: camera.position.y },
+                size: { x: width, y: height },
+                zoom: camera.zoom,
+            });
+            onCameraChange(camera);
+
+            unobserve(); // To stop observing the current target element
+            observe(); // To re-start observing the current target element
+        },
+    });
+
+    // OBJECTS
+    const [objects, setObjects] = useState<Map<string, WorldObject>>(new Map());
+
+    // MOUSE EVENTS
     const { handleMouseDown, handleMouseMove, handleMouseUp, handleWheel } =
-        handleCamera(camera, setCamera);
+        handleMouseEvents(
+            camera,
+            setCameraWrapper,
+            selectedTool,
+            objects,
+            setObjects,
+            selectedColor,
+            selectedStroke
+        );
 
     // DRAWING
     const draw = (ctx: CanvasRenderingContext2D) => {
@@ -39,77 +71,7 @@ function CanvasWithCamera({ className = "" }: { className?: string }) {
 
         drawGrid(ctx, camera);
 
-        const objects: WorldObject[] = [
-            {
-                type: "rect",
-                position: { x: 0, y: 0 },
-                size: { x: 30, y: 30 },
-                color: "#000000" + "FF",
-                id: "1",
-                stroke: 1,
-            },
-            {
-                type: "path",
-                points: [
-                    { x: 100, y: 2 },
-                    { x: 15, y: 40 },
-                ],
-                color: "#F42000" + "8F",
-                id: "2",
-                stroke: 1,
-            },
-
-            // wavy freestyle
-            {
-                type: "path",
-                points: [
-                    { x: 50, y: 150 },
-                    { x: 70, y: 140 },
-                    { x: 90, y: 155 },
-                    { x: 110, y: 145 },
-                    { x: 130, y: 160 },
-                    { x: 150, y: 150 },
-                ],
-                color: "#F42000" + "8F",
-                id: "3",
-                stroke: 1,
-            },
-
-            // sharp zig-zag
-            {
-                type: "path",
-                points: [
-                    { x: 200, y: 50 },
-                    { x: 220, y: 80 },
-                    { x: 240, y: 50 },
-                    { x: 260, y: 80 },
-                    { x: 280, y: 50 },
-                ],
-                color: "#000000" + "FF",
-                id: "4",
-                stroke: 1,
-            },
-
-            // loose freehand scribble
-            {
-                type: "path",
-                points: [
-                    { x: 300, y: 200 },
-                    { x: 310, y: 190 },
-                    { x: 325, y: 205 },
-                    { x: 315, y: 215 },
-                    { x: 330, y: 225 },
-                    { x: 350, y: 210 },
-                ],
-                color: "#F42000" + "8F",
-                id: "5",
-                stroke: 1,
-            },
-        ];
-
-        const worldMap: Map<string, WorldObject> = new Map();
-        objects.forEach((obj) => worldMap.set(obj.id, obj));
-        drawObjects(ctx, worldMap, camera);
+        drawObjects(ctx, objects, camera);
     };
 
     return (
@@ -197,6 +159,16 @@ function drawGrid(ctx: CanvasRenderingContext2D, camera: Camera) {
     ctx.closePath();
 }
 
+function screenToWorld(
+    e: React.MouseEvent<HTMLCanvasElement>,
+    camera: Camera
+): Vec2 {
+    const rect = (e.target as HTMLCanvasElement).getBoundingClientRect();
+    const x = (e.clientX - rect.left) / camera.zoom + camera.position.x;
+    const y = (e.clientY - rect.top) / camera.zoom + camera.position.y;
+    return { x, y };
+}
+
 function drawObjects(
     ctx: CanvasRenderingContext2D,
     objects: Map<string, WorldObject>,
@@ -262,13 +234,25 @@ function drawPath(
     ctx.closePath();
 }
 
-export function handleCamera(
+export function handleMouseEvents(
     camera: Camera,
-    setCamera: React.Dispatch<React.SetStateAction<Camera>>
+    setCamera: (camera: Camera) => void,
+    selectedTool: Tool,
+    objects: Map<string, WorldObject>,
+    setObjects: React.Dispatch<React.SetStateAction<Map<string, WorldObject>>>,
+    selectedColor: string,
+    selectedStroke: number
 ) {
+    const LEFT_MOUSE_BUTTON = 0;
+    const MIDDLE_MOUSE_BUTTON = 1;
+    const RIGHT_MOUSE_BUTTON = 2;
+
     // Camera dragging
     const isDragging = useRef(false);
     const lastMousePos = useRef<Vec2 | null>(null);
+
+    // Drawing
+    let isHoldingWithPencil = false;
 
     // GLOBAL mouseup to fix mouse up outside of canvas
     useEffect(() => {
@@ -281,33 +265,61 @@ export function handleCamera(
     }, []);
 
     const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-        console.log(e.button);
-        if (e.button !== 0) return; // only allow left mouse button
+        if (e.button === LEFT_MOUSE_BUTTON && selectedTool === "pencil") {
+            isHoldingWithPencil = true;
+            return;
+        }
+        if (e.button !== LEFT_MOUSE_BUTTON && e.button !== MIDDLE_MOUSE_BUTTON)
+            return;
         isDragging.current = true;
         lastMousePos.current = { x: e.clientX, y: e.clientY };
     };
 
+    let previousMouseCoords: Vec2 | null = null;
     const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+        if (isHoldingWithPencil) {
+            const mouseWorldCoords: Vec2 = screenToWorld(e, camera);
+            if (previousMouseCoords !== null) {
+                const newId = uuidv4();
+                const newPath: PathObject = {
+                    id: newId,
+                    type: "path",
+                    color: selectedColor,
+                    stroke: selectedStroke,
+                    points: [previousMouseCoords, mouseWorldCoords],
+                };
+
+                setObjects((prev) => new Map(prev).set(newId, newPath));
+            }
+            previousMouseCoords = mouseWorldCoords;
+        }
+
         if (!isDragging.current || !lastMousePos.current) return;
 
         const dx = (e.clientX - lastMousePos.current.x) / camera.zoom;
         const dy = (e.clientY - lastMousePos.current.y) / camera.zoom;
 
-        setCamera((prev) => ({
-            ...prev,
-            position: { x: prev.position.x - dx, y: prev.position.y - dy },
-        }));
+        camera.position = {
+            x: camera.position.x - dx,
+            y: camera.position.y - dy,
+        };
+        setCamera(camera);
 
         lastMousePos.current = { x: e.clientX, y: e.clientY };
     };
 
     const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
-        if (e.button !== 0) return; // only allow left mouse button
+        if (e.button === LEFT_MOUSE_BUTTON && selectedTool === "pencil") {
+            isHoldingWithPencil = false;
+            return;
+        }
+        if (e.button !== LEFT_MOUSE_BUTTON && e.button !== MIDDLE_MOUSE_BUTTON)
+            return;
         isDragging.current = false;
         lastMousePos.current = null;
     };
 
-    // Camera zoom
+    // // Camera zoom
     const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
         e.preventDefault();
         const zoomFactor = 1.1;
@@ -315,26 +327,24 @@ export function handleCamera(
         const mouseX = e.clientX - rect.left;
         const mouseY = e.clientY - rect.top;
 
-        setCamera((prev) => {
-            const newZoom =
-                e.deltaY < 0 ? prev.zoom * zoomFactor : prev.zoom / zoomFactor;
-            const clampedZoom = Math.max(0.05, Math.min(100, newZoom));
+        const newZoom =
+            e.deltaY < 0 ? camera.zoom * zoomFactor : camera.zoom / zoomFactor;
+        const clampedZoom = Math.max(0.05, Math.min(100, newZoom));
 
-            const worldX = prev.position.x + mouseX / prev.zoom;
-            const worldY = prev.position.y + mouseY / prev.zoom;
+        const worldX = camera.position.x + mouseX / camera.zoom;
+        const worldY = camera.position.y + mouseY / camera.zoom;
 
-            return {
-                ...prev,
-                zoom: clampedZoom,
-                position: {
-                    x: worldX - mouseX / clampedZoom,
-                    y: worldY - mouseY / clampedZoom,
-                },
-            };
+        setCamera({
+            ...camera,
+            zoom: clampedZoom,
+            position: {
+                x: worldX - mouseX / clampedZoom,
+                y: worldY - mouseY / clampedZoom,
+            },
         });
     };
 
     return { handleMouseDown, handleMouseMove, handleMouseUp, handleWheel };
 }
 
-export default CanvasWithCamera;
+export default WorldViewport;
