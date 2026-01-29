@@ -1,19 +1,22 @@
-import express from "express";
+import { Router } from "express";
 import {
-    createUser,
-    deleteUser,
-    getAllUsers,
-    getUser,
-    updateUser,
-} from "../controllers/usersController.js";
+    getAll,
+    getById,
+    create,
+    update,
+    remove,
+} from "../controllers/user.controller.js";
+import auth from "../middleware/auth.middleware.js";
 
-export const usersRouter = express.Router();
+const router = Router();
 
-usersRouter.get("/", getAllUsers);
+// Public route to create user
+router.post("/", create);
 
-usersRouter
-    .route("/:id")
-    .get(getUser)
-    .post(createUser)
-    .put(updateUser)
-    .delete(deleteUser);
+// Authenticated routes
+router.use(auth); // apply auth middleware to all routes below
+
+router.get("/", getAll);
+router.route("/:id").get(getById).put(update).delete(remove);
+
+export default router;

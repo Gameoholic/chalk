@@ -2,83 +2,72 @@ import express from "express";
 import type { NextFunction, Response, Request } from "express";
 
 // This will help us connect to the database
-import db from "../db/connection.js";
+import db from "../db/mongo.js";
 
 // This help convert the id from string to ObjectId for the _id.
 import { ObjectId } from "mongodb";
+import * as UserService from "../services/user.service.js";
 
-export async function getAllUsers(req: Request, res: Response) {
-    const collection = await db.collection("users");
-    const results = await collection.find({}).toArray();
-    res.send(results).status(200);
-}
-
-export async function getUser(req: Request, res: Response) {
+export async function getAll(req: Request, res: Response) {
     try {
-        const id = req.params.id;
-        if (typeof id !== "string" || !ObjectId.isValid(id))
-            throw new Error("invalid");
-        const collection = await db.collection("users");
-        const query = { _id: new ObjectId(id) };
-        const result = await collection.findOne(query);
-
-        if (!result) res.send("Not found").status(404);
-        else res.send(result).status(200);
+        const users = await UserService.getAllUsers();
+        res.status(200).json(users);
     } catch (err) {
-        res.status(500).send("Error adding user");
+        console.error(err);
+        res.status(500).json({ error: "Failed to fetch users" });
     }
 }
 
-export async function createUser(req: Request, res: Response) {
+export async function getById(req: Request, res: Response) {
     try {
-        const newDocument = {
-            email: req.body.email,
-            displayname: req.body.name,
-        };
-        const collection = await db.collection("users");
-        const result = await collection.insertOne(newDocument);
-        res.send(result).status(204);
+        const id = req.params.id as string;
+        const user = await UserService.getUserById(id);
+        if (!user) return res.status(404).json({ error: "User not found" });
+        res.status(200).json(user);
     } catch (err) {
         console.error(err);
-        res.status(500).send("Error adding user");
+        res.status(500).json({ error: "Failed to fetch user" });
     }
 }
 
-export async function updateUser(req: Request, res: Response) {
+export async function create(req: Request, res: Response) {
     try {
-        const id = req.params.id;
-        if (typeof id !== "string" || !ObjectId.isValid(id))
-            throw new Error("invalid");
-        const query = { _id: new ObjectId(id) };
-        const updates = {
-            $set: {
-                email: req.body.email,
-                displayname: req.body.name,
-            },
-        };
-
-        const collection = await db.collection("users");
-        const result = await collection.updateOne(query, updates);
-        res.send(result).status(200);
+        const { email, password, displayname } = req.body;
+        const result = await UserService.createUser(
+            email,
+            password,
+            displayname
+        );
+        res.status(201).json(result);
     } catch (err) {
         console.error(err);
-        res.status(500).send("Error updating user");
+        res.status(500).json({ error: "Failed to create user" });
     }
 }
 
-export async function deleteUser(req: Request, res: Response) {
+export async function update(req: Request, res: Response) {
     try {
-        const id = req.params.id;
-        if (typeof id !== "string" || !ObjectId.isValid(id))
-            throw new Error("invalid");
-        const query = { _id: new ObjectId(id) };
-
-        const collection = db.collection("users");
-        const result = await collection.deleteOne(query);
-
-        res.send(result).status(200);
+        const { email, name } = req.body;
+        const result = await UserService.updateUser(
+            req.params.id as string,
+            email,
+            name
+        );
+        res.status(200).json(result);
     } catch (err) {
         console.error(err);
-        res.status(500).send("Error deleting user");
+        res.status(500).json({ error: "Failed to update user" });
+    }
+}
+
+export async function remove(req: Request, res: Response) {
+    try {
+        const result = await UserService.deleteUserService(
+            req.params.id as string
+        );
+        res.status(200).json(result);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Failed to delete user" });
     }
 }

@@ -19,7 +19,6 @@ export default function cookieJwtAuth(
         console.log("Verified user " + payload.id);
         next();
     } catch (err) {
-        res.clearCookie("token");
-        return res.redirect("/");
+        res.status(401).json({ error: "Unauthorized" });
     }
 }
