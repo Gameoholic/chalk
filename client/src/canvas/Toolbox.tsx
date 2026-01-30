@@ -16,7 +16,7 @@ const Toolbox = ({
 }) => {
     const [selectedTool, setSelectedTool] = useState<Tool>("none");
     const [color, setColor] = useState<string>("rgba(0,0,0,1)");
-    const [width, setWidth] = useState<number>(2);
+    const [width, setWidth] = useState<number>(1);
     const [showColorPicker, setShowColorPicker] = useState<boolean>(false);
 
     const pickerRef = useRef<HTMLDivElement>(null);
@@ -38,9 +38,9 @@ const Toolbox = ({
     const tools: { name: Tool; icon: JSX.Element }[] = [
         { name: "select", icon: <MousePointer size={20} /> },
         { name: "pencil", icon: <Pen size={20} /> },
-        { name: "circle", icon: <Circle size={20} /> },
+        { name: "ellipse", icon: <Circle size={20} /> },
         { name: "line", icon: <Slash size={20} /> },
-        { name: "rectangle", icon: <Square size={20} /> },
+        { name: "rect", icon: <Square size={20} /> },
     ];
 
     const handleToolClick = (tool: Tool) => {

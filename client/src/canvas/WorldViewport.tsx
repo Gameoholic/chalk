@@ -3,6 +3,8 @@ import useDimensions from "react-cool-dimensions";
 import BaseCanvas from "./BaseCanvas";
 import {
     Camera,
+    EllipseObject,
+    LineObject,
     PathObject,
     RectObject,
     Tool,
@@ -183,11 +185,17 @@ function drawObject(
     camera: Camera
 ) {
     switch (object.type) {
+        case "line":
+            drawLine(ctx, object, camera);
+            break;
         case "rect":
             drawRect(ctx, object, camera);
             break;
         case "path":
             drawPath(ctx, object, camera);
+            break;
+        case "ellipse":
+            drawEllipse(ctx, object, camera);
             break;
     }
 }
@@ -197,17 +205,50 @@ function drawRect(
     object: RectObject,
     camera: Camera
 ) {
+    ctx.beginPath();
     ctx.fillStyle = object.color;
-    const localPosition: Vec2 = {
-        x: object.position.x - camera.position.x,
-        y: object.position.y - camera.position.y,
-    };
-    ctx.fillRect(
-        localPosition.x,
-        localPosition.y,
+
+    ctx.rect(
+        object.position.x - camera.position.x,
+        object.position.y - camera.position.y,
         object.size.x,
         object.size.y
     );
+    ctx.fillStyle = object.color;
+    ctx.fill();
+
+    // Draw stroke
+    ctx.lineWidth = object.stroke;
+    ctx.strokeStyle = object.color;
+    ctx.stroke();
+    ctx.closePath();
+}
+
+function drawEllipse(
+    ctx: CanvasRenderingContext2D,
+    object: EllipseObject,
+    camera: Camera
+) {
+    ctx.beginPath();
+
+    ctx.ellipse(
+        object.position.x - camera.position.x + object.size.x / 2, // centerX
+        object.position.y - camera.position.y + object.size.y / 2, // centerY
+        Math.abs(object.size.x / 2), // radiusX
+        Math.abs(object.size.y / 2), // radiusY
+        0, //rotation
+        0, //startangle
+        2 * Math.PI // end angle
+    );
+    ctx.fillStyle = object.color;
+    ctx.fill();
+
+    // Draw stroke
+    ctx.lineWidth = object.stroke;
+    ctx.strokeStyle = object.color;
+    ctx.stroke();
+
+    ctx.closePath();
 }
 
 function drawPath(
@@ -219,7 +260,7 @@ function drawPath(
 
     ctx.beginPath();
     ctx.strokeStyle = object.color;
-    ctx.lineWidth = 2;
+    ctx.lineWidth = object.stroke;
 
     const first = object.points[0];
     ctx.moveTo(first.x - camera.position.x, first.y - camera.position.y);
@@ -229,6 +270,25 @@ function drawPath(
         const p = object.points[i];
         ctx.lineTo(p.x - camera.position.x, p.y - camera.position.y);
     }
+    ctx.stroke();
+    ctx.closePath();
+}
+
+function drawLine(
+    ctx: CanvasRenderingContext2D,
+    object: LineObject,
+    camera: Camera
+) {
+    if (!object.point1 || !object.point2) return; // nothing to draw
+
+    ctx.beginPath();
+    ctx.strokeStyle = object.color;
+    ctx.lineWidth = object.stroke;
+
+    const point1 = object.point1;
+    const point2 = object.point2;
+    ctx.moveTo(point1.x - camera.position.x, point1.y - camera.position.y);
+    ctx.lineTo(point2.x - camera.position.x, point2.y - camera.position.y);
 
     ctx.stroke();
     ctx.closePath();
@@ -251,14 +311,32 @@ export function handleMouseEvents(
     const isDragging = useRef(false);
     const lastMousePos = useRef<Vec2 | null>(null);
 
-    // Drawing
-    let isHoldingWithPencil = false;
+    // Drawing with pencil
+    const isHoldingWithPencil = useRef(false);
+    const currentPencilPath = useRef<Vec2[]>([]);
+    const currentPencilPathId = useRef<string | null>(null);
+
+    // Drawing with line tool
+    const isHoldingWithLine = useRef(false);
+    const currentLinePath = useRef<Vec2[]>([]);
+    const currentLinePathId = useRef<string | null>(null);
+
+    // Drawing with rect tool
+    const isHoldingWithRect = useRef(false);
+    const currentRectPath = useRef<Vec2[]>([]);
+    const currentRectPathId = useRef<string | null>(null);
+
+    // Drawing with ellipse tool
+    const isHoldingWithEllipse = useRef(false);
+    const currentEllipsePath = useRef<Vec2[]>([]);
+    const currentEllipsePathId = useRef<string | null>(null);
 
     // GLOBAL mouseup to fix mouse up outside of canvas
     useEffect(() => {
         const handleWindowMouseUp = () => {
             isDragging.current = false;
             lastMousePos.current = null;
+            isHoldingWithPencil.current = false;
         };
         window.addEventListener("mouseup", handleWindowMouseUp);
         return () => window.removeEventListener("mouseup", handleWindowMouseUp);
@@ -266,38 +344,135 @@ export function handleMouseEvents(
 
     const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
         if (e.button === LEFT_MOUSE_BUTTON && selectedTool === "pencil") {
-            isHoldingWithPencil = true;
+            isHoldingWithPencil.current = true;
+            currentPencilPath.current = [];
+            currentPencilPathId.current = uuidv4();
             return;
         }
-        if (e.button !== LEFT_MOUSE_BUTTON && e.button !== MIDDLE_MOUSE_BUTTON)
+        if (e.button === LEFT_MOUSE_BUTTON && selectedTool === "line") {
+            isHoldingWithLine.current = true;
+            currentLinePath.current = [];
+            currentLinePathId.current = uuidv4();
             return;
-        isDragging.current = true;
-        lastMousePos.current = { x: e.clientX, y: e.clientY };
+        }
+        if (e.button === LEFT_MOUSE_BUTTON && selectedTool === "rect") {
+            isHoldingWithRect.current = true;
+            currentRectPath.current = [];
+            currentRectPathId.current = uuidv4();
+            return;
+        }
+        if (e.button === LEFT_MOUSE_BUTTON && selectedTool === "ellipse") {
+            isHoldingWithEllipse.current = true;
+            currentEllipsePath.current = [];
+            currentEllipsePathId.current = uuidv4();
+            return;
+        }
+        if (
+            e.button === LEFT_MOUSE_BUTTON ||
+            e.button === MIDDLE_MOUSE_BUTTON
+        ) {
+            isDragging.current = true;
+            lastMousePos.current = { x: e.clientX, y: e.clientY };
+            return;
+        }
     };
 
-    let previousMouseCoords: Vec2 | null = null;
-    const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-        if (isHoldingWithPencil) {
-            const mouseWorldCoords: Vec2 = screenToWorld(e, camera);
-            if (previousMouseCoords !== null) {
-                const newId = uuidv4();
-                const newPath: PathObject = {
-                    id: newId,
-                    type: "path",
-                    color: selectedColor,
-                    stroke: selectedStroke,
-                    points: [previousMouseCoords, mouseWorldCoords],
-                };
+    function handleMouseMovePencilDraw(e: React.MouseEvent<HTMLCanvasElement>) {
+        const mouseWorldCoords: Vec2 = screenToWorld(e, camera);
+        currentPencilPath.current.push(mouseWorldCoords);
 
-                setObjects((prev) => new Map(prev).set(newId, newPath));
-            }
-            previousMouseCoords = mouseWorldCoords;
+        const newPath: PathObject = {
+            id: currentPencilPathId.current!,
+            type: "path",
+            color: selectedColor,
+            stroke: selectedStroke,
+            points: currentPencilPath.current,
+            // ??? points: [...currentPencilPath.current],
+        };
+        setObjects((prev) =>
+            new Map(prev).set(currentPencilPathId.current!, newPath)
+        );
+    }
+
+    function handleMouseMoveLineDraw(e: React.MouseEvent<HTMLCanvasElement>) {
+        const mouseWorldCoords: Vec2 = screenToWorld(e, camera);
+        if (currentLinePath.current.length === 0) {
+            currentLinePath.current[0] = mouseWorldCoords;
+            return;
         }
 
-        if (!isDragging.current || !lastMousePos.current) return;
+        currentLinePath.current[1] = mouseWorldCoords;
 
-        const dx = (e.clientX - lastMousePos.current.x) / camera.zoom;
-        const dy = (e.clientY - lastMousePos.current.y) / camera.zoom;
+        const newPath: LineObject = {
+            id: currentLinePathId.current!,
+            type: "line",
+            color: selectedColor,
+            stroke: selectedStroke,
+            point1: currentLinePath.current[0],
+            point2: currentLinePath.current[1],
+        };
+        setObjects((prev) =>
+            new Map(prev).set(currentLinePathId.current!, newPath)
+        );
+    }
+
+    function handleMouseMoveRectDraw(e: React.MouseEvent<HTMLCanvasElement>) {
+        const mouseWorldCoords: Vec2 = screenToWorld(e, camera);
+        if (currentRectPath.current.length === 0) {
+            currentRectPath.current[0] = mouseWorldCoords;
+            return;
+        }
+
+        currentRectPath.current[1] = mouseWorldCoords;
+        const newPath: RectObject = {
+            id: currentRectPathId.current!,
+            type: "rect",
+            color: selectedColor,
+            stroke: selectedStroke,
+            position: currentRectPath.current[0],
+            size: {
+                x: currentRectPath.current[1].x - currentRectPath.current[0].x,
+                y: currentRectPath.current[1].y - currentRectPath.current[0].y,
+            },
+        };
+        setObjects((prev) =>
+            new Map(prev).set(currentRectPathId.current!, newPath)
+        );
+    }
+
+    function handleMouseMoveEllipseDraw(
+        e: React.MouseEvent<HTMLCanvasElement>
+    ) {
+        const mouseWorldCoords: Vec2 = screenToWorld(e, camera);
+        if (currentEllipsePath.current.length === 0) {
+            currentEllipsePath.current[0] = mouseWorldCoords;
+            return;
+        }
+
+        currentEllipsePath.current[1] = mouseWorldCoords;
+        const newPath: EllipseObject = {
+            id: currentEllipsePathId.current!,
+            type: "ellipse",
+            color: selectedColor,
+            stroke: selectedStroke,
+            position: currentEllipsePath.current[0],
+            size: {
+                x:
+                    currentEllipsePath.current[1].x -
+                    currentEllipsePath.current[0].x,
+                y:
+                    currentEllipsePath.current[1].y -
+                    currentEllipsePath.current[0].y,
+            },
+        };
+        setObjects((prev) =>
+            new Map(prev).set(currentEllipsePathId.current!, newPath)
+        );
+    }
+
+    function handleMouseMoveDragCamera(e: React.MouseEvent<HTMLCanvasElement>) {
+        const dx = (e.clientX - lastMousePos.current!.x) / camera.zoom;
+        const dy = (e.clientY - lastMousePos.current!.y) / camera.zoom;
 
         camera.position = {
             x: camera.position.x - dx,
@@ -306,17 +481,44 @@ export function handleMouseEvents(
         setCamera(camera);
 
         lastMousePos.current = { x: e.clientX, y: e.clientY };
+    }
+    const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+        if (isHoldingWithPencil.current) {
+            handleMouseMovePencilDraw(e);
+            return;
+        }
+        if (isHoldingWithLine.current) {
+            handleMouseMoveLineDraw(e);
+            return;
+        }
+        if (isHoldingWithRect.current) {
+            handleMouseMoveRectDraw(e);
+            return;
+        }
+        if (isHoldingWithEllipse.current) {
+            handleMouseMoveEllipseDraw(e);
+            return;
+        }
+
+        if (isDragging.current && lastMousePos.current !== null) {
+            handleMouseMoveDragCamera(e);
+        }
     };
 
     const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
-        if (e.button === LEFT_MOUSE_BUTTON && selectedTool === "pencil") {
-            isHoldingWithPencil = false;
-            return;
+        if (e.button === LEFT_MOUSE_BUTTON) {
+            isHoldingWithPencil.current = false;
+            isHoldingWithLine.current = false;
+            isHoldingWithRect.current = false;
+            isHoldingWithEllipse.current = false;
         }
-        if (e.button !== LEFT_MOUSE_BUTTON && e.button !== MIDDLE_MOUSE_BUTTON)
-            return;
-        isDragging.current = false;
-        lastMousePos.current = null;
+        if (
+            e.button === MIDDLE_MOUSE_BUTTON ||
+            e.button === LEFT_MOUSE_BUTTON
+        ) {
+            isDragging.current = false;
+            lastMousePos.current = null;
+        }
     };
 
     // // Camera zoom

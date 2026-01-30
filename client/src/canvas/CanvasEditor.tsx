@@ -1,6 +1,6 @@
 import WorldViewport from "./WorldViewport";
 import Toolbox from "./Toolbox";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Camera, Tool, Vec2 } from "./CanvasTypes";
 
 function CanvasEditor() {
@@ -19,6 +19,7 @@ function CanvasEditor() {
                     Camera Pos: {cameraPosition.x}, {cameraPosition.y}
                 </p>
                 <p>Camera Zoom: {cameraZoom.toFixed(2)}</p>
+                <p>FPS: {useFPS()}</p>
             </div>
             <Toolbox
                 className="absolute top-4 right-4 rounded-lg"
@@ -45,5 +46,33 @@ function CanvasEditor() {
             />
         </div>
     );
+}
+
+function useFPS() {
+    const [fps, setFps] = useState(0);
+    const frames = useRef(0);
+    const lastTime = useRef(performance.now());
+
+    useEffect(() => {
+        let rafId: number;
+
+        const loop = () => {
+            frames.current++;
+            const now = performance.now();
+
+            if (now - lastTime.current >= 1000) {
+                setFps(frames.current);
+                frames.current = 0;
+                lastTime.current = now;
+            }
+
+            rafId = requestAnimationFrame(loop);
+        };
+
+        rafId = requestAnimationFrame(loop);
+        return () => cancelAnimationFrame(rafId);
+    }, []);
+
+    return fps;
 }
 export default CanvasEditor;

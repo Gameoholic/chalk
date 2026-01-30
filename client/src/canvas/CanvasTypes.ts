@@ -1,17 +1,17 @@
-export type Tool =
-    | "pencil"
-    | "select"
-    | "line"
-    | "rectangle"
-    | "circle"
-    | "none";
+export type Tool = "pencil" | "select" | "line" | "rect" | "ellipse" | "none";
 
 export interface Vec2 {
     x: number;
     y: number;
 }
 
-export type ObjectType = "path" | "rect" | "ellipse" | "text" | "image";
+export type ObjectType =
+    | "path"
+    | "line"
+    | "rect"
+    | "ellipse"
+    | "text"
+    | "image";
 
 export interface BaseObject {
     id: string;
@@ -25,16 +25,28 @@ export interface ShapeObject extends BaseObject {
 
 export interface PathObject extends ShapeObject {
     type: "path";
-    points: Vec2[]; // distance-sampled points
+    points: Vec2[];
+}
+
+export interface LineObject extends ShapeObject {
+    type: "line";
+    point1: Vec2;
+    point2: Vec2;
 }
 
 export interface RectObject extends ShapeObject {
     type: "rect";
-    position: Vec2;
-    size: Vec2;
+    position: Vec2; // top left coordinate (unless size is negative)
+    size: Vec2; // Can be negative (for reverse)
 }
 
-export type WorldObject = PathObject | RectObject;
+export interface EllipseObject extends ShapeObject {
+    type: "ellipse";
+    position: Vec2; // top left coordinate
+    size: Vec2; // Can be negative (for reverse)
+}
+
+export type WorldObject = PathObject | LineObject | RectObject | EllipseObject;
 
 export interface Camera {
     position: Vec2; // top-left world coordinate
