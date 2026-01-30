@@ -19,12 +19,14 @@ function WorldViewport({
     selectedColor,
     selectedStroke,
     onCameraChange,
+    onObjectAmountChange,
 }: {
     className?: string;
     selectedTool: Tool;
     selectedColor: string;
     selectedStroke: number;
     onCameraChange: (camera: Camera) => void;
+    onObjectAmountChange: (objectAmount: number) => void;
 }) {
     // CAMERA
     const [camera, setCamera] = useState<Camera>({
@@ -54,6 +56,10 @@ function WorldViewport({
 
     // OBJECTS
     const [objects, setObjects] = useState<Map<string, WorldObject>>(new Map());
+    function setObjectsWrapper(objects: Map<string, WorldObject>) {
+        setObjects(objects);
+        onObjectAmountChange(objects.size);
+    }
 
     // MOUSE EVENTS
     const { handleMouseDown, handleMouseMove, handleMouseUp, handleWheel } =
@@ -62,7 +68,7 @@ function WorldViewport({
             setCameraWrapper,
             selectedTool,
             objects,
-            setObjects,
+            setObjectsWrapper,
             selectedColor,
             selectedStroke
         );
@@ -299,7 +305,7 @@ export function handleMouseEvents(
     setCamera: (camera: Camera) => void,
     selectedTool: Tool,
     objects: Map<string, WorldObject>,
-    setObjects: React.Dispatch<React.SetStateAction<Map<string, WorldObject>>>,
+    setObjects: (objects: Map<string, WorldObject>) => void,
     selectedColor: string,
     selectedStroke: number
 ) {
@@ -389,9 +395,7 @@ export function handleMouseEvents(
             points: currentPencilPath.current,
             // ??? points: [...currentPencilPath.current],
         };
-        setObjects((prev) =>
-            new Map(prev).set(currentPencilPathId.current!, newPath)
-        );
+        setObjects(new Map(objects).set(currentPencilPathId.current!, newPath));
     }
 
     function handleMouseMoveLineDraw(e: React.MouseEvent<HTMLCanvasElement>) {
@@ -411,9 +415,7 @@ export function handleMouseEvents(
             point1: currentLinePath.current[0],
             point2: currentLinePath.current[1],
         };
-        setObjects((prev) =>
-            new Map(prev).set(currentLinePathId.current!, newPath)
-        );
+        setObjects(new Map(objects).set(currentLinePathId.current!, newPath));
     }
 
     function handleMouseMoveRectDraw(e: React.MouseEvent<HTMLCanvasElement>) {
@@ -435,9 +437,7 @@ export function handleMouseEvents(
                 y: currentRectPath.current[1].y - currentRectPath.current[0].y,
             },
         };
-        setObjects((prev) =>
-            new Map(prev).set(currentRectPathId.current!, newPath)
-        );
+        setObjects(new Map(objects).set(currentRectPathId.current!, newPath));
     }
 
     function handleMouseMoveEllipseDraw(
@@ -465,8 +465,8 @@ export function handleMouseEvents(
                     currentEllipsePath.current[0].y,
             },
         };
-        setObjects((prev) =>
-            new Map(prev).set(currentEllipsePathId.current!, newPath)
+        setObjects(
+            new Map(objects).set(currentEllipsePathId.current!, newPath)
         );
     }
 
