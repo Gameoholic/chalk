@@ -3,6 +3,7 @@ import useDimensions from "react-cool-dimensions";
 import BaseCanvas from "./BaseCanvas";
 import {
     Camera,
+    CanvasStatus,
     EllipseObject,
     LineObject,
     PathObject,
@@ -10,8 +11,9 @@ import {
     Tool,
     Vec2,
     WorldObject,
-} from "./CanvasTypes";
+} from "../types/canvas";
 import { v4 as uuidv4 } from "uuid";
+import { CheckCircle, Loader2, XCircle } from "lucide-react";
 
 function WorldViewport({
     className = "",
@@ -20,6 +22,9 @@ function WorldViewport({
     selectedStroke,
     onCameraChange,
     onObjectAmountChange,
+    onObjectUpdated,
+    onObjectsReadyToBeCommitted,
+    initialObjects,
 }: {
     className?: string;
     selectedTool: Tool;
@@ -27,6 +32,9 @@ function WorldViewport({
     selectedStroke: number;
     onCameraChange: (camera: Camera) => void;
     onObjectAmountChange: (objectAmount: number) => void;
+    onObjectUpdated: (object: WorldObject) => void;
+    onObjectsReadyToBeCommitted: () => void;
+    initialObjects: Map<string, WorldObject>;
 }) {
     // CAMERA
     const [camera, setCamera] = useState<Camera>({
@@ -55,11 +63,21 @@ function WorldViewport({
     });
 
     // OBJECTS
-    const [objects, setObjects] = useState<Map<string, WorldObject>>(new Map());
-    function setObjectsWrapper(objects: Map<string, WorldObject>) {
-        setObjects(objects);
-        onObjectAmountChange(objects.size);
+    const [objects, setObjects] =
+        useState<Map<string, WorldObject>>(initialObjects);
+
+    // Either add a new object or update an existing one (based on its ID)
+    function updateObject(object: WorldObject) {
+        const newObjects = new Map(objects).set(object.id!, object); // is creating a new map every time performant?
+        setObjects(newObjects);
+        onObjectAmountChange(newObjects.size);
+        onObjectUpdated(object);
     }
+    // User released left click so object should be committed to database
+    function commitObjects() {
+        onObjectsReadyToBeCommitted();
+    }
+    function removeObject(objectId: string) {}
 
     // MOUSE EVENTS
     const { handleMouseDown, handleMouseMove, handleMouseUp, handleWheel } =
@@ -68,7 +86,9 @@ function WorldViewport({
             setCameraWrapper,
             selectedTool,
             objects,
-            setObjectsWrapper,
+            updateObject,
+            removeObject,
+            commitObjects,
             selectedColor,
             selectedStroke
         );
@@ -305,7 +325,9 @@ export function handleMouseEvents(
     setCamera: (camera: Camera) => void,
     selectedTool: Tool,
     objects: Map<string, WorldObject>,
-    setObjects: (objects: Map<string, WorldObject>) => void,
+    updateObject: (object: WorldObject) => void,
+    removeObject: (objectId: string) => void,
+    commitObjects: () => void,
     selectedColor: string,
     selectedStroke: number
 ) {
@@ -317,25 +339,26 @@ export function handleMouseEvents(
     const isDragging = useRef(false);
     const lastMousePos = useRef<Vec2 | null>(null);
 
+    // todo: too many variables below, condense them to be more general.
+
+    // Drawing
+    const currentDrawingObjectId = useRef<string | null>(null);
+
     // Drawing with pencil
     const isHoldingWithPencil = useRef(false);
     const currentPencilPath = useRef<Vec2[]>([]);
-    const currentPencilPathId = useRef<string | null>(null);
 
     // Drawing with line tool
     const isHoldingWithLine = useRef(false);
     const currentLinePath = useRef<Vec2[]>([]);
-    const currentLinePathId = useRef<string | null>(null);
 
     // Drawing with rect tool
     const isHoldingWithRect = useRef(false);
     const currentRectPath = useRef<Vec2[]>([]);
-    const currentRectPathId = useRef<string | null>(null);
 
     // Drawing with ellipse tool
     const isHoldingWithEllipse = useRef(false);
     const currentEllipsePath = useRef<Vec2[]>([]);
-    const currentEllipsePathId = useRef<string | null>(null);
 
     // GLOBAL mouseup to fix mouse up outside of canvas
     useEffect(() => {
@@ -352,25 +375,25 @@ export function handleMouseEvents(
         if (e.button === LEFT_MOUSE_BUTTON && selectedTool === "pencil") {
             isHoldingWithPencil.current = true;
             currentPencilPath.current = [];
-            currentPencilPathId.current = uuidv4();
+            currentDrawingObjectId.current = uuidv4();
             return;
         }
         if (e.button === LEFT_MOUSE_BUTTON && selectedTool === "line") {
             isHoldingWithLine.current = true;
             currentLinePath.current = [];
-            currentLinePathId.current = uuidv4();
+            currentDrawingObjectId.current = uuidv4();
             return;
         }
         if (e.button === LEFT_MOUSE_BUTTON && selectedTool === "rect") {
             isHoldingWithRect.current = true;
             currentRectPath.current = [];
-            currentRectPathId.current = uuidv4();
+            currentDrawingObjectId.current = uuidv4();
             return;
         }
         if (e.button === LEFT_MOUSE_BUTTON && selectedTool === "ellipse") {
             isHoldingWithEllipse.current = true;
             currentEllipsePath.current = [];
-            currentEllipsePathId.current = uuidv4();
+            currentDrawingObjectId.current = uuidv4();
             return;
         }
         if (
@@ -388,14 +411,15 @@ export function handleMouseEvents(
         currentPencilPath.current.push(mouseWorldCoords);
 
         const newPath: PathObject = {
-            id: currentPencilPathId.current!,
+            id: currentDrawingObjectId.current!,
             type: "path",
             color: selectedColor,
             stroke: selectedStroke,
             points: currentPencilPath.current,
             // ??? points: [...currentPencilPath.current],
         };
-        setObjects(new Map(objects).set(currentPencilPathId.current!, newPath));
+        updateObject(newPath);
+        // setObjects(new Map(objects).set(currentPencilPathId.current!, newPath));
     }
 
     function handleMouseMoveLineDraw(e: React.MouseEvent<HTMLCanvasElement>) {
@@ -407,15 +431,16 @@ export function handleMouseEvents(
 
         currentLinePath.current[1] = mouseWorldCoords;
 
-        const newPath: LineObject = {
-            id: currentLinePathId.current!,
+        const newLine: LineObject = {
+            id: currentDrawingObjectId.current!,
             type: "line",
             color: selectedColor,
             stroke: selectedStroke,
             point1: currentLinePath.current[0],
             point2: currentLinePath.current[1],
         };
-        setObjects(new Map(objects).set(currentLinePathId.current!, newPath));
+        updateObject(newLine);
+        // setObjects(new Map(objects).set(currentLinePathId.current!, newPath)); // todo: is setting a new map every time really the most optimized way?
     }
 
     function handleMouseMoveRectDraw(e: React.MouseEvent<HTMLCanvasElement>) {
@@ -426,8 +451,8 @@ export function handleMouseEvents(
         }
 
         currentRectPath.current[1] = mouseWorldCoords;
-        const newPath: RectObject = {
-            id: currentRectPathId.current!,
+        const newRect: RectObject = {
+            id: currentDrawingObjectId.current!,
             type: "rect",
             color: selectedColor,
             stroke: selectedStroke,
@@ -437,7 +462,8 @@ export function handleMouseEvents(
                 y: currentRectPath.current[1].y - currentRectPath.current[0].y,
             },
         };
-        setObjects(new Map(objects).set(currentRectPathId.current!, newPath));
+        updateObject(newRect);
+        // setObjects(new Map(objects).set(currentRectPathId.current!, newRect));
     }
 
     function handleMouseMoveEllipseDraw(
@@ -450,8 +476,8 @@ export function handleMouseEvents(
         }
 
         currentEllipsePath.current[1] = mouseWorldCoords;
-        const newPath: EllipseObject = {
-            id: currentEllipsePathId.current!,
+        const newEllipse: EllipseObject = {
+            id: currentDrawingObjectId.current!,
             type: "ellipse",
             color: selectedColor,
             stroke: selectedStroke,
@@ -465,9 +491,10 @@ export function handleMouseEvents(
                     currentEllipsePath.current[0].y,
             },
         };
-        setObjects(
-            new Map(objects).set(currentEllipsePathId.current!, newPath)
-        );
+        updateObject(newEllipse);
+        // setObjects(
+        //     new Map(objects).set(currentEllipsePathId.current!, newEllipse)
+        // );
     }
 
     function handleMouseMoveDragCamera(e: React.MouseEvent<HTMLCanvasElement>) {
@@ -511,6 +538,10 @@ export function handleMouseEvents(
             isHoldingWithLine.current = false;
             isHoldingWithRect.current = false;
             isHoldingWithEllipse.current = false;
+            if (currentDrawingObjectId.current) {
+                commitObjects();
+                currentDrawingObjectId.current = null;
+            }
         }
         if (
             e.button === MIDDLE_MOUSE_BUTTON ||

@@ -13,7 +13,7 @@ try {
     // Connect the client to the server
     await client.connect();
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
+    await client.db("chalk").command({ ping: 1 });
     console.log(
         "Pinged your deployment. You successfully connected to MongoDB!"
     );
@@ -21,6 +21,6 @@ try {
     console.error(err);
 }
 
-const db = client.db("employees");
+const db = client.db("chalk");
 
 export default db;

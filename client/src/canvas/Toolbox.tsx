@@ -1,7 +1,7 @@
 import React, { JSX, useState, useRef, useEffect } from "react";
 import { MousePointer, Square, Circle, Slash, Pen } from "lucide-react";
 import { SketchPicker, ColorResult } from "react-color";
-import { Tool } from "./CanvasTypes";
+import { Tool } from "../types/canvas";
 
 const Toolbox = ({
     onToolChange,
