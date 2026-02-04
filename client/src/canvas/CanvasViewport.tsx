@@ -15,7 +15,7 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import { CheckCircle, Loader2, XCircle } from "lucide-react";
 
-function WorldViewport({
+function CanvasViewport({
     className = "",
     selectedTool,
     selectedColor,
@@ -580,4 +580,4 @@ export function handleMouseEvents(
     return { handleMouseDown, handleMouseMove, handleMouseUp, handleWheel };
 }
 
-export default WorldViewport;
+export default CanvasViewport;

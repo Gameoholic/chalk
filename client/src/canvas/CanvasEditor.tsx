@@ -1,4 +1,4 @@
-import WorldViewport from "./WorldViewport";
+import CanvasViewport from "./CanvasViewport";
 import Toolbox from "./Toolbox";
 import { RefObject, useEffect, useRef, useState } from "react";
 import {
@@ -204,7 +204,7 @@ function CanvasEditor({ currentBoard }: { currentBoard: BoardData | null }) {
             />
 
             {/* Canvas */}
-            <WorldViewport
+            <CanvasViewport
                 className="h-full w-full"
                 key={currentBoard?.id}
                 initialObjects={
