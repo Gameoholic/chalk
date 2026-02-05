@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import ManageBoardModal from "./components/ManageBoardModal";
 
-function CanvasEditor({ currentBoard }: { currentBoard: BoardData | null }) {
+function CanvasEditor({ currentBoard }: { currentBoard: BoardData }) {
     // Settings & state data
     const [tool, setTool] = useState<Tool>("none");
     const [color, setColor] = useState("#000000FF");

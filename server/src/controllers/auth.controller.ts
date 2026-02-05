@@ -20,7 +20,7 @@ export async function login(req: Request, res: Response) {
 
 export async function me(req: AuthenticatedRequest, res: Response) {
     if (!req.authenticatedUser) {
-        res.status(401).json({ error: "Unauthorized" });
+        res.sendStatus(401);
         return;
     }
     try {

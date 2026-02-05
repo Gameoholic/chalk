@@ -20,23 +20,29 @@ export async function createBoardForUser(
     userId: string,
     name: string,
     role: string
-) {
+): Promise<BoardModel.Board> {
     if (role === "guest") {
-        await createBoardIfNoneExist(userId, name);
+        return await createBoardIfNoneExist(userId, name);
     } else {
-        await createBoard(userId, name);
+        return await createBoard(userId, name);
     }
 }
 
-export async function createBoardIfNoneExist(ownerId: string, name: string) {
+export async function createBoardIfNoneExist(
+    ownerId: string,
+    name: string
+): Promise<BoardModel.Board> {
     if ((await BoardModel.countBoardsByOwner(new ObjectId(ownerId))) > 0) {
         throw new Error("Boards exist.");
     }
 
-    await createBoard(ownerId, name);
+    return await createBoard(ownerId, name);
 }
 
-export async function createBoard(ownerId: string, name: string) {
+export async function createBoard(
+    ownerId: string,
+    name: string
+): Promise<BoardModel.Board> {
     const now = new Date();
     const board: BoardModel.Board = {
         ownerId: new ObjectId(ownerId),
@@ -47,6 +53,7 @@ export async function createBoard(ownerId: string, name: string) {
     };
 
     await BoardModel.createBoard(board);
+    return board;
 }
 
 export async function updateBoard(

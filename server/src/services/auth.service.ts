@@ -53,9 +53,16 @@ export function verifyAccessToken(
     }
 
     if (!payload.id || !payload.role) {
-        throw new Error("Token parameters invalid");
+        return { valid: false };
     }
     return { valid: true, payload: payload };
+}
+
+export class RefreshTokenInvalidError extends Error {
+    constructor(errorMsg: string) {
+        super(errorMsg);
+        this.name = "RefreshTokenInvalidError";
+    }
 }
 
 export async function refreshTokens(refreshToken: string): Promise<{
@@ -66,6 +73,9 @@ export async function refreshTokens(refreshToken: string): Promise<{
 }> {
     // Is refresh token valid?
     let oldRefreshTokenPayload: RefreshTokenPayload;
+    if (refreshToken === undefined) {
+        throw new RefreshTokenInvalidError("Refresh token undefined.");
+    }
     try {
         oldRefreshTokenPayload = jwt.verify(
             refreshToken!,
@@ -73,18 +83,16 @@ export async function refreshTokens(refreshToken: string): Promise<{
         ) as RefreshTokenPayload;
     } catch (err) {
         if (err instanceof jwt.TokenExpiredError) {
-            throw new Error("Refresh token expired");
+            throw new RefreshTokenInvalidError("Refresh token expired");
         }
-        throw new Error("Refresh token invalid");
+        throw new RefreshTokenInvalidError("Refresh token invalid");
     }
-
     if (
         !oldRefreshTokenPayload.id ||
         !oldRefreshTokenPayload.userId ||
         !oldRefreshTokenPayload.userRole
     ) {
-        // todo do we even need this check?
-        throw new Error("Token parameters invalid");
+        throw new RefreshTokenInvalidError("Refresh token parameters invalid");
     }
 
     const oldRefreshTokenId: ObjectId = new ObjectId(oldRefreshTokenPayload.id);
@@ -92,6 +100,7 @@ export async function refreshTokens(refreshToken: string): Promise<{
     const refreshTokenDb: WithId<RefreshTokenModel.RefreshToken> | null =
         await RefreshTokenModel.findRefreshTokenById(oldRefreshTokenId);
     if (!refreshTokenDb) {
+        console.log("Refresh token not found in db");
         throw new Error("Refresh token not found");
     }
 
@@ -99,13 +108,30 @@ export async function refreshTokens(refreshToken: string): Promise<{
     const deleteResult =
         await RefreshTokenModel.deleteRefreshToken(oldRefreshTokenId);
     if (deleteResult.deletedCount !== 1) {
-        throw new Error("Error deleting refresh token");
+        console.log("error deleting the old refresh token");
+        throw new Error("Error deleting old refresh token");
     }
     // Refresh token cycling: Generate new refresh token
     const newRefreshToken = await issueRefreshToken(
         oldRefreshTokenPayload.userId,
         oldRefreshTokenPayload.userRole
     );
+    console.log("finished. generating token");
+
+    // todo
+    //If anything fails after deletion (DB hiccup, signing error, process crash), the user is now logged out permanently.
+
+    // Better pattern (transaction-like)
+
+    // Validate refresh token
+
+    // Generate new refresh token
+
+    // Store new refresh token
+
+    // Delete old refresh token
+
+    // Mongo supports transactions if you’re on a replica set — worth it here.
 
     // Issue new access token
     const newAccessToken = jwt.sign(

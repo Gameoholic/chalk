@@ -60,17 +60,3 @@ export type CanvasStatus =
     | "ok"
     | "error"
     | "standby";
-
-export interface UserData {
-    displayName: string;
-    role: string;
-    id: string;
-}
-
-export interface ObjectlessBoardData {
-    id: string;
-    name: string;
-}
-export interface BoardData extends ObjectlessBoardData {
-    objects: WorldObject[];
-}

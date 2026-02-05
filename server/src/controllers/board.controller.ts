@@ -7,7 +7,7 @@ import type { WorldObject } from "../types/board.types.js";
 export async function getAll(req: AuthenticatedRequest, res: Response) {
     try {
         if (!req.authenticatedUser) {
-            res.status(401).json({ error: "Unauthorized" });
+            return res.sendStatus(401);
             return;
         }
         const boards = await BoardService.getAllBoardsOfUser_WithoutObjects(
@@ -30,8 +30,7 @@ export async function getAll(req: AuthenticatedRequest, res: Response) {
 export async function create(req: AuthenticatedRequest, res: Response) {
     try {
         if (!req.authenticatedUser) {
-            res.status(401).json({ error: "Unauthorized" });
-            return;
+            return res.sendStatus(401);
         }
 
         const { name } = req.body;
@@ -41,13 +40,13 @@ export async function create(req: AuthenticatedRequest, res: Response) {
             return;
         }
 
-        await BoardService.createBoardForUser(
+        const board = await BoardService.createBoardForUser(
             req.authenticatedUser.id,
             name,
             req.authenticatedUser.role
         );
 
-        res.sendStatus(201);
+        res.status(200).json({ id: board._id, name: board.name });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: "Failed to create board" });
@@ -57,7 +56,7 @@ export async function create(req: AuthenticatedRequest, res: Response) {
 export async function getById(req: AuthenticatedRequest, res: Response) {
     try {
         if (!req.authenticatedUser) {
-            res.status(401).json({ error: "Unauthorized" });
+            return res.sendStatus(401);
             return;
         }
 
@@ -88,7 +87,7 @@ export async function getById(req: AuthenticatedRequest, res: Response) {
 export async function updateBoard(req: AuthenticatedRequest, res: Response) {
     try {
         if (!req.authenticatedUser) {
-            return res.status(401).json({ error: "Unauthorized" });
+            return res.sendStatus(401);
         }
 
         const boardId = req.params.id as string;
@@ -119,7 +118,7 @@ export async function upsertWorldObjects(
 ) {
     try {
         if (!req.authenticatedUser) {
-            return res.status(401).json({ error: "Unauthorized" });
+            return res.sendStatus(401);
         }
 
         const boardId = req.params.id as string;

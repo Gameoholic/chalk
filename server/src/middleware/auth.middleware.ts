@@ -18,6 +18,7 @@ export default async function cookieJwtAuth(
     res: Response,
     next: NextFunction
 ) {
+    // TODO IMPORTANT::::::: WRAP THIS ENTIRE THING WITH TRY CATCH as verifyaccesstoekn throws, so do the other function
     // Verify access token
     const accessTokenVerificationResult = AuthService.verifyAccessToken(
         req.cookies["access-token"]
@@ -32,7 +33,7 @@ export default async function cookieJwtAuth(
         next();
         return;
     }
-    // If access token is invalid, expired, or wasn't provided, refresh tokens:
+    // If access token is invalid, expired, or wasn't provided, refresh tokens according to refresh token:
     let newTokens: {
         refreshToken: string;
         accessToken: string;
@@ -44,8 +45,12 @@ export default async function cookieJwtAuth(
             (req as any).cookies["refresh-token"]
         );
     } catch (err) {
-        res.status(401).json({ error: "Couldn't refresh tokens." });
-        return;
+        if (err instanceof AuthService.RefreshTokenInvalidError) {
+            return res
+                .status(401)
+                .json({ error: "Invalid/Nonexistent refresh token." });
+        }
+        return res.status(401).json({ error: "Couldn't refresh tokens." });
     }
 
     res.cookie("access-token", newTokens.accessToken, {

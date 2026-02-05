@@ -1,62 +1,80 @@
 import { useEffect, useRef, useState } from "react";
 import CanvasEditor from "./canvas/CanvasEditor.tsx";
-import { BoardData, UserData, ObjectlessBoardData } from "./types/canvas.ts";
+import { BoardData, UserData, ObjectlessBoardData } from "./types/data.ts";
+import { BoardsAPI, AuthAPI, GuestUsersAPI } from "./api";
 
-type AuthStatus = "loading" | "ok" | "failed";
+type LoadDataResult =
+    | {
+          success: true;
+          userData: UserData;
+          boards: ObjectlessBoardData[];
+          currentBoard: BoardData;
+      }
+    | { success: false };
 
 export default function CanvasLoader() {
-    const authenticationBootstrap = useRef(false); // in dev mode, each function is rendered twice!
-    // todo: combine all these to one state?
-    const [authStatus, setAuthStatus] = useState<AuthStatus>("loading");
-    const [boards, setBoards] = useState<ObjectlessBoardData[] | null>(null);
-    const [userData, setUserData] = useState<UserData | null>(null);
-    const [currentBoard, setCurrentBoard] = useState<BoardData | null>(null);
+    const [data, setData] = useState<LoadDataResult | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    // Create a ref to hold the running promise
+    // This persists across the Strict Mode "double-mount"
+    const dataFetchPromise = useRef<Promise<LoadDataResult> | null>(null);
 
     useEffect(() => {
-        if (authenticationBootstrap.current) {
-            return;
-        }
-        authenticationBootstrap.current = true;
-        loadUserAndBoardData().then((data) => {
-            setAuthStatus(data.success ? "ok" : "failed");
-            if (data.success) {
-                setBoards(data.boards);
-                setCurrentBoard(data.currentBoard);
-                setUserData(data.userData);
-                setCurrentBoard(data.currentBoard);
+        let cancelled = false;
+
+        async function fetchData() {
+            if (!dataFetchPromise.current) {
+                dataFetchPromise.current = loadData();
             }
-        });
+            const result = await dataFetchPromise.current;
+            if (!cancelled) {
+                setData(result);
+                setLoading(false);
+            }
+        }
+
+        fetchData();
+
+        return () => {
+            cancelled = true;
+        };
     }, []);
+
+    if (loading) {
+        return (
+            <div className="flex min-h-screen items-center justify-center text-white">
+                Loading...
+            </div>
+        );
+    }
+
+    if (!data || !data.success) {
+        return <AuthError />;
+    }
+
+    return <CanvasEditor currentBoard={data.currentBoard} />;
+}
+
+function AuthError() {
     return (
-        <div className="flex min-h-screen flex-col items-center justify-center bg-[#242424] font-sans text-white antialiased dark:bg-white dark:text-[#213547]">
-            <div className="relative min-h-screen">
-                <CanvasEditor currentBoard={currentBoard} />
-                {authStatus === "loading" && (
-                    <CanvasEditor currentBoard={null} />
-                )}
-                {authStatus === "failed" && <AuthErrorOverlay />}
+        <div className="flex min-h-screen items-center justify-center text-white">
+            <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-[3px]">
+                <div className="rounded-xl bg-zinc-900 p-6 text-center shadow-xl">
+                    <h2 className="text-xl font-semibold text-red-400">
+                        Authentication failed
+                    </h2>
+                    <p className="mt-2 text-zinc-300">
+                        We couldn’t authenticate you. Please refresh the page or
+                        try again later.
+                    </p>
+                </div>
             </div>
         </div>
     );
 }
 
-function AuthErrorOverlay() {
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-[3px]">
-            <div className="rounded-xl bg-zinc-900 p-6 text-center shadow-xl">
-                <h2 className="text-xl font-semibold text-red-400">
-                    Authentication failed
-                </h2>
-                <p className="mt-2 text-zinc-300">
-                    We couldn’t authenticate you. Please refresh the page or try
-                    again later.
-                </p>
-            </div>
-        </div>
-    );
-}
-
-async function loadUserAndBoardData(): Promise<
+async function loadData(): Promise<
     | {
           success: true;
           userData: UserData;
@@ -69,9 +87,7 @@ async function loadUserAndBoardData(): Promise<
     try {
         userData = await loadUserDataOrCreateGuestUser();
     } catch (err) {
-        console.error(
-            "Couldn't authenticate user at all! Disabling usage of website."
-        );
+        console.error("Couldn't authenticate user at all!" + err);
         return { success: false };
     }
 
@@ -80,23 +96,25 @@ async function loadUserAndBoardData(): Promise<
             userData.id +
             ", displayName:" +
             userData.displayName +
+            ", displayName:" +
+            userData.displayName +
             ") loaded!"
     );
 
     console.log("Fetching user's boards.");
     let boards: ObjectlessBoardData[];
     try {
-        boards = await getBoardData();
+        boards = await BoardsAPI.getAllBoards();
     } catch (err) {
-        console.error("Couldn't load boards!");
-        return { success: false };
+        console.error("Couldn't load boards! " + err);
+        return { success: false }; // todo: just throw here.
     }
     console.log(boards.length + " boards found.");
 
     if (boards.length === 0) {
         console.log("Creating default board.");
         try {
-            await createBoard("My first board");
+            boards[0] = await BoardsAPI.createBoard("My first board");
         } catch (err) {
             console.error("Couldn't create board!");
             return { success: false };
@@ -107,9 +125,9 @@ async function loadUserAndBoardData(): Promise<
     console.log("Fetching most recent board.");
     let currentBoard: BoardData;
     try {
-        currentBoard = await getBoardDataById(boards[0].id);
+        currentBoard = await BoardsAPI.getBoardById(boards[0].id);
     } catch (err) {
-        console.error("Couldn't load board!");
+        console.error("Couldn't load board! " + err);
         return { success: false };
     }
     console.log("Loaded board '" + currentBoard.name + "' as current board.");
@@ -122,123 +140,42 @@ async function loadUserAndBoardData(): Promise<
 }
 async function loadUserDataOrCreateGuestUser(): Promise<UserData> {
     // Try fetching user data to see if user exists first
+    let getUserDataErrorMessage;
     try {
         console.log("Attempting to retrieve current user data.");
-        const getUserDataResult = await getUserData();
+        const getUserDataResult = await AuthAPI.getUserData();
         return getUserDataResult;
     } catch (err) {
-        console.log("Couldn't fetch user data.");
+        if (err instanceof Error) {
+            getUserDataErrorMessage = err.message;
+        }
+        console.log("Couldn't fetch user data. " + err);
     }
 
+    if (getUserDataErrorMessage !== "Invalid/Nonexistent refresh token.") {
+        console.log(
+            "Error does not have to do with refresh token being invalid. Could be a network error. Not logging out this user yet."
+        );
+        throw new Error("Couldn't authenticate user.");
+    }
+
+    // Reaching this line pretty much guarantees we don't have a guest user because the refresh token is invalid.
+    // On guest users, refresh tokens never expire, and shouldn't be invalid. Theoretically, this could happen if we change the
+    // refresh token format but that's beyond the scope of this flow.
+    // Therefore, it's ok to create a new user, locking the client out of the previously logged-into guest user and preventing its use forever
+    // (because there isn't one.)
+    console.log(
+        "Failed to fetch data because refresh token is invalid/nonexistent. Proceeding to create guest user."
+    );
     // If doesn't exist, attempt to create guest user
     try {
         console.log("Attempting to create guest user.");
-        await createGuestUser();
-        const getUserDataResult = await getUserData();
+        await GuestUsersAPI.createGuestUser();
+        const getUserDataResult = await AuthAPI.getUserData();
         return getUserDataResult;
     } catch (err) {
-        console.log("Couldn't create guest user.");
+        console.error("Couldn't create guest user. " + err);
     }
 
     throw new Error("Couldn't authenticate user.");
-}
-
-async function getUserData(): Promise<UserData> {
-    const controller = new AbortController();
-    setTimeout(() => controller.abort(), 5000);
-
-    const res = await fetch("http://localhost:5050/auth/me", {
-        method: "GET",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        credentials: "include",
-        signal: controller.signal,
-    });
-    const data = await res.json();
-    if (!res.ok) {
-        throw Error(data.error);
-    }
-
-    return { displayName: data.displayName, role: data.role, id: data.id };
-}
-
-async function createGuestUser() {
-    const controller = new AbortController(); // todo do this for the entire app. otherwise it silently fails and we do not throw error.
-    setTimeout(() => controller.abort(), 5000);
-
-    const res = await fetch("http://localhost:5050/guest-users/", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        credentials: "include", // used to receive cookie
-        signal: controller.signal,
-    });
-    if (!res.ok) {
-        const data = await res.json();
-        throw Error(data.error);
-    }
-}
-
-async function getBoardData(): Promise<ObjectlessBoardData[]> {
-    const controller = new AbortController();
-    setTimeout(() => controller.abort(), 5000);
-
-    const res = await fetch("http://localhost:5050/me/boards/", {
-        method: "GET",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        credentials: "include",
-        signal: controller.signal,
-    });
-    const data = await res.json();
-    if (!res.ok) {
-        throw Error(data.error);
-    }
-
-    return data as ObjectlessBoardData[];
-}
-
-async function createBoard(name: string) {
-    const controller = new AbortController();
-    setTimeout(() => controller.abort(), 5000);
-
-    const res = await fetch("http://localhost:5050/me/boards/", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        credentials: "include",
-        signal: controller.signal,
-        body: JSON.stringify({ name }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-        throw Error(data.error);
-    }
-
-    return data as ObjectlessBoardData[];
-}
-
-async function getBoardDataById(id: string): Promise<BoardData> {
-    const controller = new AbortController();
-    setTimeout(() => controller.abort(), 5000);
-
-    const res = await fetch(`http://localhost:5050/me/boards/${id}`, {
-        method: "GET",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        credentials: "include",
-        signal: controller.signal,
-    });
-
-    const data = await res.json();
-    if (!res.ok) {
-        throw Error(data.error);
-    }
-
-    return data as BoardData;
 }
