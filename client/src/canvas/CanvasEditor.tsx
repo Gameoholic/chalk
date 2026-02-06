@@ -1,14 +1,7 @@
 import CanvasViewport from "./CanvasViewport";
 import Toolbox from "./Toolbox";
 import { RefObject, useEffect, useRef, useState } from "react";
-import {
-    BoardData,
-    Camera,
-    CanvasStatus,
-    Tool,
-    Vec2,
-    WorldObject,
-} from "../types/canvas";
+import { Camera, Tool, Vec2, WorldObject } from "../types/canvas";
 import {
     Menu,
     User,
@@ -22,6 +15,8 @@ import {
     TriangleAlert,
 } from "lucide-react";
 import ManageBoardModal from "./components/ManageBoardModal";
+import { updateBoardObjects } from "../api/boards";
+import { BoardData } from "../types/data";
 
 function CanvasEditor({ currentBoard }: { currentBoard: BoardData }) {
     // Settings & state data
@@ -37,10 +32,22 @@ function CanvasEditor({ currentBoard }: { currentBoard: BoardData }) {
     const [menuOpen, setMenuOpen] = useState(false);
     const [showManageModal, setShowManageModal] = useState(false);
 
-    const [canvasStatus, setCanvasStatus] = useState<CanvasStatus>("ok");
+    // Saving objects
     // Database objects on standby to be saved to db (either entirely new objects or objects that were updated)
-    const objectsToCommitOnDatabase: RefObject<Map<string, WorldObject>> =
-        useRef(new Map());
+    const objectsToSaveOnDatabase: RefObject<Map<string, WorldObject>> = useRef(
+        new Map()
+    );
+    // Objects that are CURRENTLY being saved (mid-fetch request)
+    const objectsBeingSavedOnDatabase: RefObject<WorldObject[]> = useRef([]);
+    // If 0, currently retrying.
+    const [saveObjectsError, setSaveObjectsError] = useState<
+        | { error: null }
+        | {
+              error: string;
+              retryStatus: "retrying" | "start-retry-timer" | number;
+              retryDelay: number;
+          }
+    >({ error: null });
 
     // FPS
     const [fps, setFps] = useState(0);
@@ -68,57 +75,127 @@ function CanvasEditor({ currentBoard }: { currentBoard: BoardData }) {
     }, []);
 
     // When either a new object was added, or an existing object has updated
-    function onObjectUpdated(object: WorldObject) {
-        objectsToCommitOnDatabase.current.set(object.id, object);
-        setCanvasStatus("standby");
+    function onObjectUpdatedOrAdded(object: WorldObject) {
+        objectsToSaveOnDatabase.current.set(object.id, object);
     }
-    // When objects are ready to be saved to database (user released left click, for example). Generally, only one object should be committed at a time.
-    function onObjectsReadyToBeCommitted() {
-        if (objectsToCommitOnDatabase.current.size == 0) {
-            return; // Sanity check. For now this also serves to be necessary as this method is called even if user taps pencil tool without actually creating a shape and calling onObjectUpdated hence this method is called for no reason. Will be changed in the future, todo
+
+    // When objects are ready to be saved to database (user released left click, for example). Generally, only one object should be saved at a time.
+    async function requestSaveObjectsOnDatabase(asErrorRetry: boolean = false) {
+        // Sanity check. Do not remove this because if it's equal to 0 and we call this method multiple times, we could have multiple fetch requests running concurrently, which could cause problems if one of them fails and causes us to reload the board.
+        if (objectsToSaveOnDatabase.current.size === 0) {
+            return;
         }
-        const objectsBeingCommitted = new Map(
-            objectsToCommitOnDatabase.current
+        if (objectsBeingSavedOnDatabase.current.length > 0) {
+            console.warn(
+                "Request to save objects (length " +
+                    objectsToSaveOnDatabase.current.size +
+                    ") ignored because waiting on existing request."
+            );
+            return;
+        }
+        if (saveObjectsError.error && !asErrorRetry) {
+            console.warn(
+                "Request to save objects (length " +
+                    objectsToSaveOnDatabase.current.size +
+                    ") ignored because waiting for error retry."
+            );
+            return;
+        }
+
+        objectsBeingSavedOnDatabase.current = Array.from(
+            objectsToSaveOnDatabase.current.values()
         );
-        objectsToCommitOnDatabase.current.clear();
-        setCanvasStatus("saving-board");
-        // Typically only one object should be ready to be committed at a time, so we do it in a loop just in case
+        objectsToSaveOnDatabase.current.clear();
+        console.log(
+            "Saving " +
+                objectsBeingSavedOnDatabase.current.length +
+                " board objects on database."
+        );
 
-        commitObjects();
-        async function commitObjects() {
-            const controller = new AbortController();
-            setTimeout(() => controller.abort(), 5000);
-
-            console.log(
-                "Committing " +
-                    objectsBeingCommitted.size +
-                    " objects to board."
+        try {
+            await updateBoardObjects(
+                currentBoard.id,
+                objectsBeingSavedOnDatabase.current
             );
-            const res = await fetch(
-                `http://localhost:5050/me/boards/${currentBoard?.id}/objects`,
-                {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    credentials: "include",
-                    body: JSON.stringify({
-                        objects: Array.from(objectsBeingCommitted.values()),
-                    }),
-                    signal: controller.signal,
+        } catch (err) {
+            console.error("Failure to save the objects! ");
+
+            // Restore objects
+            for (const obj of objectsBeingSavedOnDatabase.current) {
+                // Don't attempt to re-save the object if a newer version of it exists
+                if (!objectsToSaveOnDatabase.current.has(obj.id)) {
+                    objectsToSaveOnDatabase.current.set(obj.id, obj);
                 }
-            );
-            const data = await res.json();
-            if (!res.ok) {
-                console.error("Failure to commit the object! " + data.error);
             }
+            objectsBeingSavedOnDatabase.current = [];
+            setSaveObjectsError((prev) => {
+                const accumulatedDelay = prev.error ? prev.retryDelay : 0; // Add delay from previous attempts
+                return {
+                    error: "Failed to save changes. Your work is out of sync.",
+                    retryStatus: "start-retry-timer",
+                    retryDelay:
+                        Number(
+                            // @ts-expect-error Fix: IntelliJ complains about import.meta.env
+                            import.meta.env.VITE_SAVE_RETRY_DELAY
+                        ) + accumulatedDelay,
+                };
+            });
+            return;
+        }
+
+        console.log("Successfully saved the objects.");
+        setSaveObjectsError({ error: null });
+        objectsBeingSavedOnDatabase.current = [];
+
+        // Save any objects that were piling up as this request was processed
+        if (objectsToSaveOnDatabase.current.size > 0) {
             console.log(
-                "Committed " +
-                    objectsBeingCommitted.size +
-                    " objects successfully."
+                objectsToSaveOnDatabase.current.size +
+                    " objects piled up while processing the request. Saving them now."
             );
+            requestSaveObjectsOnDatabase();
         }
     }
+
+    // Handle error retry
+    useEffect(() => {
+        if (!saveObjectsError.error) return;
+
+        // Start retry timer
+        if (saveObjectsError.retryStatus === "start-retry-timer") {
+            // Interval logic
+            const interval = setInterval(() => {
+                setSaveObjectsError((prev) => {
+                    if (!prev.error || typeof prev.retryStatus !== "number") {
+                        clearInterval(interval);
+                        return prev;
+                    }
+
+                    // Retry saving objects
+                    if (prev.retryStatus <= 1) {
+                        clearInterval(interval);
+                        console.log("Retrying to save objects.");
+                        requestSaveObjectsOnDatabase(true);
+
+                        return { ...prev, retryStatus: "retrying" };
+                    }
+
+                    return { ...prev, retryStatus: prev.retryStatus - 1 };
+                });
+            }, 1000);
+            // Interval logic ^
+
+            // Start retry timer
+            setSaveObjectsError({
+                error: saveObjectsError.error,
+                retryStatus: saveObjectsError.retryDelay,
+                retryDelay: saveObjectsError.retryDelay,
+            });
+        }
+
+        //  clearInterval(interval) todo we don't actually clean it up here. could cause memory leaks? idk
+        return () => {};
+    }, [saveObjectsError]);
 
     // Rename handler for modal
     const handleRenameBoard = async (newName: string) => {
@@ -129,6 +206,42 @@ function CanvasEditor({ currentBoard }: { currentBoard: BoardData }) {
 
     return (
         <div className="relative h-screen w-screen">
+            {/* SAVE ERROR BANNER */}
+            {saveObjectsError.error && (
+                <div className="animate-in fade-in slide-in-from-top-2 pointer-events-none fixed top-6 left-1/2 z-100 -translate-x-1/2">
+                    <div className="flex flex-col gap-1 rounded-xl bg-red-600 px-5 py-3 text-sm font-medium text-white shadow-xl">
+                        <div className="flex items-center gap-3">
+                            {saveObjectsError.retryStatus === "retrying" ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <XCircle className="h-4 w-4" />
+                            )}
+                            <span>{saveObjectsError.error}</span>
+                        </div>
+
+                        {/* Placeholder */}
+                        {saveObjectsError.retryStatus ===
+                            "start-retry-timer" && (
+                            <span className="ml-7 text-xs opacity-80">
+                                Retrying in {}s
+                            </span>
+                        )}
+
+                        {typeof saveObjectsError.retryStatus === "number" && (
+                            <span className="ml-7 text-xs opacity-80">
+                                Retrying in {saveObjectsError.retryStatus}s
+                            </span>
+                        )}
+
+                        {saveObjectsError.retryStatus === "retrying" && (
+                            <span className="ml-7 text-xs opacity-80">
+                                Retrying...
+                            </span>
+                        )}
+                    </div>
+                </div>
+            )}
+
             {/* Top-left menu container */}
             <div
                 className="absolute top-4 left-4 z-50"
@@ -183,15 +296,6 @@ function CanvasEditor({ currentBoard }: { currentBoard: BoardData }) {
                     <p>Camera Zoom: {cameraZoom.toFixed(2)}</p>
                     <p>FPS: {fps}</p>
                     <p>Objects: {objectAmount}</p>
-                    <div className="flex items-center gap-1">
-                        <span>Status:</span>
-                        <StatusIndicator
-                            status={canvasStatus}
-                            objectsToUpdateOnDatabaseCount={
-                                objectsToCommitOnDatabase.current.size
-                            }
-                        />
-                    </div>
                 </div>
             )}
 
@@ -224,8 +328,8 @@ function CanvasEditor({ currentBoard }: { currentBoard: BoardData }) {
                 onObjectAmountChange={(objectAmount: number) =>
                     setObjectAmount(objectAmount)
                 }
-                onObjectUpdated={onObjectUpdated}
-                onObjectsReadyToBeCommitted={onObjectsReadyToBeCommitted}
+                onObjectUpdated={onObjectUpdatedOrAdded}
+                onObjectsReadyToBeCommitted={requestSaveObjectsOnDatabase}
             />
 
             {/* Manage Board Modal */}
@@ -264,7 +368,7 @@ function StatusIndicator({
     status,
     objectsToUpdateOnDatabaseCount,
 }: {
-    status: CanvasStatus;
+    status: string;
     objectsToUpdateOnDatabaseCount: number;
 }) {
     return (

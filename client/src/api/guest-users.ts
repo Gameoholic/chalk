@@ -7,6 +7,4 @@ export async function createGuestUser() {
         console.log("Error executing createGuestUser: " + result.error);
         throw Error(result.error);
     }
-
-    return result.data;
 }

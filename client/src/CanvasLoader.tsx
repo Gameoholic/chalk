@@ -42,11 +42,7 @@ export default function CanvasLoader() {
     }, []);
 
     if (loading) {
-        return (
-            <div className="flex min-h-screen items-center justify-center text-white">
-                Loading...
-            </div>
-        );
+        return <LoadingScreen />;
     }
 
     if (!data || !data.success) {
@@ -68,6 +64,25 @@ function AuthError() {
                         We couldn’t authenticate you. Please refresh the page or
                         try again later.
                     </p>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function LoadingScreen() {
+    return (
+        <div className="flex min-h-screen items-center justify-center bg-white">
+            <div className="flex flex-col items-center gap-6">
+                {/* Animated blob */}
+                <div className="relative h-16 w-16">
+                    <span className="absolute inset-0 animate-ping rounded-full bg-zinc-900/20" />
+                    <span className="absolute inset-0 rounded-full bg-zinc-900" />
+                </div>
+
+                {/* Loading text */}
+                <div className="text-sm font-medium tracking-wide text-black">
+                    Loading canvas…
                 </div>
             </div>
         </div>

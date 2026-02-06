@@ -53,10 +53,3 @@ export interface Camera {
     size: Vec2; // size of the canvas in pixels
     zoom: number; // 1 = default, 2 = zoom in, 0.5 = zoom out
 }
-
-export type CanvasStatus =
-    | "loading-board"
-    | "saving-board"
-    | "ok"
-    | "error"
-    | "standby";

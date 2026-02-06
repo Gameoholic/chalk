@@ -1,6 +1,7 @@
 import { BoardData, ObjectlessBoardData, UserData } from "../types/data";
 import { fetchHelper } from ".";
 import { Result } from "../types/data";
+import { WorldObject } from "../types/canvas";
 
 export async function getAllBoards(): Promise<ObjectlessBoardData[]> {
     const result = await fetchHelper<ObjectlessBoardData[]>(
@@ -37,4 +38,22 @@ export async function createBoard(name: string) {
     }
 
     return result.data as ObjectlessBoardData;
+}
+
+export async function updateBoardObjects(
+    boardId: string,
+    objects: WorldObject[]
+) {
+    const result = await fetchHelper<undefined>(
+        `me/boards/${boardId}/objects`,
+        "POST",
+        { objects }
+    );
+
+    if (!result.success) {
+        console.log("Error executing updateBoardObjects: " + result.error);
+        throw Error(result.error);
+    }
+
+    return;
 }
