@@ -164,7 +164,7 @@ async function loadUserDataOrCreateGuestUser(): Promise<UserData> {
         if (err instanceof Error) {
             getUserDataErrorMessage = err.message;
         }
-        console.log("Couldn't fetch user data. " + err);
+        console.warn("Couldn't fetch user data. " + err);
     }
 
     if (getUserDataErrorMessage !== "Invalid/Nonexistent refresh token.") {

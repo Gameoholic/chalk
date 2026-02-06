@@ -48,7 +48,7 @@ export async function createBoard(
         ownerId: new ObjectId(ownerId),
         name,
         objects: [],
-        createdAt: now,
+        createdOn: now,
         lastOpened: now,
     };
 

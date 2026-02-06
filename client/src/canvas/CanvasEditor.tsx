@@ -14,9 +14,9 @@ import {
     XCircle,
     TriangleAlert,
 } from "lucide-react";
-import ManageBoardModal from "./components/ManageBoardModal";
-import { updateBoardObjects } from "../api/boards";
+import { updateBoardName, updateBoardObjects } from "../api/boards";
 import { BoardData } from "../types/data";
+import ManageThisBoard from "./components/ManageThisBoard";
 
 function CanvasEditor({ currentBoard }: { currentBoard: BoardData }) {
     // Settings & state data
@@ -197,11 +197,13 @@ function CanvasEditor({ currentBoard }: { currentBoard: BoardData }) {
         return () => {};
     }, [saveObjectsError]);
 
-    // Rename handler for modal
     const handleRenameBoard = async (newName: string) => {
-        if (!currentBoard) return;
-        // TODO: call API to rename board
-        currentBoard.name = newName; // temporary local update
+        try {
+            await updateBoardName(currentBoard.id, newName);
+            currentBoard.name = newName;
+        } catch {
+            throw new Error("Rename failed");
+        }
     };
 
     return (
@@ -333,11 +335,12 @@ function CanvasEditor({ currentBoard }: { currentBoard: BoardData }) {
             />
 
             {/* Manage Board Modal */}
-            {showManageModal && currentBoard && (
-                <ManageBoardModal
-                    board={currentBoard}
-                    onClose={() => setShowManageModal(false)}
+            {showManageModal && (
+                <ManageThisBoard
+                    name={currentBoard.name}
+                    createdOn={currentBoard.createdOn}
                     onRename={handleRenameBoard}
+                    onClose={() => setShowManageModal(false)}
                 />
             )}
         </div>

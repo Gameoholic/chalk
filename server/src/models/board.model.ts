@@ -9,7 +9,7 @@ export interface Board {
     ownerId: ObjectId;
     name: string;
     objects: WorldObject[];
-    createdAt: Date;
+    createdOn: Date;
     lastOpened: Date;
 }
 

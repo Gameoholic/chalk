@@ -14,7 +14,7 @@ router.use(auth); // apply auth middleware to all routes below
 
 router.get("/:id", getById);
 // update board metadata (name, lastOpened, etc)
-router.patch("/:id", updateBoard);
+router.put("/:id", updateBoard);
 // append world objects
 router.post("/:id/objects", upsertWorldObjects);
 router.get("/", getAll);

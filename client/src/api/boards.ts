@@ -57,3 +57,16 @@ export async function updateBoardObjects(
 
     return;
 }
+
+export async function updateBoardName(boardId: string, name: string) {
+    const result = await fetchHelper<undefined>(`me/boards/${boardId}`, "PUT", {
+        name,
+    });
+
+    if (!result.success) {
+        console.log("Error executing updateBoardName: " + result.error);
+        throw Error(result.error);
+    }
+
+    return;
+}

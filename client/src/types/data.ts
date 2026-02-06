@@ -13,6 +13,7 @@ export interface UserData {
 export interface ObjectlessBoardData {
     id: string;
     name: string;
+    createdOn: Date;
 }
 export interface BoardData extends ObjectlessBoardData {
     objects: WorldObject[];

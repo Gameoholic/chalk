@@ -8,7 +8,6 @@ export async function getAll(req: AuthenticatedRequest, res: Response) {
     try {
         if (!req.authenticatedUser) {
             return res.sendStatus(401);
-            return;
         }
         const boards = await BoardService.getAllBoardsOfUser_WithoutObjects(
             req.authenticatedUser.id
@@ -95,7 +94,39 @@ export async function updateBoard(req: AuthenticatedRequest, res: Response) {
             return res.status(400).json({ error: "Board id required." });
         }
 
-        const updates = req.body;
+        const allowedFields = ["name"];
+        const updates: Partial<{ name: string }> = {};
+
+        // Only copy allowed fields from request body
+        for (const key of allowedFields) {
+            if (key in req.body) {
+                updates[key as keyof typeof updates] = req.body[key];
+            }
+        }
+
+        // Validate name if provided
+        if ("name" in updates) {
+            const name = updates.name as string;
+            if (!name || name.trim().length === 0) {
+                return res
+                    .status(400)
+                    .json({ error: "Board name cannot be empty." });
+            }
+            if (name.length > 32) {
+                return res
+                    .status(400)
+                    .json({ error: "Board name cannot exceed 32 characters." });
+            }
+            updates.name = name.trim();
+        }
+
+        // If nothing valid to update
+        if (Object.keys(updates).length === 0) {
+            return res.status(400).json({
+                error: "No valid fields to update. Only 'name' is allowed.",
+            });
+        }
+
         const updated = await BoardService.updateBoardForUser(
             req.authenticatedUser.id,
             boardId,
@@ -108,6 +139,7 @@ export async function updateBoard(req: AuthenticatedRequest, res: Response) {
 
         res.status(200).json(updated);
     } catch (err) {
+        console.error(err);
         res.status(500).json({ error: "Failed to update board" });
     }
 }
