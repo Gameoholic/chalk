@@ -76,11 +76,33 @@ export async function updateBoardForUser(
         throw new Error("Invalid board id");
     }
 
-    return BoardModel.updateBoardForOwner(
+    // Only allow specific fields
+    const allowedFields = ["name"];
+    const filteredUpdates: Partial<BoardModel.Board> = {};
+
+    for (const key of allowedFields) {
+        if (Object.prototype.hasOwnProperty.call(updates, key)) {
+            if (key === "name") {
+                const name = (updates.name as string)?.trim();
+                if (!name) throw new Error("Board name cannot be empty.");
+                if (name.length > 32)
+                    throw new Error("Board name cannot exceed 32 characters.");
+                filteredUpdates.name = name;
+            }
+        }
+    }
+
+    if (Object.keys(filteredUpdates).length === 0) {
+        throw new Error("No valid fields to update. Only 'name' is allowed.");
+    }
+
+    const result = await BoardModel.updateBoardForOwner(
         new ObjectId(userId),
         new ObjectId(boardId),
-        updates
+        filteredUpdates
     );
+
+    return result;
 }
 
 export async function upsertWorldObjectsToBoard(
