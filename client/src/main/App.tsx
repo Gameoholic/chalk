@@ -1,5 +1,10 @@
 import CanvasLoader from "../CanvasLoader.tsx";
 
-export default function App() {
-    return <CanvasLoader />;
+interface AppProps {
+    theme: "light" | "dark";
+    setTheme: React.Dispatch<React.SetStateAction<"light" | "dark">>;
+}
+
+export default function App({ theme, setTheme }: AppProps) {
+    return <CanvasLoader theme={theme} setTheme={setTheme} />;
 }

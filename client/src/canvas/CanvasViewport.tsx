@@ -3,7 +3,6 @@ import useDimensions from "react-cool-dimensions";
 import BaseCanvas from "./BaseCanvas";
 import {
     Camera,
-    CanvasStatus,
     EllipseObject,
     LineObject,
     PathObject,

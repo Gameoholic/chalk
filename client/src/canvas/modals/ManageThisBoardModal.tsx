@@ -3,7 +3,7 @@ import { X, Check, Loader2 } from "lucide-react";
 
 const MAX_NAME_LENGTH = 32;
 
-export default function ManageThisBoard({
+export default function ManageThisBoardModal({
     name,
     createdOn,
     onRename,

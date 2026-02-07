@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import CanvasEditor from "./canvas/CanvasEditor.tsx";
 import { BoardData, UserData, ObjectlessBoardData } from "./types/data.ts";
 import { BoardsAPI, AuthAPI, GuestUsersAPI } from "./api";
+import MyBoards from "./my-boards/MyBoards";
 
 type LoadDataResult =
     | {
@@ -12,7 +13,12 @@ type LoadDataResult =
       }
     | { success: false };
 
-export default function CanvasLoader() {
+interface CanvasLoaderProps {
+    theme: "light" | "dark";
+    setTheme: React.Dispatch<React.SetStateAction<"light" | "dark">>;
+}
+
+export default function CanvasLoader({ theme, setTheme }: CanvasLoaderProps) {
     const [data, setData] = useState<LoadDataResult | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -49,7 +55,14 @@ export default function CanvasLoader() {
         return <AuthError />;
     }
 
-    return <CanvasEditor currentBoard={data.currentBoard} />;
+    // return <MyBoards boards={data.boards} />;
+    return (
+        <CanvasEditor
+            currentBoard={data.currentBoard}
+            theme={theme}
+            setTheme={setTheme}
+        />
+    );
 }
 
 function AuthError() {

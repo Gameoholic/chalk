@@ -13,12 +13,23 @@ import {
     CheckCircle,
     XCircle,
     TriangleAlert,
+    Moon,
+    Sun,
 } from "lucide-react";
 import { updateBoardName, updateBoardObjects } from "../api/boards";
 import { BoardData } from "../types/data";
-import ManageThisBoard from "./components/ManageThisBoard";
+import ManageThisBoardModal from "./modals/ManageThisBoardModal";
+import CreateAccountModal from "./modals/old/CreateAccountModal";
+import ForgotPasswordModal from "./modals/old/ForgotPasswordModal";
+import LoginModal from "./modals/LogInModal";
 
-function CanvasEditor({ currentBoard }: { currentBoard: BoardData }) {
+interface CanvasEditorProps {
+    currentBoard: BoardData;
+    theme: "light" | "dark";
+    setTheme: React.Dispatch<React.SetStateAction<"light" | "dark">>;
+}
+
+function CanvasEditor({ currentBoard, theme, setTheme }: CanvasEditorProps) {
     // Settings & state data
     const [tool, setTool] = useState<Tool>("none");
     const [color, setColor] = useState("#000000FF");
@@ -28,9 +39,14 @@ function CanvasEditor({ currentBoard }: { currentBoard: BoardData }) {
     const [cameraZoom, setCameraZoom] = useState<number>(1);
     const [objectAmount, setObjectAmount] = useState<number>(0);
 
+    // Menu
     const [showDebug, setShowDebug] = useState(true);
     const [menuOpen, setMenuOpen] = useState(false);
-    const [showManageModal, setShowManageModal] = useState(false);
+    const [showManageThisBoardModal, setShowManageThisBoardModal] =
+        useState(false);
+    const [authView, setAuthView] = useState<
+        "login" | "forgot-password" | "create-account" | null
+    >(null);
 
     // Saving objects
     // Database objects on standby to be saved to db (either entirely new objects or objects that were updated)
@@ -39,7 +55,6 @@ function CanvasEditor({ currentBoard }: { currentBoard: BoardData }) {
     );
     // Objects that are CURRENTLY being saved (mid-fetch request)
     const objectsBeingSavedOnDatabase: RefObject<WorldObject[]> = useRef([]);
-    // If 0, currently retrying.
     const [saveObjectsError, setSaveObjectsError] = useState<
         | { error: null }
         | {
@@ -265,7 +280,11 @@ function CanvasEditor({ currentBoard }: { currentBoard: BoardData }) {
                             : "pointer-events-none -translate-y-2 scale-95 opacity-0"
                     } `}
                 >
-                    <MenuItem icon={<User size={18} />} label="Login" />
+                    <MenuItem
+                        icon={<User size={18} />}
+                        label="Login"
+                        onClick={() => setAuthView("login")}
+                    />
                     <MenuItem
                         icon={<LayoutDashboard size={18} />}
                         label="My Boards"
@@ -274,10 +293,24 @@ function CanvasEditor({ currentBoard }: { currentBoard: BoardData }) {
                     <MenuItem
                         icon={<Settings2 size={18} />}
                         label="Manage This Board"
-                        onClick={() => setShowManageModal(true)}
+                        onClick={() => setShowManageThisBoardModal(true)}
                     />
 
                     <MenuItem icon={<Share2 size={18} />} label="Share" />
+
+                    <MenuItem
+                        icon={
+                            theme === "light" ? (
+                                <Moon size={18} />
+                            ) : (
+                                <Sun size={18} />
+                            )
+                        }
+                        label={`Switch to ${theme === "light" ? "Dark" : "Light"} Mode`}
+                        onClick={() =>
+                            setTheme(theme === "light" ? "dark" : "light")
+                        }
+                    />
                     <MenuItem
                         icon={<Info size={18} />}
                         label={
@@ -335,12 +368,22 @@ function CanvasEditor({ currentBoard }: { currentBoard: BoardData }) {
             />
 
             {/* Manage Board Modal */}
-            {showManageModal && (
-                <ManageThisBoard
+            {showManageThisBoardModal && (
+                <ManageThisBoardModal
                     name={currentBoard.name}
                     createdOn={currentBoard.createdOn}
                     onRename={handleRenameBoard}
-                    onClose={() => setShowManageModal(false)}
+                    onClose={() => setShowManageThisBoardModal(false)}
+                />
+            )}
+
+            {/* Manage Board Modal */}
+            {authView === "login" && (
+                <LoginModal
+                    onCreateAccount={() => setAuthView("create-account")}
+                    onForgotPassword={() => setAuthView("forgot-password")}
+                    onClose={() => setAuthView(null)}
+                    onLogin={async () => {}}
                 />
             )}
         </div>
