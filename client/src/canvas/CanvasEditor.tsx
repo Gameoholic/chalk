@@ -285,9 +285,12 @@ function CanvasEditor({ currentBoard, theme, setTheme }: CanvasEditorProps) {
                         label="Login"
                         onClick={() => setAuthView("login")}
                     />
+
                     <MenuItem
                         icon={<LayoutDashboard size={18} />}
                         label="My Boards"
+                        disabled={true}
+                        disabledTooltip="You must be logged in to access additional boards."
                     />
 
                     <MenuItem
@@ -389,24 +392,41 @@ function CanvasEditor({ currentBoard, theme, setTheme }: CanvasEditorProps) {
         </div>
     );
 }
-
 function MenuItem({
     icon,
     label,
     onClick,
+    disabled = false,
+    disabledTooltip,
 }: {
     icon: React.ReactNode;
     label: string;
     onClick?: () => void;
+    disabled?: boolean;
+    disabledTooltip?: string;
 }) {
     return (
-        <button
-            onClick={onClick}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm text-white transition hover:bg-neutral-800"
-        >
-            {icon}
-            <span>{label}</span>
-        </button>
+        <div className="group relative">
+            <button
+                onClick={disabled ? undefined : onClick}
+                disabled={disabled}
+                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition ${
+                    disabled
+                        ? "cursor-not-allowed text-neutral-500"
+                        : "text-white hover:bg-neutral-800"
+                } `}
+            >
+                {icon}
+                <span>{label}</span>
+            </button>
+
+            {/* Tooltip */}
+            {disabled && disabledTooltip && (
+                <div className="pointer-events-none absolute top-1/2 left-full ml-2 -translate-y-1/2 rounded-md bg-black/90 px-2 py-1 text-xs whitespace-nowrap text-white opacity-0 transition-opacity group-hover:opacity-100">
+                    {disabledTooltip}
+                </div>
+            )}
+        </div>
     );
 }
 
