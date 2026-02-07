@@ -226,7 +226,13 @@ function CanvasEditor({ currentBoard, theme, setTheme }: CanvasEditorProps) {
             {/* SAVE ERROR BANNER */}
             {saveObjectsError.error && (
                 <div className="animate-in fade-in slide-in-from-top-2 pointer-events-none fixed top-6 left-1/2 z-100 -translate-x-1/2">
-                    <div className="flex flex-col gap-1 rounded-xl bg-red-600 px-5 py-3 text-sm font-medium text-white shadow-xl">
+                    <div
+                        className="flex flex-col gap-1 rounded-xl px-5 py-3 text-sm font-medium shadow-xl"
+                        style={{
+                            backgroundColor: "var(--error)",
+                            color: "var(--error-foreground)",
+                        }}
+                    >
                         <div className="flex items-center gap-3">
                             {saveObjectsError.retryStatus === "retrying" ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -236,22 +242,30 @@ function CanvasEditor({ currentBoard, theme, setTheme }: CanvasEditorProps) {
                             <span>{saveObjectsError.error}</span>
                         </div>
 
-                        {/* Placeholder */}
                         {saveObjectsError.retryStatus ===
                             "start-retry-timer" && (
-                            <span className="ml-7 text-xs opacity-80">
+                            <span
+                                className="ml-7 text-xs opacity-80"
+                                style={{ color: "var(--error-foreground)" }}
+                            >
                                 Retrying in {}s
                             </span>
                         )}
 
                         {typeof saveObjectsError.retryStatus === "number" && (
-                            <span className="ml-7 text-xs opacity-80">
+                            <span
+                                className="ml-7 text-xs opacity-80"
+                                style={{ color: "var(--error-foreground)" }}
+                            >
                                 Retrying in {saveObjectsError.retryStatus}s
                             </span>
                         )}
 
                         {saveObjectsError.retryStatus === "retrying" && (
-                            <span className="ml-7 text-xs opacity-80">
+                            <span
+                                className="ml-7 text-xs opacity-80"
+                                style={{ color: "var(--error-foreground)" }}
+                            >
                                 Retrying...
                             </span>
                         )}
@@ -267,18 +281,23 @@ function CanvasEditor({ currentBoard, theme, setTheme }: CanvasEditorProps) {
                 {/* Menu burger icon — opens menu */}
                 <button
                     onMouseEnter={() => setMenuOpen(true)}
-                    className="flex h-11 w-11 items-center justify-center rounded-full bg-neutral-900 text-white shadow-md transition-colors hover:bg-neutral-800"
+                    className="flex h-11 w-11 items-center justify-center rounded-full shadow-md transition-colors"
+                    style={{
+                        backgroundColor: "var(--card)",
+                        color: "var(--card-foreground)",
+                    }}
                 >
                     <Menu size={22} />
                 </button>
 
                 {/* Dropdown */}
                 <div
-                    className={`mt-2 w-56 origin-top-left rounded-xl bg-neutral-900 p-2 shadow-xl transition-all duration-300 ease-out ${
+                    className={`mt-2 w-56 origin-top-left rounded-xl p-2 shadow-xl transition-all duration-300 ease-out ${
                         menuOpen
                             ? "translate-y-0 scale-100 opacity-100"
                             : "pointer-events-none -translate-y-2 scale-95 opacity-0"
-                    } `}
+                    }`}
+                    style={{ backgroundColor: "var(--card)" }}
                 >
                     <MenuItem
                         icon={<User size={18} />}
@@ -326,7 +345,13 @@ function CanvasEditor({ currentBoard, theme, setTheme }: CanvasEditorProps) {
 
             {/* Debug */}
             {showDebug && (
-                <div className="absolute bottom-4 left-4 w-110 rounded-lg bg-neutral-900 p-3 font-mono text-sm text-white shadow-md">
+                <div
+                    className="absolute bottom-4 left-4 w-110 rounded-lg p-3 font-mono text-sm shadow-md"
+                    style={{
+                        backgroundColor: "var(--card)",
+                        color: "var(--card-foreground)",
+                    }}
+                >
                     <p className="font-bold">Debug</p>
                     <p>
                         Camera Pos: {cameraPosition.x}, {cameraPosition.y}
@@ -380,7 +405,7 @@ function CanvasEditor({ currentBoard, theme, setTheme }: CanvasEditorProps) {
                 />
             )}
 
-            {/* Manage Board Modal */}
+            {/* Login Modal */}
             {authView === "login" && (
                 <LoginModal
                     onCreateAccount={() => setAuthView("create-account")}
@@ -392,6 +417,7 @@ function CanvasEditor({ currentBoard, theme, setTheme }: CanvasEditorProps) {
         </div>
     );
 }
+
 function MenuItem({
     icon,
     label,
@@ -405,61 +431,47 @@ function MenuItem({
     disabled?: boolean;
     disabledTooltip?: string;
 }) {
+    const [isHover, setIsHover] = useState(false);
+
     return (
         <div className="group relative">
             <button
                 onClick={disabled ? undefined : onClick}
                 disabled={disabled}
-                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm transition ${
-                    disabled
-                        ? "cursor-not-allowed text-neutral-500"
-                        : "text-white hover:bg-neutral-800"
-                } `}
+                onMouseEnter={() => setIsHover(true)}
+                onMouseLeave={() => setIsHover(false)}
+                className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm transition"
+                style={{
+                    color: disabled
+                        ? "var(--muted-foreground)"
+                        : isHover
+                          ? "var(--accent-foreground)"
+                          : "var(--card-foreground)",
+                    backgroundColor: disabled
+                        ? "transparent"
+                        : isHover
+                          ? "var(--accent)"
+                          : "var(--card)",
+                    cursor: disabled
+                        ? "not-allowed"
+                        : isHover
+                          ? "pointer"
+                          : "default",
+                }}
             >
                 {icon}
                 <span>{label}</span>
             </button>
 
-            {/* Tooltip */}
             {disabled && disabledTooltip && (
-                <div className="pointer-events-none absolute top-1/2 left-full ml-2 -translate-y-1/2 rounded-md bg-black/90 px-2 py-1 text-xs whitespace-nowrap text-white opacity-0 transition-opacity group-hover:opacity-100">
+                <div
+                    className="pointer-events-none absolute top-1/2 left-full ml-2 -translate-y-1/2 rounded-md px-2 py-1 text-xs whitespace-nowrap opacity-0 transition-opacity group-hover:opacity-100"
+                    style={{
+                        backgroundColor: "var(--card-muted)",
+                        color: "var(--card-foreground)",
+                    }}
+                >
                     {disabledTooltip}
-                </div>
-            )}
-        </div>
-    );
-}
-
-function StatusIndicator({
-    status,
-    objectsToUpdateOnDatabaseCount,
-}: {
-    status: string;
-    objectsToUpdateOnDatabaseCount: number;
-}) {
-    return (
-        <div className="group relative inline-flex items-center">
-            {status === "loading-board" && (
-                <Loader2 className="h-5 w-5 animate-spin text-blue-400" />
-            )}
-            {status === "saving-board" && (
-                <Loader2 className="h-5 w-5 animate-spin text-blue-400" />
-            )}
-            {status === "ok" && (
-                <CheckCircle className="h-5 w-5 text-green-400" />
-            )}
-            {status === "standby" && (
-                <TriangleAlert className="h-5 w-5 text-yellow-300" />
-            )}
-            {status === "error" && <XCircle className="h-5 w-5 text-red-400" />}
-
-            {status !== "ok" && (
-                <div className="bottom-full mb-2 w-max rounded-md bg-black/80 px-2 py-1 text-xs text-white opacity-0 transition-opacity group-hover:opacity-100">
-                    {status === "loading-board" && "Loading board..."}
-                    {status === "saving-board" && "Saving X objects..."}
-                    {status === "error" && "ERROR HERE"}
-                    {status === "standby" &&
-                        `On standby to save ${objectsToUpdateOnDatabaseCount} objects...`}
                 </div>
             )}
         </div>

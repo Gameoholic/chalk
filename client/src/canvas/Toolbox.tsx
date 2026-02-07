@@ -44,9 +44,7 @@ const Toolbox = ({
     ];
 
     const handleToolClick = (tool: Tool) => {
-        if (selectedTool === tool) {
-            tool = "none";
-        }
+        if (selectedTool === tool) tool = "none";
         setSelectedTool(tool);
         onToolChange(tool);
     };
@@ -57,7 +55,7 @@ const Toolbox = ({
         onColorChange(rgba);
     };
 
-    // Generate checkerboard grid for transparency
+    // Checkerboard grid (kept exactly the same)
     const renderCheckerboard = () => {
         const squares = [];
         for (let row = 0; row < 4; row++) {
@@ -83,29 +81,72 @@ const Toolbox = ({
 
     return (
         <div
-            className={`absolute flex w-20 flex-col items-center space-y-4 bg-gray-800 p-3 text-white ${className}`}
+            className={`absolute flex w-20 flex-col items-center space-y-4 p-3 ${className}`}
+            style={{
+                backgroundColor: "var(--card)",
+                color: "var(--card-foreground)",
+            }}
         >
             <h2 className="mb-2 text-sm font-bold">Tools</h2>
 
+            {/* Tool buttons */}
             <div className="flex flex-col space-y-2">
                 {tools.map((tool) => (
                     <button
                         key={tool.name}
                         onClick={() => handleToolClick(tool.name)}
-                        className={`rounded p-2 hover:bg-gray-700 ${
-                            selectedTool === tool.name ? "bg-gray-700" : ""
-                        }`}
+                        className="rounded p-2 transition"
+                        style={{
+                            backgroundColor:
+                                selectedTool === tool.name
+                                    ? "var(--accent)"
+                                    : "var(--card)",
+                            color:
+                                selectedTool === tool.name
+                                    ? "var(--accent-foreground)"
+                                    : "var(--card-foreground)",
+                            cursor: "pointer",
+                        }}
+                        onMouseEnter={(e) => {
+                            (
+                                e.currentTarget as HTMLButtonElement
+                            ).style.backgroundColor = "var(--accent)";
+                            (e.currentTarget as HTMLButtonElement).style.color =
+                                "var(--accent-foreground)";
+                            (
+                                e.currentTarget as HTMLButtonElement
+                            ).style.cursor = "pointer";
+                        }}
+                        onMouseLeave={(e) => {
+                            (
+                                e.currentTarget as HTMLButtonElement
+                            ).style.backgroundColor =
+                                selectedTool === tool.name
+                                    ? "var(--accent)"
+                                    : "var(--card)";
+                            (e.currentTarget as HTMLButtonElement).style.color =
+                                selectedTool === tool.name
+                                    ? "var(--accent-foreground)"
+                                    : "var(--card-foreground)";
+                            (
+                                e.currentTarget as HTMLButtonElement
+                            ).style.cursor = "default";
+                        }}
                     >
                         {tool.icon}
                     </button>
                 ))}
             </div>
 
+            {/* Color Picker */}
             <div className="relative mt-4 flex w-full flex-col items-center">
                 <label className="mb-1 text-sm">Color</label>
                 <button
                     onClick={() => setShowColorPicker(!showColorPicker)}
-                    className="relative h-8 w-full overflow-hidden rounded border border-gray-400"
+                    className="relative h-8 w-full overflow-hidden rounded border transition"
+                    style={{
+                        borderColor: "var(--card-foreground)",
+                    }}
                 >
                     {renderCheckerboard()}
                     <div
@@ -117,7 +158,8 @@ const Toolbox = ({
                 {showColorPicker && (
                     <div
                         ref={pickerRef}
-                        className="absolute z-50 mt-2 flex flex-col items-center rounded bg-gray-800 p-2 shadow-lg"
+                        className="absolute z-50 mt-2 flex flex-col items-center rounded p-2 shadow-lg"
+                        style={{ backgroundColor: "var(--card)" }}
                     >
                         <SketchPicker
                             color={color}
@@ -125,7 +167,27 @@ const Toolbox = ({
                         />
                         <button
                             onClick={() => setShowColorPicker(false)}
-                            className="mt-2 rounded bg-red-500 px-3 py-1 text-sm text-white hover:bg-red-600"
+                            className="mt-2 rounded px-3 py-1 text-sm transition"
+                            style={{
+                                backgroundColor: "var(--secondary)",
+                                color: "var(--secondary-foreground)",
+                            }}
+                            onMouseEnter={(e) => {
+                                (
+                                    e.currentTarget as HTMLButtonElement
+                                ).style.backgroundColor = "var(--accent)";
+                                (
+                                    e.currentTarget as HTMLButtonElement
+                                ).style.color = "var(--accent-foreground)";
+                            }}
+                            onMouseLeave={(e) => {
+                                (
+                                    e.currentTarget as HTMLButtonElement
+                                ).style.backgroundColor = "var(--secondary)";
+                                (
+                                    e.currentTarget as HTMLButtonElement
+                                ).style.color = "var(--secondary-foreground)";
+                            }}
                         >
                             Close
                         </button>
@@ -133,6 +195,7 @@ const Toolbox = ({
                 )}
             </div>
 
+            {/* Width selector */}
             <div className="mt-4 flex w-full flex-col space-y-1">
                 <label className="text-sm">Width</label>
                 <input
@@ -146,6 +209,9 @@ const Toolbox = ({
                         onWidthChange(newWidth);
                     }}
                     className="w-full"
+                    style={{
+                        accentColor: "var(--accent)",
+                    }}
                 />
                 <span className="text-center text-xs">{width}px</span>
             </div>

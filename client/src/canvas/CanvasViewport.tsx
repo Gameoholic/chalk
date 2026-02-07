@@ -97,7 +97,6 @@ function CanvasViewport({
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
 
         drawGrid(ctx, camera);
-
         drawObjects(ctx, objects, camera);
     };
 
