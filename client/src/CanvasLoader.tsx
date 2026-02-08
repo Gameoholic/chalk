@@ -61,6 +61,7 @@ export default function CanvasLoader({ theme, setTheme }: CanvasLoaderProps) {
             currentBoard={data.currentBoard}
             theme={theme}
             setTheme={setTheme}
+            userData={data.userData}
         />
     );
 }
@@ -185,6 +186,7 @@ async function loadUserDataOrCreateGuestUser(): Promise<UserData> {
             "Error does not have to do with refresh token being invalid. Could be a network error. Not logging out this user yet."
         );
         throw new Error("Couldn't authenticate user.");
+        // todo: if refresh token expired error, tell user to re-log back in
     }
 
     // Reaching this line pretty much guarantees we don't have a guest user because the refresh token is invalid.

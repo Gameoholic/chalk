@@ -17,20 +17,25 @@ import {
     Sun,
 } from "lucide-react";
 import { updateBoardName, updateBoardObjects } from "../api/boards";
-import { BoardData } from "../types/data";
+import { BoardData, UserData } from "../types/data";
 import ManageThisBoardModal from "./modals/ManageThisBoardModal";
 import CreateAccountModal from "./modals/CreateAccountModal";
-import ForgotPasswordModal from "./modals/ForgotPasswordModal";
 import LoginModal from "./modals/LogInModal";
 import { createUser } from "../api/users";
 
 interface CanvasEditorProps {
+    userData: UserData;
     currentBoard: BoardData;
     theme: "light" | "dark";
     setTheme: React.Dispatch<React.SetStateAction<"light" | "dark">>;
 }
 
-function CanvasEditor({ currentBoard, theme, setTheme }: CanvasEditorProps) {
+function CanvasEditor({
+    userData,
+    currentBoard,
+    theme,
+    setTheme,
+}: CanvasEditorProps) {
     // Settings & state data
     const [tool, setTool] = useState<Tool>("none");
     const [color, setColor] = useState("#000000FF");
@@ -46,7 +51,7 @@ function CanvasEditor({ currentBoard, theme, setTheme }: CanvasEditorProps) {
     const [showManageThisBoardModal, setShowManageThisBoardModal] =
         useState(false);
     const [authView, setAuthView] = useState<
-        "login" | "forgot-password" | "create-account" | null
+        "login" | "forgot-password" | "create-account" | "manage-user" | null
     >(null);
 
     // Saving objects
@@ -300,16 +305,25 @@ function CanvasEditor({ currentBoard, theme, setTheme }: CanvasEditorProps) {
                     }`}
                     style={{ backgroundColor: "var(--card)" }}
                 >
-                    <MenuItem
-                        icon={<User size={18} />}
-                        label="Login"
-                        onClick={() => setAuthView("login")}
-                    />
+                    {userData.role === "guest" && (
+                        <MenuItem
+                            icon={<User size={18} />}
+                            label="Login"
+                            onClick={() => setAuthView("login")}
+                        />
+                    )}
+                    {userData.role === "user" && (
+                        <MenuItem
+                            icon={<User size={18} />}
+                            label={"Manage account: " + userData.displayName}
+                            onClick={() => setAuthView("manage-user")}
+                        />
+                    )}
 
                     <MenuItem
                         icon={<LayoutDashboard size={18} />}
                         label="My Boards"
-                        disabled={true}
+                        disabled={userData.role === "guest"}
                         disabledTooltip="You must be logged in to access additional boards."
                     />
 
