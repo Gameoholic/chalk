@@ -1,94 +1,41 @@
 import { Plus } from "lucide-react";
-import { ObjectlessBoardData } from "../types/data";
+import { BoardData } from "../types/data";
+import CanvasEditor from "../canvas/CanvasEditor";
+import BaseCanvas from "../canvas/BaseCanvas";
 
-export default function MyBoards({
-    boards,
-}: {
-    boards: ObjectlessBoardData[];
-}) {
-    const MAX_SLOTS = 6;
-
-    const normalizedBoards = boards.slice(0, 5);
-    const hasCreateFirst = normalizedBoards.length === 5;
-
-    const slots: Array<
-        { type: "create" } | { type: "board"; board: ObjectlessBoardData }
-    > = [];
-
-    if (hasCreateFirst) {
-        slots.push({ type: "create" });
-        normalizedBoards.forEach((board) =>
-            slots.push({ type: "board", board })
-        );
-    } else {
-        normalizedBoards.forEach((board) =>
-            slots.push({ type: "board", board })
-        );
-        while (slots.length < MAX_SLOTS) {
-            slots.push({ type: "create" });
-        }
-    }
-
+export default function MyBoards({ boards }: { boards: BoardData[] }) {
     return (
-        <div className="flex h-screen items-center justify-center overflow-hidden">
-            {/* Centered bounding box */}
-            <div className="max-h-[80vh] w-full max-w-[90vw]">
-                <div
-                    className="grid h-full w-full gap-4"
-                    style={{
-                        gridTemplateColumns: "repeat(3, 1fr)",
-                        gridTemplateRows: "repeat(2, 1fr)",
-                    }}
-                >
-                    {slots.map((slot, index) => {
-                        if (slot.type === "board") {
-                            return (
-                                <button
-                                    key={`board-${slot.board.id}`}
-                                    onClick={() =>
-                                        console.log("Open board:", slot.board)
-                                    }
-                                    className="group border-border bg-background flex h-full w-full flex-col gap-2 rounded-md border p-3 transition-transform duration-150 hover:scale-[1.02]"
-                                >
-                                    <div className="border-border bg-muted relative flex-1 overflow-hidden rounded-sm border">
-                                        {/* Placeholder thumbnail */}
-                                        <div className="from-muted to-muted-foreground/10 absolute inset-0 bg-gradient-to-br" />
-                                        <div className="absolute inset-0 grid grid-cols-4 grid-rows-4 opacity-[0.05]">
-                                            {Array.from({ length: 16 }).map(
-                                                (_, i) => (
-                                                    <div
-                                                        key={i}
-                                                        className="border border-black"
-                                                    />
-                                                )
-                                            )}
-                                        </div>
-                                    </div>
+        <div className="m-4 flex flex-col items-center gap-5">
+            <p className="mt-4 text-4xl">Boards</p>
 
-                                    <span className="text-foreground truncate text-sm font-medium">
-                                        {slot.board.name}
-                                    </span>
-                                </button>
-                            );
-                        }
-
-                        return (
-                            <button
-                                key={`create-${index}`}
-                                onClick={() => console.log("Create new board")}
-                                className="group border-border bg-muted/30 hover:bg-muted/50 flex h-full w-full flex-col items-center justify-center gap-2 rounded-md border border-dashed p-4 transition-transform duration-150 hover:scale-[1.02]"
-                            >
-                                <div className="border-border bg-background flex h-10 w-10 items-center justify-center rounded-full border">
-                                    <Plus className="text-muted-foreground h-5 w-5" />
-                                </div>
-                                <span className="text-muted-foreground text-sm font-medium">
-                                    Create board
-                                </span>
-                            </button>
-                        );
-                    })}
-                </div>
+            {/* Board container */}
+            <div className="grid aspect-17/10 w-6/9 grid-cols-3 grid-rows-3 gap-3">
+                <Board boardData={boards[0] ?? null} />
+                <Board boardData={boards[1] ?? null} />
+                <Board boardData={boards[2] ?? null} />
+                <Board boardData={boards[3] ?? null} />
+                <Board boardData={boards[4] ?? null} />
+                <Board boardData={boards[5] ?? null} />
+                <Board boardData={boards[6] ?? null} />
+                <Board boardData={boards[7] ?? null} />
+                <Board boardData={boards[8] ?? null} />
             </div>
         </div>
     );
+}
+
+function Board({ boardData }: { boardData?: BoardData }) {
+    if (boardData) {
+        return (
+            <CanvasEditor
+                theme="dark"
+                userData={{ displayName: "test", id: "asd", role: "guest" }}
+                openMyBoards={() => {}}
+                setTheme={() => {}}
+                currentBoard={boardData}
+                boards={[boardData]}
+            />
+        );
+    }
+    return <div className="bg-gray-500" />;
 }

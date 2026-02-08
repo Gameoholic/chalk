@@ -25,16 +25,20 @@ import { createUser } from "../api/users";
 
 interface CanvasEditorProps {
     userData: UserData;
+    boards: BoardData[];
     currentBoard: BoardData;
     theme: "light" | "dark";
     setTheme: React.Dispatch<React.SetStateAction<"light" | "dark">>;
+    openMyBoards: () => void;
 }
 
 function CanvasEditor({
     userData,
+    boards,
     currentBoard,
     theme,
     setTheme,
+    openMyBoards,
 }: CanvasEditorProps) {
     // Settings & state data
     const [tool, setTool] = useState<Tool>("none");
@@ -325,6 +329,7 @@ function CanvasEditor({
                         label="My Boards"
                         disabled={userData.role === "guest"}
                         disabledTooltip="You must be logged in to access additional boards."
+                        onClick={() => openMyBoards()}
                     />
 
                     <MenuItem

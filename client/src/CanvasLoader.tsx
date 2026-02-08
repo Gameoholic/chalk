@@ -8,7 +8,7 @@ type LoadDataResult =
     | {
           success: true;
           userData: UserData;
-          boards: ObjectlessBoardData[];
+          boards: BoardData[];
           currentBoard: BoardData;
       }
     | { success: false };
@@ -21,6 +21,7 @@ interface CanvasLoaderProps {
 export default function CanvasLoader({ theme, setTheme }: CanvasLoaderProps) {
     const [data, setData] = useState<LoadDataResult | null>(null);
     const [loading, setLoading] = useState(true);
+    const [showMyBoards, setShowMyBoards] = useState(false);
 
     // Create a ref to hold the running promise
     // This persists across the Strict Mode "double-mount"
@@ -55,15 +56,22 @@ export default function CanvasLoader({ theme, setTheme }: CanvasLoaderProps) {
         return <AuthError />;
     }
 
-    // return <MyBoards boards={data.boards} />;
-    return (
-        <CanvasEditor
-            currentBoard={data.currentBoard}
-            theme={theme}
-            setTheme={setTheme}
-            userData={data.userData}
-        />
-    );
+    if (showMyBoards) {
+        return <MyBoards boards={data.boards} />;
+    } else {
+        return (
+            <CanvasEditor
+                boards={data.boards}
+                currentBoard={data.currentBoard}
+                theme={theme}
+                setTheme={setTheme}
+                userData={data.userData}
+                openMyBoards={() => {
+                    setShowMyBoards(true);
+                }}
+            />
+        );
+    }
 }
 
 function AuthError() {
@@ -107,7 +115,7 @@ async function loadData(): Promise<
     | {
           success: true;
           userData: UserData;
-          boards: ObjectlessBoardData[];
+          boards: BoardData[];
           currentBoard: BoardData;
       }
     | { success: false }
