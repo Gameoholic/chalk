@@ -131,7 +131,7 @@ async function loadData(): Promise<
     );
 
     console.log("Fetching user's boards.");
-    let boards: ObjectlessBoardData[];
+    let boards: BoardData[];
     try {
         boards = await BoardsAPI.getAllBoards();
     } catch (err) {
@@ -143,7 +143,15 @@ async function loadData(): Promise<
     if (boards.length === 0) {
         console.log("Creating default board.");
         try {
-            boards[0] = await BoardsAPI.createBoard("My first board");
+            const defaultBoardName = "My first board";
+            const createBoardResult =
+                await BoardsAPI.createBoard(defaultBoardName);
+            boards[0] = {
+                id: createBoardResult.id,
+                createdOn: createBoardResult.createdOn,
+                name: defaultBoardName,
+                objects: [],
+            };
         } catch (err) {
             console.error("Couldn't create board!");
             return { success: false };
@@ -151,19 +159,26 @@ async function loadData(): Promise<
         console.log("Board created successfully.");
     }
 
-    console.log("Fetching most recent board.");
-    let currentBoard: BoardData;
-    try {
-        currentBoard = await BoardsAPI.getBoardById(boards[0].id);
-    } catch (err) {
-        console.error("Couldn't load board! " + err);
-        return { success: false };
-    }
-    console.log("Loaded board '" + currentBoard.name + "' as current board.");
+    console.log(
+        "Setting current board to most recently opened: " +
+            boards[0].name +
+            " (" +
+            boards[0].id +
+            ")"
+    );
+    // console.log("Fetching most recent board.");
+    // let currentBoard: BoardData;
+    // try {
+    //     currentBoard = await BoardsAPI.getBoardById(boards[0].id);
+    // } catch (err) {
+    //     console.error("Couldn't load board! " + err);
+    //     return { success: false };
+    // }
+    // console.log("Loaded board '" + currentBoard.name + "' as current board.");
     return {
         success: true,
         boards: boards,
-        currentBoard: currentBoard,
+        currentBoard: boards[0],
         userData: userData,
     };
 }

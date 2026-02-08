@@ -93,6 +93,20 @@ export async function findBoardsByOwner_WithoutObjects(ownerId: ObjectId) {
         .toArray();
 }
 
+export async function findBoardsByOwner_WithObjects(ownerId: ObjectId) {
+    return collection
+        .find(
+            { ownerId },
+            {
+                projection: {
+                    ownerId: 0, // omit ownerid since it's unnecessary in this context
+                },
+            }
+        )
+        .sort({ lastOpened: -1 }) // most recently opened first
+        .toArray();
+}
+
 export async function updateOwnerOfAllBoards(
     oldOwnerId: ObjectId,
     newOwnerId: ObjectId

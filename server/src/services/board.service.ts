@@ -3,7 +3,7 @@ import * as BoardModel from "../models/board.model.js";
 import type { WorldObject } from "../types/board.types.js";
 
 export async function getAllBoardsOfUser_WithoutObjects(userId: string) {
-    return BoardModel.findBoardsByOwner_WithoutObjects(new ObjectId(userId));
+    return BoardModel.findBoardsByOwner_WithObjects(new ObjectId(userId));
 }
 
 export async function getAllBoardsOfUser(userId: string) {

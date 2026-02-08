@@ -45,7 +45,7 @@ export async function create(req: AuthenticatedRequest, res: Response) {
             req.authenticatedUser.role
         );
 
-        res.status(200).json({ id: board._id, name: board.name });
+        res.status(200).json({ id: board._id, createdOn: board.createdOn });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: "Failed to create board" });
