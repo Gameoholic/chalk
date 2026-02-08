@@ -9,7 +9,6 @@ import {
 import auth from "../middleware/auth.middleware.js";
 
 const router = Router();
-
 // Public route to create guest user
 router.post("/", create);
 

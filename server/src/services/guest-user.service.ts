@@ -9,7 +9,14 @@ export async function getAllGuestUsers() {
 }
 
 export async function getGuestUserById(id: string) {
-    // return GuestUserModel.findGuestUserById(id);
+    if (!ObjectId.isValid(id)) {
+        throw new Error("Invalid user id");
+    }
+    const result = await GuestUserModel.findGuestUserById(new ObjectId(id));
+    if (!result) {
+        throw new Error("User doesn't exist");
+    }
+    return result;
 }
 
 export async function createGuestUser() {
@@ -33,5 +40,8 @@ export async function updateGuestUser(id: string, displayName?: string) {
 }
 
 export async function deleteGuestUser(id: string) {
-    return GuestUserModel.deleteGuestUser(id);
+    const result = await GuestUserModel.deleteGuestUser(id);
+    if (result.deletedCount === 0) {
+        throw new Error("Couldn't delete guest user");
+    }
 }

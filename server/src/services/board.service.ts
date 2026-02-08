@@ -6,6 +6,26 @@ export async function getAllBoardsOfUser_WithoutObjects(userId: string) {
     return BoardModel.findBoardsByOwner_WithoutObjects(new ObjectId(userId));
 }
 
+export async function getAllBoardsOfUser(userId: string) {
+    return BoardModel.findBoardsByOwner(new ObjectId(userId));
+}
+
+export async function transferOwnershipOfAllBoardsOfUser(
+    fromUserId: string,
+    toUserId: string
+) {
+    if (!ObjectId.isValid(fromUserId) || !ObjectId.isValid(toUserId)) {
+        throw new Error("Invalid User IDs provided for transfer");
+    }
+
+    const result = await BoardModel.updateOwnerOfAllBoards(
+        new ObjectId(fromUserId),
+        new ObjectId(toUserId)
+    );
+
+    return result.modifiedCount;
+}
+
 export async function getBoardByIdForUser(userId: string, boardId: string) {
     if (!ObjectId.isValid(boardId)) throw new Error("Invalid board ID");
     const board = await BoardModel.findBoardByIdForUser(

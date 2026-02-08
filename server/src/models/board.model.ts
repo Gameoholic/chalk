@@ -78,10 +78,6 @@ export async function findBoardById(id: string) {
     return result;
 }
 
-export async function findBoardsByOwner(ownerId: ObjectId) {
-    return collection.find({ ownerId }).toArray();
-}
-
 export async function findBoardsByOwner_WithoutObjects(ownerId: ObjectId) {
     return collection
         .find(
@@ -95,6 +91,20 @@ export async function findBoardsByOwner_WithoutObjects(ownerId: ObjectId) {
         )
         .sort({ lastOpened: -1 }) // most recently opened first
         .toArray();
+}
+
+export async function updateOwnerOfAllBoards(
+    oldOwnerId: ObjectId,
+    newOwnerId: ObjectId
+) {
+    const query = { ownerId: oldOwnerId };
+    const updateDoc = { $set: { ownerId: newOwnerId } };
+
+    return collection.updateMany(query, updateDoc);
+}
+
+export async function findBoardsByOwner(ownerId: ObjectId) {
+    return collection.find({ ownerId }).toArray();
 }
 
 export async function findBoardByIdForUser(

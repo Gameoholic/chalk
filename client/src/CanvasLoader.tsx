@@ -124,8 +124,8 @@ async function loadData(): Promise<
             userData.id +
             ", displayName:" +
             userData.displayName +
-            ", displayName:" +
-            userData.displayName +
+            ", role:" +
+            userData.role +
             ") loaded!"
     );
 

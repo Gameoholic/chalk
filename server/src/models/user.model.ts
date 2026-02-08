@@ -7,7 +7,7 @@ export interface User {
     _id?: ObjectId;
     email: string;
     password: string;
-    displayname: string;
+    displayName: string;
 }
 
 export async function createUser(user: User) {
@@ -30,9 +30,8 @@ export async function deleteUser(id: string) {
     return result;
 }
 
-export async function findUserById(id: string) {
-    if (!ObjectId.isValid(id)) throw new Error("Invalid ID");
-    const result = await collection.findOne({ _id: new ObjectId(id) });
+export async function findUserById(id: ObjectId) {
+    const result = await collection.findOne({ _id: id });
     return result;
 }
 

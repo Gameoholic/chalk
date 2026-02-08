@@ -11,14 +11,13 @@ export interface AuthenticatedRequest extends Request {
 
 /**
  * If access token is valid: Forward the request.
- * If access token is invalid, expired, or doesn't exist: Issue new access and refresh token based on the refresh token's payload.
+ * If access token is invalid, expired, or doesn't exist: Issue new access and refresh tokens based on the refresh token's payload.
  */
 export default async function cookieJwtAuth(
     req: AuthenticatedRequest,
     res: Response,
     next: NextFunction
 ) {
-    // TODO IMPORTANT::::::: WRAP THIS ENTIRE THING WITH TRY CATCH as verifyaccesstoekn throws, so do the other function
     // Verify access token
     const accessTokenVerificationResult = AuthService.verifyAccessToken(
         req.cookies["access-token"]

@@ -10,3 +10,14 @@ export async function getUserData(): Promise<UserData> {
 
     return result.data;
 }
+
+export async function login(email: string, password: string) {
+    const result = await fetchHelper<undefined>("auth/login", "POST", {
+        email,
+        password,
+    });
+    if (!result.success) {
+        console.log("Error executing login: " + result.error);
+        throw Error(result.error);
+    }
+}

@@ -19,9 +19,10 @@ import {
 import { updateBoardName, updateBoardObjects } from "../api/boards";
 import { BoardData } from "../types/data";
 import ManageThisBoardModal from "./modals/ManageThisBoardModal";
-import CreateAccountModal from "./modals/old/CreateAccountModal";
-import ForgotPasswordModal from "./modals/old/ForgotPasswordModal";
+import CreateAccountModal from "./modals/CreateAccountModal";
+import ForgotPasswordModal from "./modals/ForgotPasswordModal";
 import LoginModal from "./modals/LogInModal";
+import { createUser } from "../api/users";
 
 interface CanvasEditorProps {
     currentBoard: BoardData;
@@ -411,7 +412,14 @@ function CanvasEditor({ currentBoard, theme, setTheme }: CanvasEditorProps) {
                     onCreateAccount={() => setAuthView("create-account")}
                     onForgotPassword={() => setAuthView("forgot-password")}
                     onClose={() => setAuthView(null)}
-                    onLogin={async () => {}}
+                />
+            )}
+
+            {/* Create Account Modal */}
+            {authView === "create-account" && (
+                <CreateAccountModal
+                    onLogin={() => setAuthView("login")}
+                    onClose={() => setAuthView(null)}
                 />
             )}
         </div>

@@ -1,9 +1,11 @@
 import jwt, { type JwtPayload } from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import * as UserModel from "../models/user.model.js";
-import * as GuestUserModel from "../models/guest-user.model.js";
+import * as GuestUserService from "../services/guest-user.service.js";
+import * as UserService from "../services/user.service.js";
 import * as RefreshTokenModel from "../models/refresh-token.model.js";
 import { ObjectId, type WithId } from "mongodb";
+import * as AuthService from "../services/auth.service.js";
 import type { StringValue } from "ms";
 
 export async function login(email: string, password: string) {
@@ -13,11 +15,12 @@ export async function login(email: string, password: string) {
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) throw new Error("Invalid credentials");
 
-    return jwt.sign(
-        { id: user._id.toString(), email: user.email },
-        process.env.JWT_SECRET!,
-        { expiresIn: "5m" }
+    const initialRefreshToken = await AuthService.issueRefreshToken(
+        user._id.toString(),
+        "user"
     );
+    const tokens = await AuthService.refreshTokens(initialRefreshToken); // We do this because we need an access token
+    return tokens;
 }
 
 export async function guestLogin(id: string) {
@@ -116,7 +119,6 @@ export async function refreshTokens(refreshToken: string): Promise<{
         oldRefreshTokenPayload.userId,
         oldRefreshTokenPayload.userRole
     );
-    console.log("finished. generating token");
 
     // todo
     //If anything fails after deletion (DB hiccup, signing error, process crash), the user is now logged out permanently.
@@ -182,13 +184,22 @@ export async function getUserData(userId: string, userRole: string) {
     if (!ObjectId.isValid(userId)) {
         throw new Error("Invalid user id");
     }
-    const userIdCast = new ObjectId(userId);
-    let displayName: string | undefined;
+    let displayName: string | null = null;
     if (userRole === "guest") {
-        displayName = (await GuestUserModel.findGuestUserById(userIdCast))
-            ?.displayName;
+        try {
+            displayName = (await GuestUserService.getGuestUserById(userId))
+                .displayName;
+        } catch (err) {
+            throw new Error("User not found");
+        }
+    } else if (userRole === "user") {
+        try {
+            displayName = (await UserService.getUserById(userId)).displayName;
+        } catch (err) {
+            throw new Error("User not found");
+        }
     }
-    if (displayName === undefined) {
+    if (!displayName) {
         throw new Error("User not found");
     }
 

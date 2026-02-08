@@ -1,40 +1,42 @@
 import { useState } from "react";
 import { X, Loader2, Eye, EyeOff } from "lucide-react";
-import { login } from "../../api/auth";
+import { createUser } from "../../api/users";
 
 interface Props {
-    onForgotPassword: () => void;
-    onCreateAccount: () => void;
+    onLogin: () => void;
     onClose: () => void;
 }
 
-export default function LoginModal({
-    onForgotPassword,
-    onCreateAccount,
-    onClose,
-}: Props) {
+export default function LoginModal({ onLogin, onClose }: Props) {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
+    const [displayName, setDisplayName] = useState("");
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     const handleSubmit = async () => {
-        if (!email || !password) {
-            setError("Email and password are required.");
+        if (!email || !password || !displayName) {
+            setError("Email, password and display name are required.");
+            return;
+        }
+        if (password !== confirmPassword) {
+            setError("Passwords don't match.");
             return;
         }
 
         try {
             setIsSubmitting(true);
             setError(null);
-            console.log("Attempting to log in");
-            await login(email, password);
-            console.log("Successfully logged in");
+            console.log("Attempting to create user");
+            await createUser(email, password, displayName);
+            console.log("Successfully created user");
             onClose();
         } catch {
-            console.error("Failed to log in.");
-            setError("Couldn't log in.");
+            console.error("Failed to create user.");
+            setError("Couldn't create account.");
         }
         setIsSubmitting(false);
     };
@@ -57,7 +59,7 @@ export default function LoginModal({
                 </button>
 
                 <h2 className="text-3xl font-semibold">
-                    Log in to your account
+                    Create a free account, forever.
                 </h2>
 
                 {/* Email input */}
@@ -65,7 +67,17 @@ export default function LoginModal({
                     type="email"
                     placeholder="Email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => setEmail(e.target.value.trim())}
+                    disabled={isSubmitting}
+                    className="border-account-modal-secondary bg-account-modal text-account-modal-foreground w-full rounded-xl border px-3 py-2 focus:outline-none"
+                />
+
+                {/* Display name input */}
+                <input
+                    type="text"
+                    placeholder="Display name (can change later)"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value.trim())}
                     disabled={isSubmitting}
                     className="border-account-modal-secondary bg-account-modal text-account-modal-foreground w-full rounded-xl border px-3 py-2 focus:outline-none"
                 />
@@ -93,14 +105,43 @@ export default function LoginModal({
                     </button>
                 </div>
 
-                {/* Login button */}
+                {/* Confirm password input with hide/show toggle */}
+                <div className="relative w-full">
+                    <input
+                        type={showConfirmPassword ? "text" : "password"}
+                        placeholder="Confirm password"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        disabled={isSubmitting}
+                        className="border-account-modal-secondary bg-account-modal text-account-modal-foreground w-full rounded-xl border px-3 py-2 pr-10 focus:outline-none" // Added pr-10 for space
+                    />
+                    <button
+                        type="button"
+                        onClick={() =>
+                            setShowConfirmPassword(!showConfirmPassword)
+                        }
+                        className="text-account-modal-secondary absolute top-1/2 right-3 -translate-y-1/2 hover:text-white"
+                    >
+                        {showConfirmPassword ? (
+                            <EyeOff size={20} />
+                        ) : (
+                            <Eye size={20} />
+                        )}
+                    </button>
+                </div>
+
+                {/* Create account button */}
                 <button
                     onClick={handleSubmit}
                     disabled={isSubmitting}
                     className="bg-account-modal-accent text-account-modal-foreground relative flex cursor-pointer items-center justify-center rounded-2xl py-2 font-medium transition hover:brightness-110 disabled:cursor-default disabled:opacity-50"
                 >
                     <div className="relative flex items-center justify-center">
-                        <span>{isSubmitting ? "Logging in..." : "Log in"}</span>
+                        <span>
+                            {isSubmitting
+                                ? "Creating account..."
+                                : "Create account"}
+                        </span>
 
                         {isSubmitting && (
                             <Loader2
@@ -117,18 +158,11 @@ export default function LoginModal({
                 {/* Bottom actions */}
                 <div className="text-account-modal-secondary text-md mt-auto flex justify-between">
                     <button
-                        onClick={onCreateAccount}
+                        onClick={onLogin}
                         disabled={isSubmitting}
                         className="cursor-pointer hover:brightness-110"
                     >
-                        Create account
-                    </button>
-                    <button
-                        onClick={onForgotPassword}
-                        disabled={isSubmitting}
-                        className="cursor-pointer hover:brightness-110"
-                    >
-                        Forgot password?
+                        Login
                     </button>
                 </div>
             </div>
