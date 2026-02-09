@@ -65,24 +65,19 @@ function CanvasInteractive({
     // Automatically set camera size to this component's MAX allocated size
     const { observe, unobserve, width, height, entry } = useDimensions({
         onResize: ({ observe, unobserve, width, height, entry }) => {
-            setCamera({
-                position: { x: camera.position.x, y: camera.position.y },
+            setCamera((prev) => ({
+                ...prev,
                 size: { x: width, y: height },
-                zoom: camera.zoom,
-            });
+            }));
 
             unobserve(); // To stop observing the current target element
             observe(); // To re-start observing the current target element
         },
     });
 
-    function updateCamera(camera: Camera) {
-        setCamera(camera);
-    }
-
     // Either add an entirely new object or update an existing one (based on its ID)
     function updateObject(object: WorldObject) {
-        const newObjects = new Map(objects).set(object.id, object); // todo: is creating a new map every time performant?
+        const newObjects = new Map(objects).set(object.id, object);
         setObjects(newObjects);
 
         onObjectUpdated(object);
@@ -107,7 +102,7 @@ function CanvasInteractive({
         updateObject,
         commitObjects,
         camera,
-        updateCamera
+        setCamera
     );
 
     return (
@@ -142,7 +137,7 @@ function handleMouseEvents(
     updateObject: (object: WorldObject) => void,
     commitObjects: () => void,
     camera: Camera,
-    setCamera: (camera: Camera) => void
+    setCamera: React.Dispatch<React.SetStateAction<Camera>>
 ) {
     const LEFT_MOUSE_BUTTON = 0;
     const MIDDLE_MOUSE_BUTTON = 1;
@@ -332,11 +327,13 @@ function handleMouseEvents(
             (e.clientY - currentInteraction.current.lastMousePos.y) /
             camera.zoom;
 
-        camera.position = {
-            x: camera.position.x - dx,
-            y: camera.position.y - dy,
-        };
-        setCamera(camera);
+        setCamera((prev) => ({
+            ...prev,
+            position: {
+                x: prev.position.x - dx,
+                y: prev.position.y - dy,
+            },
+        }));
 
         currentInteraction.current.lastMousePos = {
             x: e.clientX,
