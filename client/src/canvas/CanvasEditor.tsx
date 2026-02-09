@@ -1,4 +1,3 @@
-import CanvasViewport from "./CanvasViewport";
 import Toolbox from "./Toolbox";
 import { RefObject, useEffect, useRef, useState } from "react";
 import { Camera, Tool, Vec2, WorldObject } from "../types/canvas";
