@@ -50,7 +50,7 @@ function CanvasInteractive({
 
     // OBJECTS
     const [objects, setObjects] = useState<Map<string, WorldObject>>(
-        () => new Map(initialObjects.map((object) => [object.id, object]))
+        new Map(initialObjects.map((object) => [object.id, object]))
     );
 
     // Immediately call onChange functions for initial value

@@ -2,6 +2,11 @@ import { Plus } from "lucide-react";
 import { BoardData } from "../types/data";
 import CanvasEditor from "../canvas/CanvasEditor";
 import CanvasBase from "../canvas/CanvasBase";
+import CanvasWorld from "../canvas/CanvasWorld";
+import useDimensions from "react-cool-dimensions";
+import { useState } from "react";
+import { motion, AnimatePresence, useAnimation } from "framer-motion";
+import { Vec2 } from "../types/canvas";
 
 export default function MyBoards({ boards }: { boards: BoardData[] }) {
     return (
@@ -25,16 +30,47 @@ export default function MyBoards({ boards }: { boards: BoardData[] }) {
 }
 
 function Board({ boardData }: { boardData?: BoardData }) {
+    const [cameraSize, setCameraSize] = useState<Vec2>({ x: 300, y: 300 }); // Initial camera size, later overrided by the actual size of the div
+    const { observe, unobserve, width, height, entry } = useDimensions({
+        onResize: ({ observe, unobserve, width, height, entry }) => {
+            setCameraSize({ x: width, y: height });
+
+            unobserve(); // To stop observing the current target element
+            observe(); // To re-start observing the current target element
+        },
+    });
+
+    const zoom = 0.1; // todo this!
+
     if (boardData) {
         return (
-            <CanvasEditor
-                theme="dark"
-                userData={{ displayName: "test", id: "asd", role: "guest" }}
-                openMyBoards={() => {}}
-                setTheme={() => {}}
-                currentBoard={boardData}
-                boards={[boardData]}
-            />
+            <div
+                ref={observe}
+                className="relative h-full w-full cursor-pointer"
+                onClick={() => {}}
+            >
+                {/* Board name */}
+                <div className="absolute top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2 text-lg font-bold whitespace-nowrap text-black select-none">
+                    {boardData.name}
+                </div>
+
+                {/* Canvas */}
+                <CanvasWorld
+                    objects={
+                        new Map(
+                            boardData.objects.map((object) => [
+                                object.id,
+                                object,
+                            ])
+                        )
+                    }
+                    camera={{
+                        position: { x: 0, y: 0 },
+                        size: cameraSize,
+                        zoom: zoom,
+                    }}
+                />
+            </div>
         );
     }
     return <div className="bg-gray-500" />;
