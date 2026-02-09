@@ -50,8 +50,13 @@ function CanvasInteractive({
     );
 
     // Immediately call onChange functions for initial value
-    onObjectAmountChange(objects.size);
-    onCameraChange(camera);
+    useEffect(() => {
+        onObjectAmountChange(objects.size);
+    }, [objects.size]);
+
+    useEffect(() => {
+        onCameraChange(camera);
+    }, [camera]);
 
     // Automatically set camera size to this component's MAX allocated size
     const { observe, unobserve, width, height, entry } = useDimensions({
@@ -69,7 +74,6 @@ function CanvasInteractive({
 
     function updateCamera(camera: Camera) {
         setCamera(camera);
-        onCameraChange(camera);
     }
 
     // Either add an entirely new object or update an existing one (based on its ID)
