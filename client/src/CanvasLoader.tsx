@@ -57,7 +57,14 @@ export default function CanvasLoader({ theme, setTheme }: CanvasLoaderProps) {
     }
 
     if (showMyBoards) {
-        return <MyBoards boards={data.boards} />;
+        return (
+            <MyBoards
+                boards={data.boards}
+                onFinishedZoomingIn={() => {
+                    setShowMyBoards(false);
+                }}
+            />
+        );
     } else {
         return (
             <CanvasEditor

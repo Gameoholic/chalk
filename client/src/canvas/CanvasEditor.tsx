@@ -22,6 +22,7 @@ import CreateAccountModal from "./modals/CreateAccountModal";
 import LoginModal from "./modals/LogInModal";
 import { createUser } from "../api/users";
 import CanvasInteractive from "./CanvasInteractive";
+import { motion } from "motion/react";
 
 interface CanvasEditorProps {
     userData: UserData;
@@ -232,6 +233,12 @@ function CanvasEditor({
         }
     };
 
+    const fadeInAnimation = {
+        initial: { opacity: 0 },
+        animate: { opacity: 1 },
+        transition: { duration: 0.5, ease: "easeOut" },
+    } as const;
+
     return (
         <div className="relative h-screen w-screen">
             {/* Canvas */}
@@ -306,113 +313,122 @@ function CanvasEditor({
                 </div>
             )}
 
-            {/* Top-left menu container */}
-            <div
-                className="absolute top-4 left-4 z-50"
-                onMouseLeave={() => setMenuOpen(false)}
-            >
-                {/* Menu burger icon — opens menu */}
-                <button
-                    onMouseEnter={() => setMenuOpen(true)}
-                    className="flex h-11 w-11 items-center justify-center rounded-full shadow-md transition-colors"
-                    style={{
-                        backgroundColor: "var(--card)",
-                        color: "var(--card-foreground)",
-                    }}
-                >
-                    <Menu size={22} />
-                </button>
-
-                {/* Dropdown */}
+            <motion.div {...fadeInAnimation}>
+                {/* Top-left menu container */}
                 <div
-                    className={`mt-2 w-56 origin-top-left rounded-xl p-2 shadow-xl transition-all duration-300 ease-out ${
-                        menuOpen
-                            ? "translate-y-0 scale-100 opacity-100"
-                            : "pointer-events-none -translate-y-2 scale-95 opacity-0"
-                    }`}
-                    style={{ backgroundColor: "var(--card)" }}
+                    className="absolute top-4 left-4 z-50"
+                    onMouseLeave={() => setMenuOpen(false)}
                 >
-                    {userData.role === "guest" && (
+                    {/* Menu burger icon — opens menu */}
+                    <button
+                        onMouseEnter={() => setMenuOpen(true)}
+                        className="flex h-11 w-11 items-center justify-center rounded-full shadow-md transition-colors"
+                        style={{
+                            backgroundColor: "var(--card)",
+                            color: "var(--card-foreground)",
+                        }}
+                    >
+                        <Menu size={22} />
+                    </button>
+
+                    {/* Dropdown */}
+                    <div
+                        className={`mt-2 w-56 origin-top-left rounded-xl p-2 shadow-xl transition-all duration-300 ease-out ${
+                            menuOpen
+                                ? "translate-y-0 scale-100 opacity-100"
+                                : "pointer-events-none -translate-y-2 scale-95 opacity-0"
+                        }`}
+                        style={{ backgroundColor: "var(--card)" }}
+                    >
+                        {userData.role === "guest" && (
+                            <MenuItem
+                                icon={<User size={18} />}
+                                label="Login"
+                                onClick={() => setAuthView("login")}
+                            />
+                        )}
+                        {userData.role === "user" && (
+                            <MenuItem
+                                icon={<User size={18} />}
+                                label={
+                                    "Manage account: " + userData.displayName
+                                }
+                                onClick={() => setAuthView("manage-user")}
+                            />
+                        )}
+
                         <MenuItem
-                            icon={<User size={18} />}
-                            label="Login"
-                            onClick={() => setAuthView("login")}
+                            icon={<LayoutDashboard size={18} />}
+                            label="My Boards"
+                            disabled={userData.role === "guest"}
+                            disabledTooltip="You must be logged in to access additional boards."
+                            onClick={() => openMyBoards()}
                         />
-                    )}
-                    {userData.role === "user" && (
+
                         <MenuItem
-                            icon={<User size={18} />}
-                            label={"Manage account: " + userData.displayName}
-                            onClick={() => setAuthView("manage-user")}
+                            icon={<Settings2 size={18} />}
+                            label="Manage This Board"
+                            onClick={() => setShowManageThisBoardModal(true)}
                         />
-                    )}
 
-                    <MenuItem
-                        icon={<LayoutDashboard size={18} />}
-                        label="My Boards"
-                        disabled={userData.role === "guest"}
-                        disabledTooltip="You must be logged in to access additional boards."
-                        onClick={() => openMyBoards()}
-                    />
+                        <MenuItem icon={<Share2 size={18} />} label="Share" />
 
-                    <MenuItem
-                        icon={<Settings2 size={18} />}
-                        label="Manage This Board"
-                        onClick={() => setShowManageThisBoardModal(true)}
-                    />
-
-                    <MenuItem icon={<Share2 size={18} />} label="Share" />
-
-                    <MenuItem
-                        icon={
-                            theme === "light" ? (
-                                <Moon size={18} />
-                            ) : (
-                                <Sun size={18} />
-                            )
-                        }
-                        label={`Switch to ${theme === "light" ? "Dark" : "Light"} Mode`}
-                        onClick={() =>
-                            setTheme(theme === "light" ? "dark" : "light")
-                        }
-                    />
-                    <MenuItem
-                        icon={<Info size={18} />}
-                        label={
-                            showDebug ? "Hide Debug Info" : "Show Debug Info"
-                        }
-                        onClick={() => setShowDebug((v) => !v)}
-                    />
+                        <MenuItem
+                            icon={
+                                theme === "light" ? (
+                                    <Moon size={18} />
+                                ) : (
+                                    <Sun size={18} />
+                                )
+                            }
+                            label={`Switch to ${theme === "light" ? "Dark" : "Light"} Mode`}
+                            onClick={() =>
+                                setTheme(theme === "light" ? "dark" : "light")
+                            }
+                        />
+                        <MenuItem
+                            icon={<Info size={18} />}
+                            label={
+                                showDebug
+                                    ? "Hide Debug Info"
+                                    : "Show Debug Info"
+                            }
+                            onClick={() => setShowDebug((v) => !v)}
+                        />
+                    </div>
                 </div>
-            </div>
+            </motion.div>
 
-            {/* Debug */}
-            {showDebug && (
-                <div
-                    className="absolute bottom-4 left-4 w-110 rounded-lg p-3 font-mono text-sm shadow-md"
-                    style={{
-                        backgroundColor: "var(--card)",
-                        color: "var(--card-foreground)",
-                    }}
-                >
-                    <p className="font-bold">Debug</p>
-                    <p>
-                        Camera Pos: {cameraPosition.x}, {cameraPosition.y}
-                    </p>
-                    <p>Camera Zoom: {cameraZoom.toFixed(2)}</p>
-                    <p>FPS: {fps}</p>
-                    <p>Objects: {objectAmount}</p>
-                </div>
-            )}
+            <motion.div {...fadeInAnimation}>
+                {/* Debug */}
+                {showDebug && (
+                    <div
+                        className="absolute bottom-4 left-4 w-110 rounded-lg p-3 font-mono text-sm shadow-md"
+                        style={{
+                            backgroundColor: "var(--card)",
+                            color: "var(--card-foreground)",
+                        }}
+                    >
+                        <p className="font-bold">Debug</p>
+                        <p>
+                            Camera Pos: {cameraPosition.x}, {cameraPosition.y}
+                        </p>
+                        <p>Camera Zoom: {cameraZoom.toFixed(2)}</p>
+                        <p>FPS: {fps}</p>
+                        <p>Objects: {objectAmount}</p>
+                    </div>
+                )}
+            </motion.div>
 
-            {/* Toolbox */}
-            <Toolbox
-                className="absolute top-4 right-4 rounded-lg"
-                onToolChange={setTool}
-                onColorChange={setColor}
-                onWidthChange={setStroke}
-            />
-
+            <motion.div {...fadeInAnimation}>
+                {/* Toolbox */}
+                <Toolbox
+                    className="absolute top-4 right-4 rounded-lg"
+                    onToolChange={setTool}
+                    onColorChange={setColor}
+                    onWidthChange={setStroke}
+                />
+            </motion.div>
             {/* Manage Board Modal */}
             {showManageThisBoardModal && (
                 <ManageThisBoardModal
