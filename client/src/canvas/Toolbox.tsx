@@ -1,7 +1,7 @@
 import React, { JSX, useState, useRef, useEffect } from "react";
 import { MousePointer, Square, Circle, Slash, Pen } from "lucide-react";
-import { SketchPicker, ColorResult } from "react-color";
 import { Tool } from "../types/canvas";
+import ColorPicker from "../components/ColorPicker";
 
 const Toolbox = ({
     onToolChange,
@@ -15,7 +15,7 @@ const Toolbox = ({
     className: string;
 }) => {
     const [selectedTool, setSelectedTool] = useState<Tool>("none");
-    const [color, setColor] = useState<string>("rgba(0,0,0,1)");
+    const [color, setColor] = useState<string>("hsl(0, 0%, 100%)");
     const [width, setWidth] = useState<number>(1);
     const [showColorPicker, setShowColorPicker] = useState<boolean>(false);
 
@@ -49,13 +49,13 @@ const Toolbox = ({
         onToolChange(tool);
     };
 
-    const handleColorChange = (updatedColor: ColorResult) => {
-        const rgba = `rgba(${updatedColor.rgb.r}, ${updatedColor.rgb.g}, ${updatedColor.rgb.b}, ${updatedColor.rgb.a})`;
-        setColor(rgba);
-        onColorChange(rgba);
+    // Updated to handle string directly from the new ColorPicker
+    const handleColorChange = (newColor: string) => {
+        setColor(newColor);
+        onColorChange(newColor);
     };
 
-    // Checkerboard grid (kept exactly the same)
+    // Checkerboard grid for transparent color preview
     const renderCheckerboard = () => {
         const squares = [];
         for (let row = 0; row < 4; row++) {
@@ -158,35 +158,20 @@ const Toolbox = ({
                 {showColorPicker && (
                     <div
                         ref={pickerRef}
-                        className="absolute z-50 mt-2 flex flex-col items-center rounded p-2 shadow-lg"
+                        className="absolute top-0 right-full z-50 mr-4 flex flex-col items-center rounded-xl border border-gray-700 p-4 shadow-xl backdrop-blur-md"
                         style={{ backgroundColor: "var(--card)" }}
                     >
-                        <SketchPicker
-                            color={color}
+                        <ColorPicker
+                            value={color}
                             onChange={handleColorChange}
                         />
+
                         <button
                             onClick={() => setShowColorPicker(false)}
-                            className="mt-2 rounded px-3 py-1 text-sm transition"
+                            className="mt-4 rounded px-3 py-1 text-xs font-medium transition hover:brightness-110"
                             style={{
                                 backgroundColor: "var(--secondary)",
                                 color: "var(--secondary-foreground)",
-                            }}
-                            onMouseEnter={(e) => {
-                                (
-                                    e.currentTarget as HTMLButtonElement
-                                ).style.backgroundColor = "var(--accent)";
-                                (
-                                    e.currentTarget as HTMLButtonElement
-                                ).style.color = "var(--accent-foreground)";
-                            }}
-                            onMouseLeave={(e) => {
-                                (
-                                    e.currentTarget as HTMLButtonElement
-                                ).style.backgroundColor = "var(--secondary)";
-                                (
-                                    e.currentTarget as HTMLButtonElement
-                                ).style.color = "var(--secondary-foreground)";
                             }}
                         >
                             Close
