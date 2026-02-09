@@ -78,14 +78,9 @@ function CanvasInteractive({
 
     // Either add an entirely new object or update an existing one (based on its ID)
     function updateObject(object: WorldObject) {
-        const previousObjectAmount = objects.size;
-
         const newObjects = new Map(objects).set(object.id, object); // todo: is creating a new map every time performant?
         setObjects(newObjects);
 
-        if (previousObjectAmount !== newObjects.size) {
-            onObjectAmountChange(newObjects.size);
-        }
         onObjectUpdated(object);
     }
 
