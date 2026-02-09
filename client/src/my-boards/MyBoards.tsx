@@ -1,7 +1,7 @@
 import { Plus } from "lucide-react";
 import { BoardData } from "../types/data";
 import CanvasEditor from "../canvas/CanvasEditor";
-import BaseCanvas from "../canvas/BaseCanvas";
+import CanvasBase from "../canvas/CanvasBase";
 
 export default function MyBoards({ boards }: { boards: BoardData[] }) {
     return (

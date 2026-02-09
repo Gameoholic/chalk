@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useLayoutEffect } from "react";
 import useDimensions from "react-cool-dimensions";
-import BaseCanvas from "./BaseCanvas";
+import CanvasBase from "./CanvasBase";
 import {
     Camera,
     EllipseObject,
@@ -102,7 +102,7 @@ function CanvasViewport({
 
     return (
         <div className={className} ref={observe}>
-            <BaseCanvas
+            <CanvasBase
                 draw={draw}
                 width={camera.size.x}
                 height={camera.size.y}

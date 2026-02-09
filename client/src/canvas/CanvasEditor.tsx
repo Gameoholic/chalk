@@ -22,6 +22,7 @@ import ManageThisBoardModal from "./modals/ManageThisBoardModal";
 import CreateAccountModal from "./modals/CreateAccountModal";
 import LoginModal from "./modals/LogInModal";
 import { createUser } from "../api/users";
+import CanvasInteractive from "./CanvasInteractive";
 
 interface CanvasEditorProps {
     userData: UserData;
@@ -32,6 +33,7 @@ interface CanvasEditorProps {
     openMyBoards: () => void;
 }
 
+// Handles saving and uploading data, as well as tool selection and all overlays
 function CanvasEditor({
     userData,
     boards,
@@ -45,9 +47,14 @@ function CanvasEditor({
     const [color, setColor] = useState("#000000FF");
     const [stroke, setStroke] = useState(1);
 
+    // Debug data
     const [cameraPosition, setCameraPosition] = useState<Vec2>({ x: 0, y: 0 });
     const [cameraZoom, setCameraZoom] = useState<number>(1);
     const [objectAmount, setObjectAmount] = useState<number>(0);
+    // FPS
+    const [fps, setFps] = useState(0);
+    const frames = useRef(0);
+    const lastTime = useRef(performance.now());
 
     // Menu
     const [showDebug, setShowDebug] = useState(true);
@@ -73,11 +80,6 @@ function CanvasEditor({
               retryDelay: number;
           }
     >({ error: null });
-
-    // FPS
-    const [fps, setFps] = useState(0);
-    const frames = useRef(0);
-    const lastTime = useRef(performance.now());
 
     useEffect(() => {
         let rafId: number;
@@ -233,6 +235,26 @@ function CanvasEditor({
 
     return (
         <div className="relative h-screen w-screen">
+            {/* Canvas */}
+            <div className="h-full w-full">
+                <CanvasInteractive
+                    key={currentBoard?.id}
+                    initialObjects={currentBoard.objects}
+                    selectedTool={tool}
+                    selectedColor={color}
+                    selectedStroke={stroke}
+                    onCameraChange={(camera: Camera) => {
+                        setCameraPosition(camera.position);
+                        setCameraZoom(camera.zoom);
+                    }}
+                    onObjectAmountChange={(objectAmount: number) =>
+                        setObjectAmount(objectAmount)
+                    }
+                    onObjectUpdated={onObjectUpdatedOrAdded}
+                    onObjectsCommit={requestSaveObjectsOnDatabase}
+                />
+            </div>
+
             {/* SAVE ERROR BANNER */}
             {saveObjectsError.error && (
                 <div className="animate-in fade-in slide-in-from-top-2 pointer-events-none fixed top-6 left-1/2 z-100 -translate-x-1/2">
@@ -388,31 +410,6 @@ function CanvasEditor({
                 onToolChange={setTool}
                 onColorChange={setColor}
                 onWidthChange={setStroke}
-            />
-
-            {/* Canvas */}
-            <CanvasViewport
-                className="h-full w-full"
-                key={currentBoard?.id}
-                initialObjects={
-                    currentBoard
-                        ? new Map(
-                              currentBoard.objects.map((obj) => [obj.id, obj])
-                          )
-                        : new Map<string, WorldObject>()
-                }
-                selectedTool={tool}
-                selectedColor={color}
-                selectedStroke={stroke}
-                onCameraChange={(camera: Camera) => {
-                    setCameraPosition(camera.position);
-                    setCameraZoom(camera.zoom);
-                }}
-                onObjectAmountChange={(objectAmount: number) =>
-                    setObjectAmount(objectAmount)
-                }
-                onObjectUpdated={onObjectUpdatedOrAdded}
-                onObjectsReadyToBeCommitted={requestSaveObjectsOnDatabase}
             />
 
             {/* Manage Board Modal */}
