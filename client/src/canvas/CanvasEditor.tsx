@@ -239,6 +239,8 @@ function CanvasEditor({
                 <CanvasInteractive
                     key={currentBoard?.id}
                     initialObjects={currentBoard.objects}
+                    initialCameraPosition={{ x: 0, y: 0 }}
+                    initialCameraZoom={1}
                     selectedTool={tool}
                     selectedColor={color}
                     selectedStroke={stroke}

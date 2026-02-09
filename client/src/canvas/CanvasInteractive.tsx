@@ -16,6 +16,8 @@ import { CheckCircle, FileVideoCamera, Loader2, XCircle } from "lucide-react";
 
 interface CanvasInteractiveProps {
     initialObjects: WorldObject[];
+    initialCameraPosition: Vec2;
+    initialCameraZoom: number;
     selectedTool: Tool;
     selectedColor: string;
     selectedStroke: number;
@@ -29,6 +31,8 @@ interface CanvasInteractiveProps {
 // Stores the objects state and camera state
 function CanvasInteractive({
     initialObjects,
+    initialCameraPosition,
+    initialCameraZoom,
     selectedTool,
     selectedColor,
     selectedStroke,
@@ -39,9 +43,9 @@ function CanvasInteractive({
 }: CanvasInteractiveProps) {
     // CAMERA
     const [camera, setCamera] = useState<Camera>({
-        position: { x: 0, y: 0 },
-        size: { x: 900, y: 900 },
-        zoom: 1,
+        position: initialCameraPosition,
+        size: { x: 900, y: 900 }, // the initial size doesn't really matter, it'll automatically resize soon
+        zoom: initialCameraZoom,
     });
 
     // OBJECTS
