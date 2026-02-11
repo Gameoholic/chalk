@@ -233,6 +233,27 @@ function CanvasEditor({
         }
     };
 
+    // Prevent refreshing or leaving page if objects are currently being saved / awaiting save
+    useEffect(() => {
+        const preventLeaving = (e: any) => {
+            if (
+                objectsBeingSavedOnDatabase.current.length == 0 &&
+                objectsToSaveOnDatabase.current.size == 0
+            ) {
+                return;
+            }
+            e.preventDefault();
+            e.returnValue = "";
+        };
+        window.addEventListener("beforeunload", preventLeaving);
+
+        // Clean up the event listener to avoid memory leaks
+        return () => {
+            window.removeEventListener("beforeunload", preventLeaving);
+        };
+    }, []);
+
+    // Used upon loading from my boards. Used for toolbox, burger menu, debug panel etc.
     const fadeInAnimation = {
         initial: { opacity: 0 },
         animate: { opacity: 1 },
