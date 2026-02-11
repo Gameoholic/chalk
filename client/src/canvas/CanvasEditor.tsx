@@ -150,17 +150,11 @@ function CanvasEditor({
     async function requestSaveObjectsOnDatabase(asErrorRetry: boolean = false) {
         // Sanity check. Do not remove this because if it's equal to 0 and we call this method multiple times, we could have multiple fetch requests running concurrently, which could cause problems if one of them fails and causes us to reload the board.
         if (objectsToSaveOnDatabase.current.size === 0) {
-            console.warn(
-                "Object array requested to be saved to database is empty."
-            );
             return;
         }
 
         // Check for rate limiting
         if (saveObjectsRequestOnCooldown.current) {
-            console.warn(
-                "Save objects request is on cooldown (client side rate-limit)"
-            );
             return;
         }
         saveObjectsRequestOnCooldown.current = true;
