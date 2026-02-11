@@ -15,12 +15,13 @@ type Rect = {
 
 type Size = { width: number; height: number };
 
+const BOARD_SLOT_ROUNDED = 6; // in pixels
 export default function MyBoards({
     boards,
-    onFinishedZoomingIn,
+    showBoard,
 }: {
     boards: BoardData[];
-    onFinishedZoomingIn: (boardData: BoardData) => void;
+    showBoard: (boardData: BoardData) => void;
 }) {
     const [activeBoardId, setActiveBoardId] = useState<string | null>(null);
 
@@ -106,11 +107,8 @@ export default function MyBoards({
         setActiveBoardId(board.id);
     };
 
-    const handleClose = () => {
-        setActiveBoardId(null);
-        setTransform({ x: 0, y: 0, scale: 1 });
-    };
-
+    const MAX_BOARDS_IN_PAGE = 9;
+    const REACHED_MAX_BOARDS_IN_PAGE = boards.length == 9;
     return (
         <div className="fixed inset-0 flex flex-col items-center overflow-hidden bg-amber-400">
             {/* Header - Fades out when zoomed */}
@@ -144,22 +142,27 @@ export default function MyBoards({
                             "Finished zooming IN to board:",
                             activeBoardId
                         );
-                        onFinishedZoomingIn(board);
+                        showBoard(board);
                     } else {
                         console.log("Finished zooming OUT to grid view");
                     }
                 }}
             >
-                {Array.from({ length: 9 }).map((_, i) => (
-                    <BoardSlot
-                        key={i}
-                        boardData={boards[i]}
-                        windowAspect={windowAspect}
-                        windowSize={windowSize}
-                        isActive={boards[i]?.id === activeBoardId}
-                        onOpen={handleBoardClick}
-                    />
-                ))}
+                {REACHED_MAX_BOARDS_IN_PAGE && (
+                    <EmptyBoard windowAspect={windowAspect} />
+                )}
+                {Array.from({ length: REACHED_MAX_BOARDS_IN_PAGE ? 8 : 9 }).map(
+                    (_, i) => (
+                        <BoardSlot
+                            key={i}
+                            boardData={boards[i]}
+                            windowAspect={windowAspect}
+                            windowSize={windowSize}
+                            isActive={boards[i]?.id === activeBoardId}
+                            onOpen={handleBoardClick}
+                        />
+                    )
+                )}
             </motion.div>
         </div>
     );
@@ -219,15 +222,19 @@ function Board({
     const scaleY = slotSize.y / windowSize.height;
 
     return (
-        <div
+        <motion.div
             ref={(el) => {
                 observe(el);
-                (ref as any).current = el;
+                if (el) (ref as any).current = el;
+            }}
+            // Animate radius directly on the element with the background color
+            animate={{
+                borderRadius: isActive ? "0px" : `${BOARD_SLOT_ROUNDED}px`,
             }}
             style={{ aspectRatio: windowAspect }}
-            className="relative w-full cursor-pointer overflow-hidden rounded-md bg-white shadow-sm"
+            className="relative w-full cursor-pointer overflow-hidden bg-white shadow-sm"
             onClick={(e) => {
-                e.stopPropagation(); // Prevent clicking through
+                e.stopPropagation();
                 if (!ref.current || isActive) return;
                 const rect = ref.current.getBoundingClientRect();
                 onOpen(boardData, {
@@ -269,13 +276,16 @@ function Board({
                         }
                         camera={{
                             position: { x: 0, y: 0 },
-                            size: { x: windowSize.width, y: windowSize.height },
+                            size: {
+                                x: windowSize.width,
+                                y: windowSize.height,
+                            },
                             zoom: 1,
                         }}
                     />
                 </div>
             </div>
-        </div>
+        </motion.div>
     );
 }
 
@@ -285,7 +295,7 @@ function EmptyBoard({ windowAspect }: { windowAspect: number }) {
             style={{ aspectRatio: windowAspect }}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="flex w-full cursor-pointer items-center justify-center rounded-lg bg-black/10"
+            className={`flex w-full cursor-pointer items-center justify-center rounded-[${BOARD_SLOT_ROUNDED}px] bg-black/10`}
         >
             <Plus className="text-white opacity-50" />
         </motion.div>

@@ -21,7 +21,11 @@ interface CanvasLoaderProps {
 export default function CanvasLoader({ theme, setTheme }: CanvasLoaderProps) {
     const [data, setData] = useState<LoadDataResult | null>(null);
     const [loading, setLoading] = useState(true);
+
+    // My boards
     const [showMyBoards, setShowMyBoards] = useState(false);
+    const [myBoardsKey, setMyBoardsKey] = useState(0);
+    const [canvasEditorKey, setCanvasEditorKey] = useState(0);
 
     // Create a ref to hold the running promise
     // This persists across the Strict Mode "double-mount"
@@ -56,29 +60,43 @@ export default function CanvasLoader({ theme, setTheme }: CanvasLoaderProps) {
         return <AuthError />;
     }
 
-    if (showMyBoards) {
-        return (
-            <MyBoards
-                boards={data.boards}
-                onFinishedZoomingIn={() => {
-                    setShowMyBoards(false);
-                }}
-            />
-        );
-    } else {
-        return (
-            <CanvasEditor
-                boards={data.boards}
-                currentBoard={data.currentBoard}
-                theme={theme}
-                setTheme={setTheme}
-                userData={data.userData}
-                openMyBoards={() => {
-                    setShowMyBoards(true);
-                }}
-            />
-        );
-    }
+    return (
+        <div className="relative h-screen w-screen overflow-hidden">
+            <div
+                className={`absolute inset-0 z-${showMyBoards === false ? 100 : 1}`}
+            >
+                <CanvasEditor
+                    key={canvasEditorKey}
+                    boards={data.boards}
+                    currentBoard={data.currentBoard}
+                    theme={theme}
+                    setTheme={setTheme}
+                    userData={data.userData}
+                    openMyBoards={() => {
+                        setMyBoardsKey((k) => k + 1); // force my boards remount
+                        setShowMyBoards(true);
+                    }}
+                />
+            </div>
+            <div className="absolute inset-0 z-5">
+                <MyBoards
+                    key={myBoardsKey}
+                    boards={data.boards}
+                    showBoard={(newBoardToShow: BoardData) => {
+                        setCanvasEditorKey((k) => k + 1); // force my boards remount
+                        setData((prev) => {
+                            if (!prev || !prev.success) return prev;
+                            return {
+                                ...prev,
+                                currentBoard: newBoardToShow,
+                            };
+                        });
+                        setShowMyBoards(false);
+                    }}
+                />
+            </div>
+        </div>
+    );
 }
 
 function AuthError() {

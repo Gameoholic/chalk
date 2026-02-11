@@ -316,7 +316,7 @@ function CanvasEditor({
             <motion.div {...fadeInAnimation}>
                 {/* Top-left menu container */}
                 <div
-                    className="absolute top-4 left-4 z-50"
+                    className="absolute top-4 left-4 z-3"
                     onMouseLeave={() => setMenuOpen(false)}
                 >
                     {/* Menu burger icon — opens menu */}
