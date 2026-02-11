@@ -58,8 +58,10 @@ export default function LoginModal({ onLogin, onClose }: Props) {
                     <X size={25} />
                 </button>
 
-                <h2 className="text-3xl font-semibold">
-                    Create a free account, forever.
+                <h2 className="inline-flex text-3xl font-semibold">
+                    Create a
+                    <WavyText text="free" className="ml-2 text-pink-400" />
+                    account
                 </h2>
 
                 {/* Email input */}
@@ -169,3 +171,52 @@ export default function LoginModal({ onLogin, onClose }: Props) {
         </div>
     );
 }
+
+import React, { useEffect } from "react";
+import { useAnimate, stagger } from "motion/react";
+// Note: If using older 'framer-motion', import from "framer-motion"
+
+interface WavyTextProps {
+    text: string;
+    className?: string; // Captures font name, size, and colors
+}
+
+export const WavyText: React.FC<WavyTextProps> = ({ text, className = "" }) => {
+    const [scope, animate] = useAnimate();
+
+    useEffect(() => {
+        animate(
+            ".letter",
+            { y: [0, -10, 0] }, // The wave motion (up 15px then back down)
+            {
+                duration: 2.5, // "Slowly"
+                repeat: Infinity,
+                repeatType: "loop",
+                ease: "easeInOut", // Smooth sine-wave feel
+                delay: stagger(0.1, { startDelay: 0.5 }), // The "Wave" effect
+            }
+        );
+    }, [animate]);
+
+    const words = text.split(" ");
+
+    return (
+        <div ref={scope} className={`flex flex-wrap ${className}`}>
+            {words.map((word, wordIndex) => (
+                <span
+                    key={wordIndex}
+                    className="mr-[0.25em] inline-block whitespace-nowrap" // Handle word spacing
+                >
+                    {word.split("").map((char, charIndex) => (
+                        <span
+                            key={`${wordIndex}-${charIndex}`}
+                            className="letter inline-block" // "inline-block" is required for transform animations
+                        >
+                            {char}
+                        </span>
+                    ))}
+                </span>
+            ))}
+        </div>
+    );
+};
