@@ -23,7 +23,7 @@ export default function MyBoards({
     boards: BoardData[];
     showBoard: (boardData: BoardData) => void;
 }) {
-    const [activeBoardId, setActiveBoardId] = useState<string | null>(null);
+    const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
 
     // We store the transform state for the grid
     const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
@@ -45,7 +45,7 @@ export default function MyBoards({
                 height: window.innerHeight,
             });
             // Reset zoom on resize to prevent alignment issues
-            setActiveBoardId(null);
+            setSelectedBoardId(null);
             setTransform({ x: 0, y: 0, scale: 1 });
         };
         window.addEventListener("resize", handleResize);
@@ -104,7 +104,7 @@ export default function MyBoards({
             y: offsetY,
             scale: scale,
         });
-        setActiveBoardId(board.id);
+        setSelectedBoardId(board.id);
     };
 
     const MAX_BOARDS_IN_PAGE = 9;
@@ -114,8 +114,8 @@ export default function MyBoards({
             {/* Header - Fades out when zoomed */}
             <motion.p
                 animate={{
-                    opacity: activeBoardId ? 0 : 1,
-                    y: activeBoardId ? -50 : 0,
+                    opacity: selectedBoardId ? 0 : 1,
+                    y: selectedBoardId ? -50 : 0,
                 }}
                 className="pointer-events-none z-10 mt-4 mb-5 text-4xl"
             >
@@ -136,11 +136,11 @@ export default function MyBoards({
                 }}
                 transition={{ duration: 0.8, ease: [0.52, 0.22, 0, 1] }}
                 onAnimationComplete={() => {
-                    const board = boards.find((b) => b.id === activeBoardId);
+                    const board = boards.find((b) => b.id === selectedBoardId);
                     if (board) {
                         console.log(
                             "Finished zooming IN to board:",
-                            activeBoardId
+                            selectedBoardId
                         );
                         showBoard(board);
                     } else {
@@ -158,7 +158,7 @@ export default function MyBoards({
                             boardData={boards[i]}
                             windowAspect={windowAspect}
                             windowSize={windowSize}
-                            isActive={boards[i]?.id === activeBoardId}
+                            isSelected={boards[i]?.id === selectedBoardId}
                             onOpen={handleBoardClick}
                         />
                     )
@@ -173,12 +173,12 @@ function BoardSlot({
     onOpen,
     windowAspect,
     windowSize,
-    isActive,
+    isSelected,
 }: {
     boardData?: BoardData;
     windowAspect: number;
     windowSize: Size;
-    isActive: boolean;
+    isSelected: boolean;
     onOpen: (board: BoardData, rect: Rect) => void;
 }) {
     if (!boardData) return <EmptyBoard windowAspect={windowAspect} />;
@@ -188,7 +188,7 @@ function BoardSlot({
             boardData={boardData}
             windowAspect={windowAspect}
             windowSize={windowSize}
-            isActive={isActive}
+            isSelected={isSelected}
             onOpen={onOpen}
         />
     );
@@ -199,12 +199,12 @@ function Board({
     onOpen,
     windowAspect,
     windowSize,
-    isActive,
+    isSelected,
 }: {
     boardData: BoardData;
     windowAspect: number;
     windowSize: Size;
-    isActive: boolean;
+    isSelected: boolean;
     onOpen: (board: BoardData, rect: Rect) => void;
 }) {
     const ref = useRef<HTMLDivElement>(null);
@@ -229,13 +229,13 @@ function Board({
             }}
             // Animate radius directly on the element with the background color
             animate={{
-                borderRadius: isActive ? "0px" : `${BOARD_SLOT_ROUNDED}px`,
+                borderRadius: isSelected ? "0px" : `${BOARD_SLOT_ROUNDED}px`,
             }}
             style={{ aspectRatio: windowAspect }}
             className="relative w-full cursor-pointer overflow-hidden bg-white shadow-sm"
             onClick={(e) => {
                 e.stopPropagation();
-                if (!ref.current || isActive) return;
+                if (!ref.current || isSelected) return;
                 const rect = ref.current.getBoundingClientRect();
                 onOpen(boardData, {
                     x: rect.left,
@@ -247,7 +247,7 @@ function Board({
         >
             {/* Title - Fade out when active/zoomed */}
             <motion.div
-                animate={{ opacity: isActive ? 0 : 1 }}
+                animate={{ opacity: isSelected ? 0 : 1 }}
                 className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-white/50 font-bold"
             >
                 {boardData.name}
@@ -267,7 +267,9 @@ function Board({
                     }}
                     // Enable pointer events only when active so you can drag the canvas
                     className={
-                        isActive ? "pointer-events-auto" : "pointer-events-none"
+                        isSelected
+                            ? "pointer-events-auto"
+                            : "pointer-events-none"
                     }
                 >
                     <CanvasWorld
