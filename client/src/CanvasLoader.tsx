@@ -80,6 +80,7 @@ export default function CanvasLoader({ theme, setTheme }: CanvasLoaderProps) {
             </div>
             <div className="absolute inset-0 z-5">
                 <MyBoards
+                    initialBoardId={data.currentBoard.id}
                     key={myBoardsKey}
                     boards={data.boards}
                     onBoardFinishZoomIn={(newBoardToShow: BoardData) => {

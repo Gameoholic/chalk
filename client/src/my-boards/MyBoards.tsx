@@ -16,10 +16,10 @@ type Rect = {
 type Size = { width: number; height: number };
 
 const BOARD_SLOT_ROUNDED = 6; // in pixels
-const MAX_BOARDS_IN_PAGE = 9;
 
 interface MyBoardsProps {
     boards: BoardData[];
+    initialBoardId: string;
     onBoardFinishZoomIn: (boardData: BoardData) => void;
 }
 
@@ -27,11 +27,9 @@ interface MyBoardsProps {
 // showBoard - signals that the zoom in animation's finished and we need to switch to a board in the canvas editor
 export default function MyBoards({
     boards,
+    initialBoardId,
     onBoardFinishZoomIn: showBoard,
-}: {
-    boards: BoardData[];
-    onBoardFinishZoomIn: (boardData: BoardData) => void;
-}) {
+}: MyBoardsProps) {
     // Selected means we're zooming in on it
     const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
 
@@ -261,7 +259,7 @@ function Board({
                 // We use variants to keep the animation clean and synchronized.
                 variants={{
                     initial: { scale: 1, zIndex: 0 },
-                    hovered: { scale: isSelected ? 1 : 1.25, zIndex: 50 },
+                    hovered: { scale: isSelected ? 1 : 1.2, zIndex: 50 },
                 }}
                 animate={{
                     borderRadius: isSelected
