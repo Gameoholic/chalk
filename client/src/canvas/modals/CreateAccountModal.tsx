@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { X, Loader2, Eye, EyeOff } from "lucide-react";
 import { createUser } from "../../api/users";
+import { WavyText } from "../../components/WavyText";
 
 interface Props {
     onLogin: () => void;
@@ -171,52 +172,3 @@ export default function LoginModal({ onLogin, onClose }: Props) {
         </div>
     );
 }
-
-import React, { useEffect } from "react";
-import { useAnimate, stagger } from "motion/react";
-// Note: If using older 'framer-motion', import from "framer-motion"
-
-interface WavyTextProps {
-    text: string;
-    className?: string; // Captures font name, size, and colors
-}
-
-export const WavyText: React.FC<WavyTextProps> = ({ text, className = "" }) => {
-    const [scope, animate] = useAnimate();
-
-    useEffect(() => {
-        animate(
-            ".letter",
-            { y: [0, -10, 0] }, // The wave motion (up 15px then back down)
-            {
-                duration: 2.5, // "Slowly"
-                repeat: Infinity,
-                repeatType: "loop",
-                ease: "easeInOut", // Smooth sine-wave feel
-                delay: stagger(0.1, { startDelay: 0.5 }), // The "Wave" effect
-            }
-        );
-    }, [animate]);
-
-    const words = text.split(" ");
-
-    return (
-        <div ref={scope} className={`flex flex-wrap ${className}`}>
-            {words.map((word, wordIndex) => (
-                <span
-                    key={wordIndex}
-                    className="mr-[0.25em] inline-block whitespace-nowrap" // Handle word spacing
-                >
-                    {word.split("").map((char, charIndex) => (
-                        <span
-                            key={`${wordIndex}-${charIndex}`}
-                            className="letter inline-block" // "inline-block" is required for transform animations
-                        >
-                            {char}
-                        </span>
-                    ))}
-                </span>
-            ))}
-        </div>
-    );
-};
