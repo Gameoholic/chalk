@@ -1,4 +1,3 @@
-
 import React, { useEffect } from "react";
 import { useAnimate, stagger } from "motion/react";
 
@@ -11,8 +10,14 @@ interface WavyTextProps {
     className?: string;
 }
 
-export const WavyText: React.FC<WavyTextProps> = ({ text, movement = -10, duration = 2.5, 
-    staggerDuration = 0.1, staggerStartDelay= 0.5, className = "" }) => {
+export const WavyText: React.FC<WavyTextProps> = ({
+    text,
+    movement = -10,
+    duration = 2.5,
+    staggerDuration = 0.1,
+    staggerStartDelay = 0.5,
+    className = "",
+}) => {
     const [scope, animate] = useAnimate();
 
     useEffect(() => {
@@ -24,7 +29,9 @@ export const WavyText: React.FC<WavyTextProps> = ({ text, movement = -10, durati
                 repeat: Infinity,
                 repeatType: "loop",
                 ease: "easeInOut", // Smooth sine-wave feel
-                delay: stagger(staggerDuration, { startDelay: staggerStartDelay }), // The "Wave" effect
+                delay: stagger(staggerDuration, {
+                    startDelay: staggerStartDelay,
+                }), // The "Wave" effect
             }
         );
     }, [animate]);
