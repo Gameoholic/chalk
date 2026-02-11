@@ -66,6 +66,10 @@ function CanvasEditor({
     >(null);
 
     // Saving objects
+    // Objects that are currently being updated, can be mid draw and not committed yet! So do not save them just yet
+    const objectsBeingUpdatedButNotReadyForSaving: RefObject<
+        Map<string, WorldObject>
+    > = useRef(new Map());
     // Database objects on standby to be saved to db (either entirely new objects or objects that were updated)
     const objectsToSaveOnDatabase: RefObject<Map<string, WorldObject>> = useRef(
         new Map()
@@ -101,17 +105,66 @@ function CanvasEditor({
         return () => cancelAnimationFrame(rafId);
     }, []);
 
-    // When either a new object was added, or an existing object has updated
+    // When either a new object was added, or an existing object has updated.
+    // For example: Every time a new point is drawn in a line, or a circle's radius is being changed.
+    // Basically, ANY change to an object calls this method.
     function onObjectUpdatedOrAdded(object: WorldObject) {
-        objectsToSaveOnDatabase.current.set(object.id, object);
+        objectsBeingUpdatedButNotReadyForSaving.current.set(object.id, object);
     }
 
-    // When objects are ready to be saved to database (user released left click, for example). Generally, only one object should be saved at a time.
+    // COOLDOWN FOR SAVING OBJECTS (CLIENT SIDE RATE LIMITING)
+    const saveObjectsRequestOnCooldown = useRef(false);
+    // @ts-expect-error Fix: IntelliJ complains about import.meta.env
+    const SAVE_REQUEST_COOLDOWN = import.meta.env.VITE_SAVE_REQUEST_COOLDOWN;
+    if (SAVE_REQUEST_COOLDOWN !== 0) {
+        useEffect(() => {
+            const interval: number = window.setInterval(() => {
+                saveObjectsRequestOnCooldown.current = false;
+                // In case commit requests were sent during the delay, try to save now
+                requestSaveObjectsOnDatabase();
+            }, SAVE_REQUEST_COOLDOWN);
+
+            return () => window.clearInterval(interval);
+        }, []);
+    }
+
+    // When objects are ready to be saved to database (user released left click, for example).
+    // Generally, only one object will be in objectsBeingUpdatedButNotReadyForSaving when this method is called,
+    // but our code should handle a case where there's multiple objects at once.
+    function onObjectsCommit() {
+        console.log(
+            "Requesting to commit " +
+                objectsBeingUpdatedButNotReadyForSaving.current.size +
+                " objects to database."
+        );
+
+        // Transfer all objects previously put into objectsbeingupdated into objectstosaveondatabase
+        objectsBeingUpdatedButNotReadyForSaving.current.forEach((object) => {
+            objectsToSaveOnDatabase.current.set(object.id, object);
+        });
+        objectsBeingUpdatedButNotReadyForSaving.current.clear();
+
+        requestSaveObjectsOnDatabase();
+    }
+
     async function requestSaveObjectsOnDatabase(asErrorRetry: boolean = false) {
         // Sanity check. Do not remove this because if it's equal to 0 and we call this method multiple times, we could have multiple fetch requests running concurrently, which could cause problems if one of them fails and causes us to reload the board.
         if (objectsToSaveOnDatabase.current.size === 0) {
+            console.warn(
+                "Object array requested to be saved to database is empty."
+            );
             return;
         }
+
+        // Check for rate limiting
+        if (saveObjectsRequestOnCooldown.current) {
+            console.warn(
+                "Save objects request is on cooldown (client side rate-limit)"
+            );
+            return;
+        }
+        saveObjectsRequestOnCooldown.current = true;
+
         if (objectsBeingSavedOnDatabase.current.length > 0) {
             console.warn(
                 "Request to save objects (length " +
@@ -156,15 +209,24 @@ function CanvasEditor({
             }
             objectsBeingSavedOnDatabase.current = [];
             setSaveObjectsError((prev) => {
-                const accumulatedDelay = prev.error ? prev.retryDelay : 0; // Add delay from previous attempts
+                const accumulatedCooldown = prev.error ? prev.retryDelay : 0; // Add delay from previous attempts
+                const COOLDOWN = Number(
+                    // @ts-expect-error Fix: IntelliJ complains about import.meta.env
+                    import.meta.env.VITE_SAVE_RETRY_COOLDOWN
+                );
+                const MAX_COOLDOWN = Number(
+                    // @ts-expect-error Fix: IntelliJ complains about import.meta.env
+                    import.meta.env.VITE_SAVE_RETRY_MAX_COOLDOWN
+                );
+
+                const newCooldown = accumulatedCooldown + COOLDOWN;
                 return {
                     error: "Failed to save changes. Your work is out of sync.",
                     retryStatus: "start-retry-timer",
                     retryDelay:
-                        Number(
-                            // @ts-expect-error Fix: IntelliJ complains about import.meta.env
-                            import.meta.env.VITE_SAVE_RETRY_DELAY
-                        ) + accumulatedDelay,
+                        MAX_COOLDOWN === 0 // If max cooldown is 0, we ignore it
+                            ? newCooldown
+                            : Math.min(newCooldown, MAX_COOLDOWN),
                 };
             });
             return;
@@ -237,8 +299,9 @@ function CanvasEditor({
     useEffect(() => {
         const preventLeaving = (e: any) => {
             if (
-                objectsBeingSavedOnDatabase.current.length == 0 &&
-                objectsToSaveOnDatabase.current.size == 0
+                objectsBeingSavedOnDatabase.current.length === 0 &&
+                objectsToSaveOnDatabase.current.size === 0 &&
+                objectsBeingUpdatedButNotReadyForSaving.current.size === 0
             ) {
                 return;
             }
@@ -280,7 +343,7 @@ function CanvasEditor({
                         setObjectAmount(objectAmount)
                     }
                     onObjectUpdated={onObjectUpdatedOrAdded}
-                    onObjectsCommit={requestSaveObjectsOnDatabase}
+                    onObjectsCommit={onObjectsCommit}
                 />
             </div>
 
