@@ -82,7 +82,7 @@ export default function CanvasLoader({ theme, setTheme }: CanvasLoaderProps) {
                 <MyBoards
                     key={myBoardsKey}
                     boards={data.boards}
-                    showBoard={(newBoardToShow: BoardData) => {
+                    onBoardFinishZoomIn={(newBoardToShow: BoardData) => {
                         setCanvasEditorKey((k) => k + 1); // force my boards remount
                         setData((prev) => {
                             if (!prev || !prev.success) return prev;

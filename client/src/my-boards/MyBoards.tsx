@@ -16,13 +16,23 @@ type Rect = {
 type Size = { width: number; height: number };
 
 const BOARD_SLOT_ROUNDED = 6; // in pixels
+const MAX_BOARDS_IN_PAGE = 9;
+
+interface MyBoardsProps {
+    boards: BoardData[];
+    onBoardFinishZoomIn: (boardData: BoardData) => void;
+}
+
+// boards - all board data
+// showBoard - signals that the zoom in animation's finished and we need to switch to a board in the canvas editor
 export default function MyBoards({
     boards,
-    showBoard,
+    onBoardFinishZoomIn: showBoard,
 }: {
     boards: BoardData[];
-    showBoard: (boardData: BoardData) => void;
+    onBoardFinishZoomIn: (boardData: BoardData) => void;
 }) {
+    // Selected means we're zooming in on it
     const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
 
     // We store the transform state for the grid
@@ -107,11 +117,11 @@ export default function MyBoards({
         setSelectedBoardId(board.id);
     };
 
-    const MAX_BOARDS_IN_PAGE = 9;
     const REACHED_MAX_BOARDS_IN_PAGE = boards.length == 9;
+
     return (
         <div className="fixed inset-0 flex flex-col items-center overflow-hidden bg-amber-400">
-            {/* Header - Fades out when zoomed */}
+            {/* Boards page header - fades out when zoomed */}
             <motion.p
                 animate={{
                     opacity: selectedBoardId ? 0 : 1,
@@ -148,21 +158,17 @@ export default function MyBoards({
                     }
                 }}
             >
-                {REACHED_MAX_BOARDS_IN_PAGE && (
-                    <EmptyBoard windowAspect={windowAspect} />
-                )}
-                {Array.from({ length: REACHED_MAX_BOARDS_IN_PAGE ? 8 : 9 }).map(
-                    (_, i) => (
-                        <BoardSlot
-                            key={i}
-                            boardData={boards[i]}
-                            windowAspect={windowAspect}
-                            windowSize={windowSize}
-                            isSelected={boards[i]?.id === selectedBoardId}
-                            onOpen={handleBoardClick}
-                        />
-                    )
-                )}
+                <CreateBoard windowAspect={windowAspect} />
+                {Array.from({ length: 8 }).map((_, i) => (
+                    <BoardSlot
+                        key={i}
+                        boardData={boards[i]}
+                        windowAspect={windowAspect}
+                        windowSize={windowSize}
+                        isSelected={boards[i]?.id === selectedBoardId}
+                        onOpen={handleBoardClick}
+                    />
+                ))}
             </motion.div>
         </div>
     );
@@ -217,25 +223,30 @@ function Board({
     });
 
     // We calculate the inverse scale so the "CanvasWorld" inside stays 1:1 with window pixels
-    // even when the board is small.
     const scaleX = slotSize.x / windowSize.width;
     const scaleY = slotSize.y / windowSize.height;
 
     return (
         <motion.div
+            // 1. Hover is managed by the STABLE wrapper.
+            // This prevents the scale-up from re-triggering mouse events.
+            whileHover="hovered"
+            initial="initial"
             ref={(el) => {
                 observe(el);
                 if (el) (ref as any).current = el;
             }}
-            // Animate radius directly on the element with the background color
-            animate={{
-                borderRadius: isSelected ? "0px" : `${BOARD_SLOT_ROUNDED}px`,
+            style={{
+                aspectRatio: windowAspect,
+                // We use a relative z-index to ensure the hovered board is ALWAYS on top
+                zIndex: isSelected ? 100 : undefined,
             }}
-            style={{ aspectRatio: windowAspect }}
-            className="relative w-full cursor-pointer overflow-hidden bg-white shadow-sm"
+            className="relative w-full"
             onClick={(e) => {
                 e.stopPropagation();
                 if (!ref.current || isSelected) return;
+
+                // Measure the stable wrapper rect
                 const rect = ref.current.getBoundingClientRect();
                 onOpen(boardData, {
                     x: rect.left,
@@ -245,53 +256,77 @@ function Board({
                 });
             }}
         >
-            {/* Title - Fade out when active/zoomed */}
             <motion.div
-                animate={{ opacity: isSelected ? 0 : 1 }}
-                className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-white/50 font-bold"
+                // 2. This inner div does the visual work.
+                // We use variants to keep the animation clean and synchronized.
+                variants={{
+                    initial: { scale: 1, zIndex: 0 },
+                    hovered: { scale: isSelected ? 1 : 1.25, zIndex: 50 },
+                }}
+                animate={{
+                    borderRadius: isSelected
+                        ? "0px"
+                        : `${BOARD_SLOT_ROUNDED}px`,
+                }}
+                transition={{ type: "spring", stiffness: 300, damping: 25 }}
+                // 3. Crucial: pointer-events-none on the visual expansion
+                // ensures the "extra" 0.55 scale doesn't block mouse movement
+                // for the rest of the grid.
+                className="pointer-events-auto relative h-full w-full cursor-pointer overflow-hidden bg-white shadow-sm"
             >
-                {boardData.name}
-            </motion.div>
-
-            {/* The World Content */}
-            <div className="absolute top-0 left-0">
-                <div
-                    style={{
-                        width: windowSize.width,
-                        height: windowSize.height,
-                        transformOrigin: "top left",
-                        // If active, we don't need to scale down anymore?
-                        // Actually, since we scale the PARENT up, we keep this scale logic.
-                        // Parent Scale UP * Child Scale DOWN = 1 (Original Size).
-                        transform: `scale(${scaleX}, ${scaleY})`,
-                    }}
-                    // Enable pointer events only when active so you can drag the canvas
-                    className={
-                        isSelected
-                            ? "pointer-events-auto"
-                            : "pointer-events-none"
-                    }
+                {/* Title - Fade out when active/zoomed */}
+                <motion.div
+                    animate={{ opacity: isSelected ? 0 : 1 }}
+                    className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-white/50 font-bold"
                 >
-                    <CanvasWorld
-                        objects={
-                            new Map(boardData.objects.map((o) => [o.id, o]))
-                        }
-                        camera={{
-                            position: { x: 0, y: 0 },
-                            size: {
-                                x: windowSize.width,
-                                y: windowSize.height,
-                            },
-                            zoom: 1,
+                    {boardData.name}
+                </motion.div>
+
+                {/* The World Content */}
+                <div className="absolute top-0 left-0">
+                    <div
+                        style={{
+                            width: windowSize.width,
+                            height: windowSize.height,
+                            transformOrigin: "top left",
+                            transform: `scale(${scaleX}, ${scaleY})`,
                         }}
-                    />
+                        className={
+                            isSelected
+                                ? "pointer-events-auto"
+                                : "pointer-events-none"
+                        }
+                    >
+                        <CanvasWorld
+                            objects={
+                                new Map(boardData.objects.map((o) => [o.id, o]))
+                            }
+                            camera={{
+                                position: { x: 0, y: 0 },
+                                size: {
+                                    x: windowSize.width,
+                                    y: windowSize.height,
+                                },
+                                zoom: 1,
+                            }}
+                        />
+                    </div>
                 </div>
-            </div>
+            </motion.div>
         </motion.div>
     );
 }
 
 function EmptyBoard({ windowAspect }: { windowAspect: number }) {
+    return (
+        <div
+            style={{ aspectRatio: windowAspect }}
+            className={`flex w-full items-center justify-center rounded-[${BOARD_SLOT_ROUNDED}px] bg-black/10`}
+        ></div>
+    );
+}
+
+function CreateBoard({ windowAspect }: { windowAspect: number }) {
     return (
         <motion.div
             style={{ aspectRatio: windowAspect }}
