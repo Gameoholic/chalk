@@ -182,8 +182,9 @@ export async function issueRefreshToken(
 
 export async function getUserData(userId: string, userRole: string) {
     if (!ObjectId.isValid(userId)) {
-        throw new Error("Invalid user id");
+        return err({ reason: "User ID is invalid." });
     }
+
     let displayName: string | null = null;
     if (userRole === "guest") {
         try {
@@ -198,6 +199,10 @@ export async function getUserData(userId: string, userRole: string) {
         } catch (err) {
             throw new Error("User not found");
         }
+    } else {
+        return err({
+            reason: "Unknown user role.",
+        });
     }
     if (!displayName) {
         throw new Error("User not found");

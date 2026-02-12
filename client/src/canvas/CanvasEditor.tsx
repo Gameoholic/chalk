@@ -15,7 +15,7 @@ import {
     Moon,
     Sun,
 } from "lucide-react";
-import { updateBoardName, updateBoardObjects } from "../api/boards";
+import { resetBoard, updateBoardName, updateBoardObjects } from "../api/boards";
 import { BoardData, UserData } from "../types/data";
 import ManageThisBoardModal from "./modals/ManageThisBoardModal";
 import CreateAccountModal from "./modals/CreateAccountModal";
@@ -284,8 +284,16 @@ function CanvasEditor({
         try {
             await updateBoardName(currentBoard.id, newName);
             currentBoard.name = newName;
-        } catch {
-            throw new Error("Rename failed");
+        } catch (err) {
+            throw new Error((err as Error)?.message);
+        }
+    };
+
+    const handleResetBoard = async () => {
+        try {
+            await resetBoard(currentBoard.id);
+        } catch (err) {
+            throw new Error((err as Error)?.message);
         }
     };
 
@@ -513,6 +521,7 @@ function CanvasEditor({
                     name={currentBoard.name}
                     createdOn={currentBoard.createdOn}
                     onRename={handleRenameBoard}
+                    onReset={handleResetBoard}
                     onClose={() => setShowManageThisBoardModal(false)}
                 />
             )}

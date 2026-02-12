@@ -9,7 +9,7 @@ import { WorldObject } from "../types/canvas";
 //         "GET"
 //     );
 //     if (!result.success) {
-//         console.log("Error executing getBoardData: " + result.error);
+//         console.error("Error executing getBoardData: " + result.error);
 //         throw Error(result.error);
 //     }
 
@@ -19,7 +19,7 @@ import { WorldObject } from "../types/canvas";
 export async function getAllBoards(): Promise<BoardData[]> {
     const result = await fetchHelper<BoardData[]>("me/boards/", "GET");
     if (!result.success) {
-        console.log("Error executing getBoardData: " + result.error);
+        console.error("Error executing getBoardData: " + result.error);
         throw Error(result.error);
     }
 
@@ -29,7 +29,7 @@ export async function getAllBoards(): Promise<BoardData[]> {
 export async function getBoardById(id: string): Promise<BoardData> {
     const result = await fetchHelper<BoardData>(`me/boards/${id}`, "GET");
     if (!result.success) {
-        console.log("Error executing getBoardById: " + result.error);
+        console.error("Error executing getBoardById: " + result.error);
         throw Error(result.error);
     }
 
@@ -45,7 +45,7 @@ export async function createBoard(name: string) {
         }
     );
     if (!result.success) {
-        console.log("Error executing createBoard: " + result.error);
+        console.error("Error executing createBoard: " + result.error);
         throw Error(result.error);
     }
 
@@ -63,7 +63,7 @@ export async function updateBoardObjects(
     );
 
     if (!result.success) {
-        console.log("Error executing updateBoardObjects: " + result.error);
+        console.error("Error executing updateBoardObjects: " + result.error);
         throw Error(result.error);
     }
 
@@ -76,7 +76,20 @@ export async function updateBoardName(boardId: string, name: string) {
     });
 
     if (!result.success) {
-        console.log("Error executing updateBoardName: " + result.error);
+        console.error("Error executing updateBoardName: " + result.error);
+        throw Error(result.error);
+    }
+
+    return;
+}
+
+export async function resetBoard(boardId: string) {
+    const result = await fetchHelper<undefined>(`me/boards/${boardId}`, "PUT", {
+        objects: [],
+    });
+
+    if (!result.success) {
+        console.error("Error executing resetBoard: " + result.error);
         throw Error(result.error);
     }
 

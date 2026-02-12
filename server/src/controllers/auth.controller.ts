@@ -26,7 +26,7 @@ export async function login(req: Request, res: Response) {
             secure: process.env.NODE_ENV === "production",
             sameSite: "strict",
         });
-        return res.sendStatus(201);
+        return res.sendStatus(204);
     } catch (err) {
         res.status(500).json({ error: "Failed to log in" });
     }
@@ -43,12 +43,17 @@ export async function me(req: AuthenticatedRequest, res: Response) {
             req.authenticatedUser.role
         );
         res.status(200).json({
-            displayName: userData.displayName,
-            role: req.authenticatedUser.role,
-            id: req.authenticatedUser.id,
+            data: {
+                displayName: userData.displayName,
+                role: req.authenticatedUser.role,
+                id: req.authenticatedUser.id,
+            },
         });
     } catch (err) {
-        res.status(500).json({ error: "Internal server error" });
+        console.error(err);
+        res.status(500).json({
+            error: "Failed to authenticate due to an internal error.",
+        });
     }
     return;
 }

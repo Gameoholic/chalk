@@ -12,7 +12,7 @@ import jwt from "jsonwebtoken";
 export async function getAll(req: Request, res: Response) {
     try {
         const users = await GuestUserService.getAllGuestUsers();
-        res.status(200).json(users);
+        res.status(200).json({ data: users });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: "Failed to fetch guest users" });
@@ -25,7 +25,7 @@ export async function getById(req: Request, res: Response) {
         const guestUser = await GuestUserService.getGuestUserById(id);
         if (!guestUser)
             return res.status(404).json({ error: "Guest user not found" });
-        res.status(200).json(guestUser);
+        res.status(200).json({ data: guestUser });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: "Failed to fetch guest user" });
@@ -49,7 +49,7 @@ export async function create(req: Request, res: Response) {
             httpOnly: true,
             secure: process.env.NODE_ENV === "production",
             sameSite: "strict",
-        }).sendStatus(201);
+        }).sendStatus(204);
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: "Failed to create guest user" });
@@ -63,7 +63,7 @@ export async function update(req: Request, res: Response) {
             req.params.id as string,
             displayName
         );
-        res.status(200).json(result);
+        res.status(200).json({ data: result });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: "Failed to update guest user" });
@@ -75,7 +75,7 @@ export async function remove(req: Request, res: Response) {
         const result = await GuestUserService.deleteGuestUser(
             req.params.id as string
         );
-        res.status(200).json(result);
+        res.status(200).json({ data: result });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: "Failed to delete guest user" });

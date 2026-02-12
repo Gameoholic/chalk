@@ -1,6 +1,7 @@
 import db from "../db/mongo.js";
 import { ObjectId, type UpdateFilter } from "mongodb";
 import type { WorldObject } from "../types/board.types.js";
+import { ok, baseErr, type Result, err } from "../types/result.types.js";
 
 const collection = db.collection<Board>("boards");
 
@@ -13,21 +14,31 @@ export interface Board {
     lastOpened: Date;
 }
 
+/**
+ * @returns The inserted board's id and createdOn.
+ */
 export async function createBoard(board: Board) {
-    const result = await collection.insertOne(board);
-    return result;
-}
+    try {
+        const result = await collection.insertOne(board);
 
-export async function updateBoard(id: string, updates: Partial<Board>) {
-    if (!ObjectId.isValid(id)) throw new Error("Invalid ID");
-    const query = { _id: new ObjectId(id) };
-    const updateDoc = { $set: updates };
-    const result = await collection.updateOne(query, updateDoc);
-    return result;
-}
+        if (!result.acknowledged) {
+            return err({
+                reason: "MongoDB did not acknowledge the operation.",
+            });
+        }
 
-export function findBoardByOwnerAndId(ownerId: ObjectId, boardId: ObjectId) {
-    return collection.findOne({ _id: boardId, ownerId });
+        return ok(result.insertedId);
+    } catch (error) {
+        if (error instanceof Error) {
+            return err({
+                reason: "Unknown error.",
+                previousError: {
+                    reason: error.message,
+                },
+            });
+        }
+        return err({ reason: "Unknown error and unknown type." });
+    }
 }
 
 export async function updateBoardForOwner(
@@ -35,103 +46,279 @@ export async function updateBoardForOwner(
     boardId: ObjectId,
     updates: Partial<Board>
 ) {
-    const query = { _id: boardId, ownerId };
-    const updateDoc = { $set: updates };
+    try {
+        const query = { _id: boardId, ownerId: ownerId };
+        const updateDoc = { $set: updates };
+        const updatedBoard = await collection.findOneAndUpdate(
+            query,
+            updateDoc,
+            {
+                returnDocument: "after",
+            }
+        );
 
-    return collection.findOneAndUpdate(query, updateDoc, {
-        returnDocument: "after",
-    });
+        if (!updatedBoard) {
+            return err({
+                reason: "Failed to update board.",
+            });
+        }
+        return ok(undefined);
+    } catch (error) {
+        if (error instanceof Error) {
+            return err({
+                reason: "Unknown error.",
+                previousError: {
+                    reason: error.message,
+                },
+            });
+        }
+        return err({ reason: "Unknown error and unknown type." });
+    }
 }
 
 export async function upsertWorldObjects(
     ownerId: ObjectId,
     boardId: ObjectId,
-    objects: WorldObject[]
+    objects: WorldObject[],
+    maxObjectCount: number
 ) {
-    const ops = objects.map((obj) => ({
-        updateOne: {
-            filter: { _id: boardId, ownerId, "objects.id": obj.id },
-            update: { $set: { "objects.$": obj } },
-        },
-    }));
+    try {
+        // Update existing objects (This doesn't change the array length)
+        const ops = objects.map((obj) => ({
+            updateOne: {
+                filter: { _id: boardId, ownerId, "objects.id": obj.id },
+                update: { $set: { "objects.$": obj } },
+            },
+        }));
 
-    const pushOps = objects.map((obj) => ({
-        updateOne: {
-            filter: { _id: boardId, ownerId, "objects.id": { $ne: obj.id } },
-            update: { $push: { objects: obj } },
-        },
-    }));
+        // Push new objects ONLY if there is space
+        const pushOps = objects.map((obj) => ({
+            updateOne: {
+                filter: {
+                    _id: boardId,
+                    ownerId,
+                    "objects.id": { $ne: obj.id },
+                    // Limit Check: If index [maxObjectCount] exists, the array is full
+                    [`objects.${maxObjectCount - 1}`]: { $exists: false },
+                },
+                update: { $push: { objects: obj } },
+            },
+        }));
 
-    return collection.bulkWrite([...ops, ...pushOps]);
+        const result = await collection.bulkWrite([...ops, ...pushOps], {
+            ordered: true,
+        });
+
+        if (result.matchedCount === 0) {
+            return err({ reason: "Couldn't find board for owner." });
+        }
+
+        /**
+         * LIMIT CHECK LOGIC:
+         * If we had objects to push, but they weren't matched and weren't modified,
+         * it implies the $exists: false check failed (array is full).
+         */
+        const successfulOps = result.matchedCount;
+
+        if (successfulOps < ops.length + pushOps.length) {
+            const currentBoard = await collection.findOne({ _id: boardId });
+            if (currentBoard && currentBoard.objects.length >= maxObjectCount) {
+                return err({ reason: "Cannot exceed max object amount." });
+            }
+        }
+
+        if (result.modifiedCount !== objects.length) {
+            return err({ reason: "Couldn't update all objects." });
+        }
+
+        return ok(undefined);
+    } catch (error) {
+        if (error instanceof Error) {
+            return err({
+                reason: "Unknown error.",
+                previousError: {
+                    reason: error.message,
+                },
+            });
+        }
+        return err({ reason: "Unknown error and unknown type." });
+    }
 }
 
-export async function deleteBoard(id: string) {
-    if (!ObjectId.isValid(id)) throw new Error("Invalid ID");
-    const query = { _id: new ObjectId(id) };
-    const result = await collection.deleteOne(query);
-    return result;
-}
-
-export async function findBoardById(id: string) {
-    if (!ObjectId.isValid(id)) throw new Error("Invalid ID");
-    const result = await collection.findOne({ _id: new ObjectId(id) });
-    return result;
-}
-
+/**
+ * @return Boards created by the owner, without {objects, ownerId}, sorted by most recently opened first
+ */
 export async function findBoardsByOwner_WithoutObjects(ownerId: ObjectId) {
-    return collection
-        .find(
-            { ownerId },
-            {
-                projection: {
-                    objects: 0,
-                    ownerId: 0, // also omit ownerid since it's unnecessary in this context
+    try {
+        const result = await collection
+            .find<{
+                _id: ObjectId;
+                name: string;
+                createdOn: Date;
+                lastOpened: Date;
+            }>(
+                { ownerId },
+                {
+                    projection: {
+                        objects: 0,
+                        ownerId: 0, // also omit ownerid since it's unnecessary in this context
+                    },
+                }
+            )
+            .sort({ lastOpened: -1 }) // most recently opened first
+            .toArray();
+
+        return ok(result);
+    } catch (error) {
+        if (error instanceof Error) {
+            return err({
+                reason: "Unknown error.",
+                previousError: {
+                    reason: error.message,
                 },
-            }
-        )
-        .sort({ lastOpened: -1 }) // most recently opened first
-        .toArray();
+            });
+        }
+        return err({ reason: "Unknown error and unknown type." });
+    }
 }
 
-export async function findBoardsByOwner_WithObjects(ownerId: ObjectId) {
-    return collection
-        .find(
-            { ownerId },
-            {
-                projection: {
-                    ownerId: 0, // omit ownerid since it's unnecessary in this context
+/**
+ * @return Boards created by the owner, without {ownerId}, sorted by most recently opened first
+ */
+export async function findBoardsByOwner(ownerId: ObjectId) {
+    try {
+        const result = await collection
+            .find<{
+                _id: ObjectId;
+                name: string;
+                createdOn: Date;
+                lastOpened: Date;
+                objects: WorldObject[];
+            }>(
+                { ownerId },
+                {
+                    projection: {
+                        ownerId: 0, // omit ownerid since it's unnecessary in this context
+                    },
+                }
+            )
+            .sort({ lastOpened: -1 }) // most recently opened first
+            .toArray();
+
+        return ok(result);
+    } catch (error) {
+        if (error instanceof Error) {
+            return err({
+                reason: "Unknown error.",
+                previousError: {
+                    reason: error.message,
                 },
-            }
-        )
-        .sort({ lastOpened: -1 }) // most recently opened first
-        .toArray();
+            });
+        }
+        return err({ reason: "Unknown error and unknown type." });
+    }
 }
 
 export async function updateOwnerOfAllBoards(
     oldOwnerId: ObjectId,
     newOwnerId: ObjectId
 ) {
-    const query = { ownerId: oldOwnerId };
-    const updateDoc = { $set: { ownerId: newOwnerId } };
+    try {
+        const query = { ownerId: oldOwnerId };
+        const updateDoc = { $set: { ownerId: newOwnerId } };
 
-    return collection.updateMany(query, updateDoc);
+        const result = await collection.updateMany(query, updateDoc);
+
+        if (!result.acknowledged) {
+            return err({
+                reason: "MongoDB did not acknowledge the operation.",
+            });
+        }
+
+        if (result.matchedCount === 0) {
+            return err({
+                reason: "No boards found for the old owner.",
+            });
+        }
+
+        if (result.modifiedCount === 0) {
+            return err({
+                reason: "Boards were found but not modified.",
+            });
+        }
+    } catch (error) {
+        if (error instanceof Error) {
+            return err({
+                reason: "Unknown error.",
+                previousError: {
+                    reason: error.message,
+                },
+            });
+        }
+        return err({ reason: "Unknown error and unknown type." });
+    }
+
+    return ok(undefined);
 }
 
-export async function findBoardsByOwner(ownerId: ObjectId) {
-    return collection.find({ ownerId }).toArray();
-}
-
+/**
+ * @returns Without ownerId
+ */
 export async function findBoardByIdForUser(
     ownerId: ObjectId,
     boardId: ObjectId
-): Promise<Board | null> {
-    return collection.findOne({ _id: new ObjectId(boardId), ownerId });
+) {
+    try {
+        const result = await collection.findOne<{
+            _id: ObjectId;
+            name: string;
+            createdOn: Date;
+            lastOpened: Date;
+            objects: WorldObject[];
+        }>(
+            {
+                _id: new ObjectId(boardId),
+                ownerId,
+            },
+            {
+                projection: {
+                    ownerId: 0, // omit ownerId
+                },
+            }
+        );
+
+        if (!result) {
+            return err({ reason: "Board not found." });
+        }
+
+        return ok(result);
+    } catch (error) {
+        if (error instanceof Error) {
+            return err({
+                reason: "Unknown error.",
+                previousError: {
+                    reason: error.message,
+                },
+            });
+        }
+        return err({ reason: "Unknown error and unknown type." });
+    }
 }
 
-export async function findBoardByEmail(email: string) {
-    return collection.findOne({ email });
-}
+export async function countBoardsByOwner(ownerId: ObjectId) {
+    try {
+        const result = await collection.countDocuments({ ownerId });
 
-export async function countBoardsByOwner(ownerId: ObjectId): Promise<number> {
-    return collection.countDocuments({ ownerId });
+        return ok(result);
+    } catch (error) {
+        if (error instanceof Error) {
+            return err({
+                reason: "Unknown error.",
+                previousError: {
+                    reason: error.message,
+                },
+            });
+        }
+        return err({ reason: "Unknown error and unknown type." });
+    }
 }

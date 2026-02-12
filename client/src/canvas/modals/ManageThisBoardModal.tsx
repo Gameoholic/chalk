@@ -1,24 +1,27 @@
 import { useEffect, useState } from "react";
 import { X, Check, Loader2 } from "lucide-react";
 
-const MAX_NAME_LENGTH = 32;
+const MAX_NAME_LENGTH = 50;
 
 export default function ManageThisBoardModal({
     name,
     createdOn,
     onRename,
+    onReset,
     onClose,
 }: {
     name: string;
     createdOn: string | Date;
     onRename: (newName: string) => Promise<void>;
+    onReset: () => Promise<void>;
     onClose: () => void;
 }) {
     const [draftName, setDraftName] = useState(name);
     const [displayName, setDisplayName] = useState(name);
     const [isEditing, setIsEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [nameError, setNameError] = useState<string | null>(null);
+    const [resetError, setResetError] = useState<string | null>(null);
 
     // Keep draftName and displayName in sync with prop when it changes
     useEffect(() => {
@@ -45,7 +48,7 @@ export default function ManageThisBoardModal({
 
         try {
             setIsSaving(true);
-            setError(null);
+            setNameError(null);
 
             console.log("Renaming board.");
             await onRename(trimmed);
@@ -54,9 +57,24 @@ export default function ManageThisBoardModal({
             setDisplayName(trimmed);
 
             setIsEditing(false);
-        } catch {
-            console.log("Failed to rename board.");
-            setError("Failed to rename board.");
+        } catch (err) {
+            console.error("Failed to rename board: " + (err as Error)?.message);
+            setNameError("Failed to rename board: " + (err as Error)?.message);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleReset = async () => {
+        try {
+            setIsSaving(true);
+            setResetError(null);
+
+            console.log("Resetting board.");
+            await onReset();
+        } catch (err) {
+            console.error("Failed to reset board: " + (err as Error)?.message);
+            setResetError("Failed to reset board: " + (err as Error)?.message);
         } finally {
             setIsSaving(false);
         }
@@ -152,8 +170,30 @@ export default function ManageThisBoardModal({
                         )}
                     </div>
 
-                    {error && (
-                        <div className="text-sm text-red-400">{error}</div>
+                    {nameError && (
+                        <div className="text-sm text-red-400">{nameError}</div>
+                    )}
+                </div>
+
+                <div>
+                    <button
+                        onClick={handleReset}
+                        className="reset-button"
+                        disabled={isSaving}
+                        style={{
+                            backgroundColor: "#dc3545",
+                            color: "white",
+                            padding: "8px 16px",
+                            borderRadius: "4px",
+                            border: "none",
+                            cursor: "pointer",
+                        }}
+                    >
+                        Reset Board
+                    </button>
+
+                    {resetError && (
+                        <div className="text-sm text-red-400">{resetError}</div>
                     )}
                 </div>
 

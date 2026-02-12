@@ -12,7 +12,7 @@ export async function createUser(
         displayName,
     });
     if (!result.success) {
-        console.log("Error executing createUser: " + result.error);
+        console.error("Error executing createUser: " + result.error);
         throw Error(result.error);
     }
 }

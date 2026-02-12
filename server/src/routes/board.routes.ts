@@ -4,7 +4,7 @@ import {
     create,
     getById,
     updateBoard,
-    upsertWorldObjects,
+    updateWorldObjects,
 } from "../controllers/board.controller.js";
 import auth from "../middleware/auth.middleware.js";
 
@@ -13,10 +13,8 @@ const router = Router();
 router.use(auth); // apply auth middleware to all routes below
 
 router.get("/:id", getById);
-// update board metadata (name, lastOpened, etc)
 router.put("/:id", updateBoard);
-// append world objects
-router.post("/:id/objects", upsertWorldObjects);
+router.post("/:id/objects", updateWorldObjects);
 router.get("/", getAll);
 router.post("/", create);
 

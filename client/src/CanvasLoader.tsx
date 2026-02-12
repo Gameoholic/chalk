@@ -183,6 +183,7 @@ async function loadData(): Promise<
             boards[0] = {
                 id: createBoardResult.id,
                 createdOn: createBoardResult.createdOn,
+                lastOpened: createBoardResult.createdOn, // todo waht is this what do we do here??
                 name: defaultBoardName,
                 objects: [],
             };

@@ -61,7 +61,7 @@ export async function createUser(
     const user = await UserModel.createUser(newUser);
 
     const userBoardLength =
-        await BoardService.transferOwnershipOfAllBoardsOfUser(
+        await BoardService.transferOwnershipOfAllBoardsBelongingToUser(
             currentGuestUserId,
             user.insertedId.toString()
         );
