@@ -7,26 +7,7 @@ import * as RefreshTokenModel from "../models/refresh-token.model.js";
 import { ObjectId, type WithId } from "mongodb";
 import * as AuthService from "../services/auth.service.js";
 import type { StringValue } from "ms";
-
-export async function login(email: string, password: string) {
-    const user = await UserModel.findUserByEmail(email);
-    if (!user) throw new Error("Invalid credentials");
-
-    const valid = await bcrypt.compare(password, user.password);
-    if (!valid) throw new Error("Invalid credentials");
-
-    const initialRefreshToken = await AuthService.issueRefreshToken(
-        user._id.toString(),
-        "user"
-    );
-    const tokens = await AuthService.refreshTokens(initialRefreshToken); // We do this because we need an access token
-    return tokens;
-}
-
-export async function guestLogin(id: string) {
-    // const guestUser = await GuestUserModel.findGuestUserById(id);
-    // if (!guestUser) throw new Error("Invalid credentials");
-}
+import { err, ok } from "../types/result.types.js";
 
 export interface AccessTokenPayload extends JwtPayload {
     id: string;
@@ -42,97 +23,133 @@ export interface RefreshTokenPayload extends JwtPayload {
 /**
  * @returns Whether the token is valid for requests or not (treats expired tokens as invalid)
  */
-export function verifyAccessToken(
-    accessToken: string | undefined
-): { valid: true; payload: AccessTokenPayload } | { valid: false } {
+export function verifyAccessToken(accessToken: string | undefined) {
     let payload: any;
     try {
         payload = jwt.verify(
             accessToken!,
             process.env.JWT_SECRET!
         ) as AccessTokenPayload;
-    } catch (err) {
-        return { valid: false };
+    } catch (error) {
+        return err({ reason: "Access token invalid." });
     }
 
+    // todo: eventually with zod, check that these are strings.
     if (!payload.id || !payload.role) {
-        return { valid: false };
+        return err({ reason: "Access token invalid." });
     }
-    return { valid: true, payload: payload };
+    return ok(payload);
 }
 
-export class RefreshTokenInvalidError extends Error {
-    constructor(errorMsg: string) {
-        super(errorMsg);
-        this.name = "RefreshTokenInvalidError";
-    }
-}
-
-export async function refreshTokens(refreshToken: string): Promise<{
-    refreshToken: string;
-    accessToken: string;
-    userId: string;
-    userRole: string;
-}> {
-    // Is refresh token valid?
+export async function refreshTokens(refreshToken: string) {
     let oldRefreshTokenPayload: RefreshTokenPayload;
-    if (refreshToken === undefined) {
-        throw new RefreshTokenInvalidError("Refresh token undefined.");
-    }
+
+    // Is refresh token valid?
     try {
         oldRefreshTokenPayload = jwt.verify(
             refreshToken!,
             process.env.JWT_SECRET!
         ) as RefreshTokenPayload;
-    } catch (err) {
-        if (err instanceof jwt.TokenExpiredError) {
-            throw new RefreshTokenInvalidError("Refresh token expired");
+    } catch (error) {
+        if (error instanceof jwt.TokenExpiredError) {
+            return err({ reason: "Refresh token expired." });
         }
-        throw new RefreshTokenInvalidError("Refresh token invalid");
+        return err({ reason: "Refresh token invalid." });
     }
+
     if (
         !oldRefreshTokenPayload.id ||
         !oldRefreshTokenPayload.userId ||
         !oldRefreshTokenPayload.userRole
     ) {
-        throw new RefreshTokenInvalidError("Refresh token parameters invalid");
+        return err({ reason: "Refresh token parameters invalid." });
     }
 
+    if (!ObjectId.isValid(oldRefreshTokenPayload.id)) {
+        return err({ reason: "Refresh token id is invalid." });
+    }
     const oldRefreshTokenId: ObjectId = new ObjectId(oldRefreshTokenPayload.id);
-    // Now we check if refresh token is in the database
-    const refreshTokenDb: WithId<RefreshTokenModel.RefreshToken> | null =
-        await RefreshTokenModel.findRefreshTokenById(oldRefreshTokenId);
-    if (!refreshTokenDb) {
-        console.log("Refresh token not found in db");
-        throw new Error("Refresh token not found");
+
+    // Now we check if refresh token is in the database, and we delete it if it is
+    const refreshTokenDeleteResult =
+        await RefreshTokenModel.deleteRefreshToken(oldRefreshTokenId);
+
+    if (!refreshTokenDeleteResult.success) {
+        const error = refreshTokenDeleteResult.error;
+        const errorReason = error.reason;
+        switch (errorReason) {
+            case "Couldn't find refresh token.": {
+                return err({
+                    reason: "Couldn't find refresh token in the database.",
+                    previousError: error,
+                });
+            }
+            case "MongoDB did not acknowledge the operation.": {
+                return err({
+                    reason: "Couldn't search for/delete old refresh token.",
+                    previousError: error,
+                });
+            }
+            case "Unknown error.": {
+                return err({
+                    reason: "Couldn't search for/delete old refresh token.",
+                    previousError: error,
+                });
+            }
+            case "Unknown error and unknown type.": {
+                return err({
+                    reason: "Couldn't search for/delete old refresh token.",
+                    previousError: error,
+                });
+            }
+            default: {
+                throw new Error(
+                    `Unhandled error: ${errorReason satisfies never}`
+                );
+            }
+        }
     }
 
-    // Refresh token cycling: Remove the refresh token
-    const deleteResult =
-        await RefreshTokenModel.deleteRefreshToken(oldRefreshTokenId);
-    if (deleteResult.deletedCount !== 1) {
-        console.log("error deleting the old refresh token");
-        throw new Error("Error deleting old refresh token");
-    }
     // Refresh token cycling: Generate new refresh token
-    const newRefreshToken = await issueRefreshToken(
+    const newRefreshTokenResult = await issueRefreshToken(
         oldRefreshTokenPayload.userId,
         oldRefreshTokenPayload.userRole
     );
 
+    if (!newRefreshTokenResult.success) {
+        const error = newRefreshTokenResult.error;
+        const errorReason = error.reason;
+        switch (errorReason) {
+            case "Couldn't issue refresh token.": {
+                return err({
+                    reason: "Couldn't generate new refresh token.",
+                    previousError: error,
+                });
+            }
+            case "User ID is invalid.": {
+                return err({
+                    reason: "Old refresh token's user ID is invalid.",
+                    previousError: error,
+                });
+            }
+            case "User's role is invalid.": {
+                return err({
+                    reason: "Old refresh token's user role is invalid.",
+                    previousError: error,
+                });
+            }
+            default: {
+                throw new Error(
+                    `Unhandled error: ${errorReason satisfies never}`
+                );
+            }
+        }
+    }
+
+    const newRefreshToken = newRefreshTokenResult.data;
+
     // todo
     //If anything fails after deletion (DB hiccup, signing error, process crash), the user is now logged out permanently.
-
-    // Better pattern (transaction-like)
-
-    // Validate refresh token
-
-    // Generate new refresh token
-
-    // Store new refresh token
-
-    // Delete old refresh token
-
     // Mongo supports transactions if you’re on a replica set — worth it here.
 
     // Issue new access token
@@ -145,26 +162,63 @@ export async function refreshTokens(refreshToken: string): Promise<{
         { expiresIn: process.env.ACCESS_TOKEN_EXPIRY! as StringValue }
     );
 
-    return {
+    const tokens = {
         refreshToken: newRefreshToken,
         accessToken: newAccessToken,
         userId: oldRefreshTokenPayload.userId,
         userRole: oldRefreshTokenPayload.userRole,
     };
+    return ok(tokens);
 }
 
-// To be used when logging in via password
-export async function issueRefreshToken(
-    userId: string,
-    userRole: string
-): Promise<string> {
-    const newRefreshTokenId = (await RefreshTokenModel.createRefreshToken({}))
-        .insertedId;
+export async function issueRefreshToken(userId: string, userRole: string) {
+    if (!ObjectId.isValid(userId)) {
+        return err({ reason: "User ID is invalid." });
+    }
+    if (userRole !== "guest" && userRole !== "user") {
+        return err({ reason: "User's role is invalid." });
+    }
+
+    const createRefreshTokenResult = await RefreshTokenModel.createRefreshToken(
+        {}
+    );
+
+    if (!createRefreshTokenResult.success) {
+        const error = createRefreshTokenResult.error;
+        const errorReason = error.reason;
+        switch (errorReason) {
+            case "MongoDB did not acknowledge the operation.": {
+                return err({
+                    reason: "Couldn't issue refresh token.",
+                    previousError: error,
+                });
+            }
+            case "Unknown error.": {
+                return err({
+                    reason: "Couldn't issue refresh token.",
+                    previousError: error,
+                });
+            }
+            case "Unknown error and unknown type.": {
+                return err({
+                    reason: "Couldn't issue refresh token.",
+                    previousError: error,
+                });
+            }
+            default: {
+                throw new Error(
+                    `Unhandled error: ${errorReason satisfies never}`
+                );
+            }
+        }
+    }
+
+    const refreshTokenId = createRefreshTokenResult.data.toString();
 
     // Issue new refresh token
     const newRefreshToken = jwt.sign(
         {
-            id: newRefreshTokenId,
+            id: refreshTokenId,
             userId: userId,
             userRole: userRole,
         },
@@ -177,36 +231,281 @@ export async function issueRefreshToken(
         }
     );
 
-    return newRefreshToken;
+    return ok(newRefreshToken);
 }
 
+/**
+ * Creates access and refresh tokens. Should be used when logging in or creating an account, not for refreshing tokens.
+ */
+export async function issueNewTokens(userId: string, userRole: string) {
+    // Generate initial refresh token, to be immediately replaced by later refresh tokens call
+    const issueRefreshTokenResult = await AuthService.issueRefreshToken(
+        userId,
+        userRole
+    );
+
+    if (!issueRefreshTokenResult.success) {
+        const error = issueRefreshTokenResult.error;
+        const errorReason = error.reason;
+        switch (errorReason) {
+            case "User ID is invalid.": {
+                return err({
+                    reason: "User ID is invalid.",
+                    previousError: error,
+                });
+            }
+            case "User's role is invalid.": {
+                return err({
+                    reason: "User's role is invalid.",
+                    previousError: error,
+                });
+            }
+            case "Couldn't issue refresh token.": {
+                return err({
+                    reason: "Couldn't issue initial refresh token.",
+                    previousError: error,
+                });
+            }
+            default: {
+                throw new Error(
+                    `Unhandled error: ${errorReason satisfies never}`
+                );
+            }
+        }
+    }
+
+    const initialRefreshToken = issueRefreshTokenResult.data;
+
+    const refreshTokensResult =
+        await AuthService.refreshTokens(initialRefreshToken); // We do this because we need an access token
+
+    if (!refreshTokensResult.success) {
+        const error = refreshTokensResult.error;
+        const errorReason = error.reason;
+        switch (errorReason) {
+            case "Couldn't search for/delete old refresh token.": {
+                return err({
+                    reason: "Couldn't issue tokens.",
+                    previousError: error,
+                });
+            }
+            case "Couldn't generate new refresh token.": {
+                return err({
+                    reason: "Couldn't issue tokens.",
+                    previousError: error,
+                });
+            }
+            case "Refresh token expired.": {
+                return err({
+                    reason: "Couldn't issue tokens.",
+                    previousError: error,
+                });
+            }
+            case "Refresh token id is invalid.": {
+                return err({
+                    reason: "Couldn't issue tokens.",
+                    previousError: error,
+                });
+            }
+            case "Refresh token invalid.": {
+                return err({
+                    reason: "Couldn't issue tokens.",
+                    previousError: error,
+                });
+            }
+            case "Refresh token parameters invalid.": {
+                return err({
+                    reason: "Couldn't issue tokens.",
+                    previousError: error,
+                });
+            }
+            case "Couldn't find refresh token in the database.": {
+                return err({
+                    reason: "Couldn't issue tokens.",
+                    previousError: error,
+                });
+            }
+            case "Old refresh token's user ID is invalid.": {
+                return err({
+                    reason: "User ID is invalid.",
+                    previousError: error,
+                });
+            }
+            case "Old refresh token's user role is invalid.": {
+                return err({
+                    reason: "User's role is invalid.",
+                    previousError: error,
+                });
+            }
+            default: {
+                throw new Error(
+                    `Unhandled error: ${errorReason satisfies never}`
+                );
+            }
+        }
+    }
+    const tokens = refreshTokensResult.data;
+
+    return ok(tokens);
+}
+
+/**
+ * @returns Data for user/guest user (only displayname)
+ */
 export async function getUserData(userId: string, userRole: string) {
     if (!ObjectId.isValid(userId)) {
         return err({ reason: "User ID is invalid." });
     }
 
-    let displayName: string | null = null;
     if (userRole === "guest") {
-        try {
-            displayName = (await GuestUserService.getGuestUserById(userId))
-                .displayName;
-        } catch (err) {
-            throw new Error("User not found");
+        const getGuestUserResult =
+            await GuestUserService.getGuestUserById(userId);
+
+        if (!getGuestUserResult.success) {
+            const error = getGuestUserResult.error;
+            const errorReason = error.reason;
+            switch (errorReason) {
+                case "Couldn't search for user.": {
+                    return err({
+                        reason: "Couldn't search for user.",
+                        previousError: error,
+                    });
+                }
+                case "Guest user ID is invalid.": {
+                    return err({
+                        reason: "User ID is invalid.",
+                        previousError: error,
+                    });
+                }
+                case "User doesn't exist.": {
+                    return err({
+                        reason: "User doesn't exist.",
+                        previousError: error,
+                    });
+                }
+                default: {
+                    throw new Error(
+                        `Unhandled error: ${errorReason satisfies never}`
+                    );
+                }
+            }
         }
+
+        const userData = getGuestUserResult.data;
+        return ok({ displayName: userData.displayName });
     } else if (userRole === "user") {
-        try {
-            displayName = (await UserService.getUserById(userId)).displayName;
-        } catch (err) {
-            throw new Error("User not found");
+        const getUserResult = await UserService.getUserById(userId);
+
+        if (!getUserResult.success) {
+            const error = getUserResult.error;
+            const errorReason = error.reason;
+            switch (errorReason) {
+                case "Couldn't search for user.": {
+                    return err({
+                        reason: "Couldn't search for user.",
+                        previousError: error,
+                    });
+                }
+                case "User ID is invalid.": {
+                    return err({
+                        reason: "User ID is invalid.",
+                        previousError: error,
+                    });
+                }
+                case "User doesn't exist.": {
+                    return err({
+                        reason: "User doesn't exist.",
+                        previousError: error,
+                    });
+                }
+                default: {
+                    throw new Error(
+                        `Unhandled error: ${errorReason satisfies never}`
+                    );
+                }
+            }
         }
+
+        const userData = getUserResult.data;
+        return ok({ displayName: userData.displayName });
     } else {
-        return err({
-            reason: "Unknown user role.",
-        });
+        return err({ reason: "User's role is invalid" });
     }
-    if (!displayName) {
-        throw new Error("User not found");
+}
+
+export async function login(email: string, password: string) {
+    const getUserResult = await UserService.getUserByEmail(email);
+
+    if (!getUserResult.success) {
+        const error = getUserResult.error;
+        const errorReason = error.reason;
+        switch (errorReason) {
+            case "User doesn't exist.": {
+                return err({
+                    reason: "User doesn't exist.",
+                    previousError: error,
+                });
+            }
+            case "Couldn't search for user.": {
+                return err({
+                    reason: "Couldn't search for user.",
+                    previousError: error,
+                });
+            }
+            default: {
+                throw new Error(
+                    `Unhandled error: ${errorReason satisfies never}`
+                );
+            }
+        }
     }
 
-    return { displayName: displayName };
+    const user = getUserResult.data;
+
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) {
+        return err({ reason: "Incorrect password" });
+    }
+
+    const issueTokensResult = await issueNewTokens(user.id, "user");
+
+    if (!issueTokensResult.success) {
+        const error = issueTokensResult.error;
+        const errorReason = error.reason;
+        switch (errorReason) {
+            case "Couldn't issue initial refresh token.": {
+                return err({
+                    reason: "Couldn't issue tokens.",
+                    previousError: error,
+                });
+            }
+            case "Couldn't issue tokens.": {
+                return err({
+                    reason: "Couldn't issue tokens.",
+                    previousError: error,
+                });
+            }
+            case "User ID is invalid.": {
+                return err({
+                    reason: "Couldn't issue tokens.",
+                    previousError: error,
+                });
+            }
+            case "User's role is invalid.": {
+                return err({
+                    reason: "Couldn't issue tokens.",
+                    previousError: error,
+                });
+            }
+            default: {
+                throw new Error(
+                    `Unhandled error: ${errorReason satisfies never}`
+                );
+            }
+        }
+    }
+
+    const tokens = issueTokensResult.data;
+
+    return ok(tokens);
 }

@@ -10,50 +10,123 @@ export async function login(req: Request, res: Response) {
         if (!email || !password) {
             return res
                 .status(400)
-                .json({ error: "Not all arguments provided" });
+                .json({ error: "Not all arguments provided." });
         }
 
-        const tokens = await AuthService.login(email, password);
+        const result = await AuthService.login(email, password);
 
-        res.cookie("refresh-token", tokens.refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "strict",
-        });
+        if (result.success) {
+            const tokens = result.data;
 
-        res.cookie("access-token", tokens.accessToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "strict",
-        });
-        return res.sendStatus(204);
+            res.cookie("refresh-token", tokens.refreshToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === "production",
+                sameSite: "strict",
+            });
+
+            res.cookie("access-token", tokens.accessToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === "production",
+                sameSite: "strict",
+            });
+
+            return res.sendStatus(204);
+        }
+
+        const error = result.error;
+        const errorReason = error.reason;
+
+        switch (errorReason) {
+            case "Incorrect password": {
+                return res.status(401).json({
+                    error: "Login credentials are incorrect.",
+                });
+            }
+            case "User doesn't exist.": {
+                return res.status(401).json({
+                    error: "Login credentials are incorrect.",
+                });
+            }
+            case "Couldn't issue tokens.": {
+                return res.status(500).json({
+                    error: "Failed to log in due to an internal error.",
+                });
+            }
+            case "Couldn't search for user.": {
+                return res.status(500).json({
+                    error: "Failed to log in due to an internal error.",
+                });
+            }
+            default: {
+                throw new Error(
+                    `Unhandled error: ${errorReason satisfies never}`
+                );
+            }
+        }
     } catch (err) {
-        res.status(500).json({ error: "Failed to log in" });
+        return res.status(500).json({
+            error: "Failed to log in due to an internal error.",
+        });
     }
 }
 
 export async function me(req: AuthenticatedRequest, res: Response) {
-    if (!req.authenticatedUser) {
-        res.sendStatus(401);
-        return;
-    }
     try {
-        const userData = await AuthService.getUserData(
+        if (!req.authenticatedUser) {
+            res.sendStatus(401);
+            return;
+        }
+
+        const result = await AuthService.getUserData(
             req.authenticatedUser.id,
             req.authenticatedUser.role
         );
-        res.status(200).json({
-            data: {
-                displayName: userData.displayName,
-                role: req.authenticatedUser.role,
-                id: req.authenticatedUser.id,
-            },
-        });
+
+        if (result.success) {
+            const userData = result.data;
+
+            return res.status(200).json({
+                data: {
+                    displayName: userData.displayName,
+                    role: req.authenticatedUser.role,
+                    id: req.authenticatedUser.id,
+                },
+            });
+        }
+
+        const error = result.error;
+        const errorReason = error.reason;
+
+        switch (errorReason) {
+            case "User ID is invalid.": {
+                return res.status(500).json({
+                    error: "Failed to authenticate due to an internal error.",
+                });
+            }
+            case "User's role is invalid": {
+                return res.status(500).json({
+                    error: "Failed to authenticate due to an internal error.",
+                });
+            }
+            case "Couldn't search for user.": {
+                return res.status(500).json({
+                    error: "Failed to authenticate due to an internal error.",
+                });
+            }
+            case "User doesn't exist.": {
+                return res.status(500).json({
+                    error: "Failed to authenticate due to an internal error.",
+                });
+            }
+            default: {
+                throw new Error(
+                    `Unhandled error: ${errorReason satisfies never}`
+                );
+            }
+        }
     } catch (err) {
-        console.error(err);
-        res.status(500).json({
+        return res.status(500).json({
             error: "Failed to authenticate due to an internal error.",
         });
     }
-    return;
 }

@@ -1,11 +1,5 @@
 import { Router } from "express";
-import {
-    getAll,
-    getById,
-    create,
-    update,
-    remove,
-} from "../controllers/guest-user.controller.js";
+import { create } from "../controllers/guest-user.controller.js";
 import auth from "../middleware/auth.middleware.js";
 
 const router = Router();

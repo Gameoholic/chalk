@@ -1,11 +1,5 @@
-import express from "express";
-import type { NextFunction, Response, Request } from "express";
+import type { Response } from "express";
 
-// This will help us connect to the database
-import db from "../db/mongo.js";
-
-// This help convert the id from string to ObjectId for the _id.
-import { ObjectId } from "mongodb";
 import * as UserService from "../services/user.service.js";
 import type { AuthenticatedRequest } from "../middleware/auth.middleware.js";
 
@@ -14,91 +8,133 @@ export async function create(req: AuthenticatedRequest, res: Response) {
         if (!req.authenticatedUser) {
             return res.sendStatus(401);
         }
+
         if (req.authenticatedUser.role !== "guest") {
-            return res
-                .status(400)
-                .json({ error: "You already own a non-guest account" });
+            return res.status(400).json({
+                error: "You may only create a user if currently logged in as a guest user.",
+            });
         }
 
         const email = req.body.email as string;
         const password = req.body.password as string;
         const displayName = req.body.displayName as string;
-        if (!email || !password || !displayName) {
+
+        if (email === undefined) {
+            return res.status(400).json({ error: "Email was not provided." });
+        }
+        if (password === undefined) {
             return res
                 .status(400)
-                .json({ error: "Not all arguments provided" });
+                .json({ error: "Password was not provided." });
+        }
+        if (displayName === undefined) {
+            return res
+                .status(400)
+                .json({ error: "Displayname was not provided." });
         }
 
-        const tokens = await UserService.createUser(
+        const result = await UserService.createUser(
             req.authenticatedUser.id,
             email,
             password,
             displayName
         );
+        if (result.success) {
+            const tokens = result.data;
 
-        res.cookie("refresh-token", tokens.refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "strict",
-        });
+            res.cookie("refresh-token", tokens.refreshToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === "production",
+                sameSite: "strict",
+            });
 
-        res.cookie("access-token", tokens.accessToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "strict",
-        });
-        return res.sendStatus(201);
+            res.cookie("access-token", tokens.accessToken, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === "production",
+                sameSite: "strict",
+            });
+
+            return res.sendStatus(204);
+        }
+
+        const error = result.error;
+        const errorReason = error.reason;
+
+        switch (errorReason) {
+            case "Couldn't create user.": {
+                return res.status(500).json({
+                    error: "Failed to create user due to an internal error.",
+                });
+            }
+            case "Couldn't delete guest user.": {
+                return res.status(500).json({
+                    error: "Failed to create user due to an internal error.",
+                });
+            }
+            case "Couldn't find guest user.": {
+                return res.status(500).json({
+                    error: "Failed to create user due to an internal error.",
+                });
+            }
+            case "Couldn't issue tokens.": {
+                return res.status(500).json({
+                    error: "Guest user was created, but access and refresh tokens couldn't be issued due to an internal error.",
+                });
+            }
+            case "Couldn't transfer ownership of boards.": {
+                return res.status(500).json({
+                    error: "Failed to create user due to an internal error.",
+                });
+            }
+            case "Display name cannot be empty.": {
+                return res.status(400).json({
+                    error: "Display name cannot be empty.",
+                });
+            }
+            case "Display name is too long.": {
+                return res.status(400).json({
+                    error: "Display name is too long.",
+                });
+            }
+            case "Email cannot be empty.": {
+                return res.status(400).json({
+                    error: "Email cannot be empty.",
+                });
+            }
+            case "Email is invalid.": {
+                return res.status(400).json({
+                    error: "Email is invalid.",
+                });
+            }
+            case "Guest user ID is invalid.": {
+                return res.status(500).json({
+                    error: "Failed to create user due to an internal error.",
+                });
+            }
+            case "No boards found for the guest user.": {
+                return res.status(500).json({
+                    error: "Failed to create user due to an internal error.",
+                });
+            }
+            case "Password cannot be empty.": {
+                return res.status(400).json({
+                    error: "Password cannot be empty.",
+                });
+            }
+            case "Password is invalid.": {
+                return res.status(500).json({
+                    error: "Password is invalid.",
+                });
+            }
+            default: {
+                throw new Error(
+                    `Unhandled error: ${errorReason satisfies never}`
+                );
+            }
+        }
     } catch (err) {
-        console.error(err);
-        return res.status(500).json({ error: "Failed to create user" });
+        return res.status(500).json({
+            error: "Failed to create user due to an internal error.",
+        });
     }
 }
-
-// export async function getAll(req: Request, res: Response) {
-//     try {
-//         const users = await UserService.getAllUsers();
-//         res.status(200).json(users);
-//     } catch (err) {
-//         console.error(err);
-//         res.status(500).json({ error: "Failed to fetch users" });
-//     }
-// }
-
-// export async function getById(req: Request, res: Response) {
-//     try {
-//         const id = req.params.id as string;
-//         const user = await UserService.getUserById(id);
-//         if (!user) return res.status(404).json({ error: "User not found" });
-//         res.status(200).json(user);
-//     } catch (err) {
-//         console.error(err);
-//         res.status(500).json({ error: "Failed to fetch user" });
-//     }
-// }
-
-// export async function update(req: Request, res: Response) {
-//     try {
-//         const { email, name } = req.body;
-//         const result = await UserService.updateUser(
-//             req.params.id as string,
-//             email,
-//             name
-//         );
-//         res.status(200).json(result);
-//     } catch (err) {
-//         console.error(err);
-//         res.status(500).json({ error: "Failed to update user" });
-//     }
-// }
-
-// export async function remove(req: Request, res: Response) {
-//     try {
-//         const result = await UserService.deleteUserService(
-//             req.params.id as string
-//         );
-//         res.status(200).json(result);
-//     } catch (err) {
-//         console.error(err);
-//         res.status(500).json({ error: "Failed to delete user" });
-//     }
-// }

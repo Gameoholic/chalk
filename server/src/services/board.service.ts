@@ -179,7 +179,7 @@ export async function transferOwnershipOfAllBoardsBelongingToUser(
 ) {
     if (fromUserId.equals(toUserId)) {
         return err({
-            reason: "From and To users are the same.",
+            reason: "From and To user ids are the same.",
         });
     }
 
@@ -194,7 +194,7 @@ export async function transferOwnershipOfAllBoardsBelongingToUser(
         switch (errorReason) {
             case "No boards found for the old owner.": {
                 return err({
-                    reason: "No boards found for the old owner.",
+                    reason: "No boards found for the old user.",
                     previousError: error,
                 });
             }

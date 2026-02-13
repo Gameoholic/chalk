@@ -231,12 +231,23 @@ async function loadUserDataOrCreateGuestUser(): Promise<UserData> {
         console.warn("Couldn't fetch user data. " + err);
     }
 
-    if (getUserDataErrorMessage !== "Invalid/Nonexistent refresh token.") {
+    if (
+        getUserDataErrorMessage !== "Unauthorized (401)" &&
+        getUserDataErrorMessage !== "Invalid refresh token." &&
+        getUserDataErrorMessage !== "Refresh token expired."
+    ) {
         console.log(
-            "Error does not have to do with refresh token being invalid. Could be a network error. Not logging out this user yet."
+            "Error does not have to do with refresh token being invalid. Could be a server-side error. Not logging out this user yet."
         );
         throw new Error("Couldn't authenticate user.");
         // todo: if refresh token expired error, tell user to re-log back in
+    }
+
+    if (getUserDataErrorMessage === "Refresh token expired.") {
+        console.log(
+            "Refresh token has expired. TODO: Replace this log message with a useful message for the client and prompt user to re-log in."
+        );
+        throw new Error("Couldn't authenticate user.");
     }
 
     // Reaching this line pretty much guarantees we don't have a guest user because the refresh token is invalid.

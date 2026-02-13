@@ -90,7 +90,7 @@ export async function deleteGuestUser(id: ObjectId) {
 
         if (result.deletedCount !== 1) {
             return err({
-                reason: "Couldn't delete user.",
+                reason: "Couldn't find guest user.",
             });
         }
 

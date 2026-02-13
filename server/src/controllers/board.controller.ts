@@ -1,9 +1,7 @@
-import type { Request, Response } from "express";
-import { ObjectId } from "mongodb";
+import type { Response } from "express";
 import * as BoardService from "../services/board.service.js";
 import type { AuthenticatedRequest } from "../middleware/auth.middleware.js";
 import type { WorldObject } from "../types/board.types.js";
-import { getCompleteErrorStack } from "../types/result.types.js";
 
 export async function getAll(req: AuthenticatedRequest, res: Response) {
     try {
@@ -41,7 +39,7 @@ export async function getAll(req: AuthenticatedRequest, res: Response) {
             }
         }
     } catch (err) {
-        res.status(500).json({
+        return res.status(500).json({
             error: "Failed to fetch boards due to an internal error.",
         });
     }
@@ -123,10 +121,7 @@ export async function create(req: AuthenticatedRequest, res: Response) {
             }
         }
     } catch (err) {
-        console.error(
-            "create(board.controller.ts): Unhandled try catch error:" + err
-        );
-        res.status(500).json({
+        return res.status(500).json({
             error: "Failed to create board due to an internal error.",
         });
     }
@@ -186,8 +181,7 @@ export async function getById(req: AuthenticatedRequest, res: Response) {
             }
         }
     } catch (err) {
-        console.error(err);
-        res.status(500).json({
+        return res.status(500).json({
             error: "Failed to fetch board due to an internal error.",
         });
     }
@@ -265,8 +259,7 @@ export async function updateBoard(req: AuthenticatedRequest, res: Response) {
             }
         }
     } catch (err) {
-        console.error(err);
-        res.status(500).json({
+        return res.status(500).json({
             error: "Failed to update board due to an internal error.",
         });
     }
@@ -344,8 +337,7 @@ export async function updateWorldObjects(
             }
         }
     } catch (err) {
-        console.error(err);
-        res.status(500).json({
+        return res.status(500).json({
             error: "Failed to update objects due to an internal error.",
         });
     }
