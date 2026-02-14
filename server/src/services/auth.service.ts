@@ -337,85 +337,92 @@ export async function getUserData(userId: string, userRole: string) {
     }
 
     if (userRole === "guest") {
-        const getGuestUserResult =
-            await GuestUserService.getGuestUserById(userId);
-
-        if (!getGuestUserResult.success) {
-            const error = getGuestUserResult.error;
-            const errorReason = error.reason;
-            switch (errorReason) {
-                case "Couldn't search for user.": {
-                    return err({
-                        reason: "Couldn't search for user.",
-                        previousError: error,
-                    });
-                }
-                case "Guest user ID is invalid.": {
-                    return err({
-                        reason: "User ID is invalid.",
-                        previousError: error,
-                    });
-                }
-                case "User doesn't exist.": {
-                    return err({
-                        reason: "User doesn't exist.",
-                        previousError: error,
-                    });
-                }
-                default: {
-                    throw new Error(
-                        `Unhandled error: ${errorReason satisfies never}`
-                    );
-                }
-            }
-        }
-
-        const userData = getGuestUserResult.data;
-        return ok({
-            displayName: userData.displayName,
-            createdOn: userData.createdOn,
-        });
+        return getUserData_user(userId);
     } else if (userRole === "user") {
-        const getUserResult = await UserService.getUserById(userId);
-
-        if (!getUserResult.success) {
-            const error = getUserResult.error;
-            const errorReason = error.reason;
-            switch (errorReason) {
-                case "Couldn't search for user.": {
-                    return err({
-                        reason: "Couldn't search for user.",
-                        previousError: error,
-                    });
-                }
-                case "User ID is invalid.": {
-                    return err({
-                        reason: "User ID is invalid.",
-                        previousError: error,
-                    });
-                }
-                case "User doesn't exist.": {
-                    return err({
-                        reason: "User doesn't exist.",
-                        previousError: error,
-                    });
-                }
-                default: {
-                    throw new Error(
-                        `Unhandled error: ${errorReason satisfies never}`
-                    );
-                }
-            }
-        }
-
-        const userData = getUserResult.data;
-        return ok({
-            displayName: userData.displayName,
-            createdOn: userData.createdOn,
-        });
+        return getUserData_guest(userId);
     } else {
         return err({ reason: "User's role is invalid" });
     }
+}
+
+async function getUserData_user(userId: string) {
+    const getGuestUserResult = await GuestUserService.getGuestUserById(userId);
+
+    if (!getGuestUserResult.success) {
+        const error = getGuestUserResult.error;
+        const errorReason = error.reason;
+        switch (errorReason) {
+            case "Couldn't search for user.": {
+                return err({
+                    reason: "Couldn't search for user.",
+                    previousError: error,
+                });
+            }
+            case "Guest user ID is invalid.": {
+                return err({
+                    reason: "User ID is invalid.",
+                    previousError: error,
+                });
+            }
+            case "User doesn't exist.": {
+                return err({
+                    reason: "User doesn't exist.",
+                    previousError: error,
+                });
+            }
+            default: {
+                throw new Error(
+                    `Unhandled error: ${errorReason satisfies never}`
+                );
+            }
+        }
+    }
+
+    const userData = getGuestUserResult.data;
+    return ok({
+        displayName: userData.displayName,
+        createdOn: userData.createdOn,
+    });
+}
+
+async function getUserData_guest(userId: string) {
+    const getUserResult = await UserService.getUserById(userId);
+
+    if (!getUserResult.success) {
+        const error = getUserResult.error;
+        const errorReason = error.reason;
+        switch (errorReason) {
+            case "Couldn't search for user.": {
+                return err({
+                    reason: "Couldn't search for user.",
+                    previousError: error,
+                });
+            }
+            case "User ID is invalid.": {
+                return err({
+                    reason: "User ID is invalid.",
+                    previousError: error,
+                });
+            }
+            case "User doesn't exist.": {
+                return err({
+                    reason: "User doesn't exist.",
+                    previousError: error,
+                });
+            }
+            default: {
+                throw new Error(
+                    `Unhandled error: ${errorReason satisfies never}`
+                );
+            }
+        }
+    }
+
+    const userData = getUserResult.data;
+    return ok({
+        displayName: userData.displayName,
+        createdOn: userData.createdOn,
+    });
 }
 
 export async function login(email: string, password: string) {
