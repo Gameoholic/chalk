@@ -1,6 +1,5 @@
 import jwt, { type JwtPayload } from "jsonwebtoken";
 import bcrypt from "bcrypt";
-import * as UserModel from "../models/user.model.js";
 import * as GuestUserService from "../services/guest-user.service.js";
 import * as RefreshTokenService from "../services/refresh-token.service.js";
 import * as UserService from "../services/user.service.js";
