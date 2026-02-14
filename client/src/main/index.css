@@ -26,8 +26,9 @@ body {
     --color-border: var(--border);
 
     --color-destructive: var(--destructive);
+    --color-success: var(--success);
+
     --color-error: var(--error);
-    --color-error-foreground: var(--error-foreground);
 
     --color-accent-foreground: var(--accent-foreground);
     --color-accent: var(--accent);
@@ -78,10 +79,9 @@ body {
     --muted-foreground: oklch(0.556 0 0);
     --accent: oklch(0.97 0 0);
     --accent-foreground: oklch(0.205 0 0);
+    --success: rgb(7, 197, 19);
     --destructive: oklch(0.577 0.245 27.325);
-
-    --error: oklch(0.577 0.245 27.325);
-    --error-foreground: oklch(0.985 0 0);
+    --error: oklch(64.529% 0.24039 27.298);
 }
 
 .dark {
@@ -103,9 +103,12 @@ body {
     --muted-foreground: oklch(0.708 0 0);
     --accent: oklch(0.269 0 0);
     --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.704 0.191 22.216);
+    --destructive: oklch(0.577 0.245 27.325);
 
-    --error: oklch(0.704 0.191 22.216);
+    --success: rgb(7, 197, 19);
+
+    --error: oklch(64.529% 0.24039 27.298);
+
     --error-foreground: oklch(0.985 0 0);
 
     --account-modal: oklch(20.019% 0.00002 271.152);

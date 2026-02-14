@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, Loader2, Eye, EyeOff } from "lucide-react";
+import { X, Loader2, Eye, EyeOff, CheckCircle2 } from "lucide-react";
 import { login } from "../../api/auth";
 
 interface Props {
@@ -18,6 +18,7 @@ export default function LoginModal({
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [showPassword, setShowPassword] = useState(false);
+    const [hasLoggedIn, setHasLoggedIn] = useState(false);
 
     const handleSubmit = async () => {
         if (!email || !password) {
@@ -31,27 +32,33 @@ export default function LoginModal({
             console.log("Attempting to log in");
             await login(email, password);
             console.log("Successfully logged in");
-            onClose();
+            setHasLoggedIn(true);
+            setIsSubmitting(false);
+
+            // Optional: slight delay so user sees success message
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
         } catch {
             console.error("Failed to log in.");
             setError("Couldn't log in.");
+            setIsSubmitting(false);
         }
-        setIsSubmitting(false);
     };
 
     return (
         <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm"
             onClick={onClose}
         >
             <div
-                className="bg-account-modal text-account-modal-foreground flex h-7/12 w-1/2 flex-col gap-4 rounded-2xl p-6 shadow-lg"
+                className="bg-account-modal text-account-modal-foreground flex h-7/12 w-1/2 flex-col gap-4 rounded-2xl p-6 shadow-2xl"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Close button */}
                 <button
                     onClick={onClose}
-                    className="text-account-modal-secondary cursor-pointer self-end rounded-md hover:brightness-125"
+                    className="text-account-modal-secondary cursor-pointer self-end rounded-md transition hover:brightness-125"
                 >
                     <X size={25} />
                 </button>
@@ -66,24 +73,25 @@ export default function LoginModal({
                     placeholder="Email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    disabled={isSubmitting}
-                    className="border-account-modal-secondary bg-account-modal text-account-modal-foreground w-full rounded-xl border px-3 py-2 focus:outline-none"
+                    disabled={isSubmitting || hasLoggedIn}
+                    className="border-account-modal-secondary bg-account-modal text-account-modal-foreground focus:ring-account-modal-accent w-full rounded-xl border px-3 py-2 transition focus:ring-2 focus:outline-none"
                 />
 
-                {/* Password input with hide/show toggle */}
+                {/* Password input */}
                 <div className="relative w-full">
                     <input
                         type={showPassword ? "text" : "password"}
                         placeholder="Password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        disabled={isSubmitting}
-                        className="border-account-modal-secondary bg-account-modal text-account-modal-foreground w-full rounded-xl border px-3 py-2 pr-10 focus:outline-none" // Added pr-10 for space
+                        disabled={isSubmitting || hasLoggedIn}
+                        className="border-account-modal-secondary bg-account-modal text-account-modal-foreground focus:ring-account-modal-accent w-full rounded-xl border px-3 py-2 pr-10 transition focus:ring-2 focus:outline-none"
                     />
                     <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="text-account-modal-secondary absolute top-1/2 right-3 -translate-y-1/2 hover:text-white"
+                        className="text-account-modal-secondary absolute top-1/2 right-3 -translate-y-1/2 transition hover:text-white"
+                        disabled={isSubmitting || hasLoggedIn}
                     >
                         {showPassword ? (
                             <EyeOff size={20} />
@@ -96,11 +104,17 @@ export default function LoginModal({
                 {/* Login button */}
                 <button
                     onClick={handleSubmit}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || hasLoggedIn}
                     className="bg-account-modal-accent text-account-modal-foreground relative flex cursor-pointer items-center justify-center rounded-2xl py-2 font-medium transition hover:brightness-110 disabled:cursor-default disabled:opacity-50"
                 >
                     <div className="relative flex items-center justify-center">
-                        <span>{isSubmitting ? "Logging in..." : "Log in"}</span>
+                        <span>
+                            {isSubmitting
+                                ? "Logging in..."
+                                : hasLoggedIn
+                                  ? "Logged in!"
+                                  : "Log in"}
+                        </span>
 
                         {isSubmitting && (
                             <Loader2
@@ -111,22 +125,31 @@ export default function LoginModal({
                     </div>
                 </button>
 
+                {/* Success message */}
+                {hasLoggedIn && (
+                    <p className="animate-fade-in text-success text-sm font-medium">
+                        Logged in!
+                    </p>
+                )}
+
                 {/* Error message */}
-                {error && <p className="text-destructive text-sm">{error}</p>}
+                {error && (
+                    <p className="text-error text-sm font-medium">{error}</p>
+                )}
 
                 {/* Bottom actions */}
                 <div className="text-account-modal-secondary text-md mt-auto flex justify-between">
                     <button
                         onClick={onCreateAccount}
-                        disabled={isSubmitting}
-                        className="cursor-pointer hover:brightness-110"
+                        disabled={isSubmitting || hasLoggedIn}
+                        className="cursor-pointer transition hover:brightness-110"
                     >
                         Create account
                     </button>
                     <button
                         onClick={onForgotPassword}
-                        disabled={isSubmitting}
-                        className="cursor-pointer hover:brightness-110"
+                        disabled={isSubmitting || hasLoggedIn}
+                        className="cursor-pointer transition hover:brightness-110"
                     >
                         Forgot password?
                     </button>
