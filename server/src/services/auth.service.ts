@@ -2,8 +2,8 @@ import jwt, { type JwtPayload } from "jsonwebtoken";
 import bcrypt from "bcrypt";
 import * as UserModel from "../models/user.model.js";
 import * as GuestUserService from "../services/guest-user.service.js";
+import * as RefreshTokenService from "../services/refresh-token.service.js";
 import * as UserService from "../services/user.service.js";
-import * as RefreshTokenModel from "../models/refresh-token.model.js";
 import { ObjectId, type WithId } from "mongodb";
 import * as AuthService from "../services/auth.service.js";
 import type { StringValue } from "ms";
@@ -68,14 +68,13 @@ export async function refreshTokens(refreshToken: string) {
     if (!ObjectId.isValid(oldRefreshTokenPayload.id)) {
         return err({ reason: "Refresh token id is invalid." });
     }
-    const oldRefreshTokenId: ObjectId = new ObjectId(oldRefreshTokenPayload.id);
 
     // Now we check if refresh token is in the database, and we delete it if it is
-    const refreshTokenDeleteResult =
-        await RefreshTokenModel.deleteRefreshToken(oldRefreshTokenId);
+    const deleteRefreshTokenResult =
+        await RefreshTokenService.deleteRefreshToken(oldRefreshTokenPayload.id);
 
-    if (!refreshTokenDeleteResult.success) {
-        const error = refreshTokenDeleteResult.error;
+    if (!deleteRefreshTokenResult.success) {
+        const error = deleteRefreshTokenResult.error;
         const errorReason = error.reason;
         switch (errorReason) {
             case "Couldn't find refresh token.": {
@@ -84,19 +83,13 @@ export async function refreshTokens(refreshToken: string) {
                     previousError: error,
                 });
             }
-            case "MongoDB did not acknowledge the operation.": {
+            case "Couldn't delete refresh token.": {
                 return err({
                     reason: "Couldn't search for/delete old refresh token.",
                     previousError: error,
                 });
             }
-            case "Unknown error.": {
-                return err({
-                    reason: "Couldn't search for/delete old refresh token.",
-                    previousError: error,
-                });
-            }
-            case "Unknown error and unknown type.": {
+            case "Refresh token Id is invalid.": {
                 return err({
                     reason: "Couldn't search for/delete old refresh token.",
                     previousError: error,
@@ -179,27 +172,14 @@ export async function issueRefreshToken(userId: string, userRole: string) {
         return err({ reason: "User's role is invalid." });
     }
 
-    const createRefreshTokenResult = await RefreshTokenModel.createRefreshToken(
-        {}
-    );
+    const createRefreshTokenResult =
+        await RefreshTokenService.createRefreshToken();
 
     if (!createRefreshTokenResult.success) {
         const error = createRefreshTokenResult.error;
         const errorReason = error.reason;
         switch (errorReason) {
-            case "MongoDB did not acknowledge the operation.": {
-                return err({
-                    reason: "Couldn't issue refresh token.",
-                    previousError: error,
-                });
-            }
-            case "Unknown error.": {
-                return err({
-                    reason: "Couldn't issue refresh token.",
-                    previousError: error,
-                });
-            }
-            case "Unknown error and unknown type.": {
+            case "Couldn't create refresh token.": {
                 return err({
                     reason: "Couldn't issue refresh token.",
                     previousError: error,
@@ -514,4 +494,49 @@ export async function login(email: string, password: string) {
     const tokens = issueTokensResult.data;
 
     return ok(tokens);
+}
+
+/**
+ * Removes the user's refresh token
+ * Only for user, not guest user
+ */
+export async function logout(refreshTokenId: string) {
+    if (!ObjectId.isValid(refreshTokenId)) {
+        return err({ reason: "Refresh token Id is invalid." });
+    }
+
+    const deleteTokenResult =
+        await RefreshTokenService.deleteRefreshToken(refreshTokenId);
+
+    if (!deleteTokenResult.success) {
+        const error = deleteTokenResult.error;
+        const errorReason = error.reason;
+        switch (errorReason) {
+            case "Couldn't find refresh token.": {
+                return err({
+                    reason: "Couldn't find refresh token.",
+                    previousError: error,
+                });
+            }
+            case "Couldn't delete refresh token.": {
+                return err({
+                    reason: "Couldn't delete refresh token.",
+                    previousError: error,
+                });
+            }
+            case "Refresh token Id is invalid.": {
+                return err({
+                    reason: "Refresh token Id is invalid.",
+                    previousError: error,
+                });
+            }
+            default: {
+                throw new Error(
+                    `Unhandled error: ${errorReason satisfies never}`
+                );
+            }
+        }
+    }
+
+    return ok(undefined);
 }
