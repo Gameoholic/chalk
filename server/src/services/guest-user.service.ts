@@ -49,6 +49,7 @@ export async function getGuestUserById(id: string) {
 export async function createGuestUser() {
     const guestUser: GuestUserModel.GuestUser = {
         displayName: "Guest",
+        createdOn: new Date(),
     };
 
     const createUserResult = await GuestUserModel.createGuestUser(guestUser);

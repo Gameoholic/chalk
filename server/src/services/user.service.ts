@@ -7,10 +7,6 @@ import * as BoardService from "../services/board.service.js";
 import * as AuthService from "../services/auth.service.js";
 import { err, ok } from "../types/result.types.js";
 
-export async function getAllUsers() {
-    return UserModel.findAllUsers();
-}
-
 export async function getUserById(id: string) {
     if (!ObjectId.isValid(id)) {
         return err({ reason: "User ID is invalid." });
@@ -48,14 +44,15 @@ export async function getUserById(id: string) {
         }
     }
 
-    const data = {
+    const userData = {
         id: id,
         email: result.data.email,
         displayName: result.data.displayName,
         password: result.data.password,
+        createdOn: result.data.createdOn,
     };
 
-    return ok(data);
+    return ok(userData);
 }
 
 export async function getUserByEmail(email: string) {
@@ -174,6 +171,7 @@ export async function createUser(
     const newUser: UserModel.User = {
         email,
         password,
+        createdOn: new Date(),
         displayName,
     };
 

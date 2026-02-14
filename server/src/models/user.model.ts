@@ -8,6 +8,7 @@ export interface User {
     _id?: ObjectId;
     email: string;
     password: string;
+    createdOn: Date;
     displayName: string;
 }
 
@@ -74,7 +75,7 @@ export async function updateUser(id: ObjectId, updates: Partial<User>) {
 }
 
 /**
- * @returns User's displayname, email and hashed password
+ * @returns User's displayname, email, createdOn and hashed password
  */
 export async function findUserById(id: ObjectId) {
     try {
@@ -82,6 +83,7 @@ export async function findUserById(id: ObjectId) {
             email: string;
             password: string;
             displayName: string;
+            creaedOn: Date;
         }>({ _id: id });
 
         if (result === null) {
@@ -94,6 +96,7 @@ export async function findUserById(id: ObjectId) {
             displayName: result.displayName,
             email: result.email,
             password: result.password,
+            createdOn: result.creaedOn,
         });
     } catch (error) {
         if (error instanceof Error) {
@@ -106,10 +109,6 @@ export async function findUserById(id: ObjectId) {
         }
         return err({ reason: "Unknown error and unknown type." });
     }
-}
-
-export async function findAllUsers() {
-    return collection.find({}).toArray();
 }
 
 /**

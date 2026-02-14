@@ -90,6 +90,7 @@ export async function me(req: AuthenticatedRequest, res: Response) {
                     displayName: userData.displayName,
                     role: req.authenticatedUser.role,
                     id: req.authenticatedUser.id,
+                    createdOn: userData.createdOn,
                 },
             });
         }

@@ -350,7 +350,7 @@ export async function issueNewTokens(userId: string, userRole: string) {
 }
 
 /**
- * @returns Data for user/guest user (only displayname)
+ * @returns Data for user/guest user (displayname and createdOn)
  */
 export async function getUserData(userId: string, userRole: string) {
     if (!ObjectId.isValid(userId)) {
@@ -392,7 +392,10 @@ export async function getUserData(userId: string, userRole: string) {
         }
 
         const userData = getGuestUserResult.data;
-        return ok({ displayName: userData.displayName });
+        return ok({
+            displayName: userData.displayName,
+            createdOn: userData.createdOn,
+        });
     } else if (userRole === "user") {
         const getUserResult = await UserService.getUserById(userId);
 
@@ -427,7 +430,10 @@ export async function getUserData(userId: string, userRole: string) {
         }
 
         const userData = getUserResult.data;
-        return ok({ displayName: userData.displayName });
+        return ok({
+            displayName: userData.displayName,
+            createdOn: userData.createdOn,
+        });
     } else {
         return err({ reason: "User's role is invalid" });
     }

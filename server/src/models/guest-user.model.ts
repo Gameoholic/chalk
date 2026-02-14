@@ -7,6 +7,7 @@ const collection = db.collection<GuestUser>("guest-users");
 export interface GuestUser {
     _id?: ObjectId;
     displayName: string;
+    createdOn: Date;
 }
 
 /**
@@ -121,7 +122,10 @@ export async function findGuestUserById(id: ObjectId) {
             });
         }
 
-        return ok({ displayName: result.displayName });
+        return ok({
+            displayName: result.displayName,
+            createdOn: result.createdOn,
+        });
     } catch (error) {
         if (error instanceof Error) {
             return err({
