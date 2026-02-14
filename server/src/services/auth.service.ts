@@ -379,6 +379,7 @@ async function getUserData_user(userId: string) {
     }
 
     const userData = getGuestUserResult.data;
+
     return ok({
         displayName: userData.displayName,
         createdOn: userData.createdOn,
@@ -419,6 +420,7 @@ async function getUserData_guest(userId: string) {
     }
 
     const userData = getUserResult.data;
+
     return ok({
         displayName: userData.displayName,
         createdOn: userData.createdOn,

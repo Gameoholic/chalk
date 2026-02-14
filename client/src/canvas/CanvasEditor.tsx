@@ -292,6 +292,7 @@ function CanvasEditor({
     const handleResetBoard = async () => {
         try {
             await resetBoard(currentBoard.id);
+            currentBoard.objects = []; // todo this doesnt work
         } catch (err) {
             throw new Error((err as Error)?.message);
         }

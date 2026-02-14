@@ -70,13 +70,15 @@ export default function ManageThisBoardModal({
             setIsSaving(true);
             setResetError(null);
 
+            // todo: check first if objects are being committed / waiting to be commited
+            // importat!!!!!!!!!!!
+
             console.log("Resetting board.");
             await onReset();
+            setIsSaving(false);
         } catch (err) {
             console.error("Failed to reset board: " + (err as Error)?.message);
             setResetError("Failed to reset board: " + (err as Error)?.message);
-        } finally {
-            setIsSaving(false);
         }
     };
 
