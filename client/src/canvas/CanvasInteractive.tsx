@@ -53,6 +53,13 @@ function CanvasInteractive({
         new Map(initialObjects.map((object) => [object.id, object]))
     );
 
+    // Handle when initialObjects change for whatever reason (for example, during a board reset)
+    useEffect(() => {
+        setObjects(
+            new Map(initialObjects.map((object) => [object.id, object]))
+        );
+    }, [initialObjects]);
+
     // Immediately call onChange functions for initial value
     useEffect(() => {
         onObjectAmountChange(objects.size);

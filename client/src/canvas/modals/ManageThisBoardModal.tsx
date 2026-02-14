@@ -22,15 +22,14 @@ export default function ManageThisBoardModal({
     const [isSaving, setIsSaving] = useState(false);
     const [nameError, setNameError] = useState<string | null>(null);
     const [resetError, setResetError] = useState<string | null>(null);
+    const [confirmingReset, setConfirmingReset] = useState(false);
 
-    // Keep draftName and displayName in sync with prop when it changes
     useEffect(() => {
         const trimmed = name.slice(0, MAX_NAME_LENGTH);
         setDraftName(trimmed);
         setDisplayName(trimmed);
     }, [name]);
 
-    // Close modal on ESC
     useEffect(() => {
         const onEsc = (e: KeyboardEvent) => {
             if (e.key === "Escape") onClose();
@@ -53,33 +52,30 @@ export default function ManageThisBoardModal({
             console.log("Renaming board.");
             await onRename(trimmed);
 
-            // Immediately update displayed name
             setDisplayName(trimmed);
-
             setIsEditing(false);
         } catch (err) {
             console.error("Failed to rename board: " + (err as Error)?.message);
             setNameError("Failed to rename board: " + (err as Error)?.message);
-        } finally {
-            setIsSaving(false);
         }
+
+        setIsSaving(false);
     };
 
-    const handleReset = async () => {
+    const handleResetConfirmed = async () => {
         try {
             setIsSaving(true);
             setResetError(null);
 
-            // todo: check first if objects are being committed / waiting to be commited
-            // importat!!!!!!!!!!!
-
             console.log("Resetting board.");
             await onReset();
-            setIsSaving(false);
+            setConfirmingReset(false);
         } catch (err) {
             console.error("Failed to reset board: " + (err as Error)?.message);
             setResetError("Failed to reset board: " + (err as Error)?.message);
         }
+
+        setIsSaving(false);
     };
 
     const formattedDate = new Date(createdOn).toLocaleDateString(undefined, {
@@ -106,6 +102,7 @@ export default function ManageThisBoardModal({
 
                 <h2 className="text-lg font-semibold">Manage Board</h2>
 
+                {/* Rename Section */}
                 <div className="space-y-2">
                     <label className="block text-xs font-semibold text-gray-400">
                         Board name
@@ -177,28 +174,58 @@ export default function ManageThisBoardModal({
                     )}
                 </div>
 
-                <div>
-                    <button
-                        onClick={handleReset}
-                        className="reset-button"
-                        disabled={isSaving}
-                        style={{
-                            backgroundColor: "#dc3545",
-                            color: "white",
-                            padding: "8px 16px",
-                            borderRadius: "4px",
-                            border: "none",
-                            cursor: "pointer",
-                        }}
-                    >
-                        Reset Board
-                    </button>
+                {/* Reset Section */}
+                <div className="space-y-3">
+                    {!confirmingReset ? (
+                        <button
+                            onClick={() => setConfirmingReset(true)}
+                            disabled={isSaving}
+                            className="w-full rounded-lg bg-red-600 py-2 text-sm font-medium hover:bg-red-700 disabled:opacity-60"
+                        >
+                            Reset Board
+                        </button>
+                    ) : (
+                        <div className="space-y-3 rounded-lg border border-red-500/40 bg-red-500/10 p-4">
+                            <p className="text-sm text-red-300">
+                                Are you sure? This action cannot be undone.
+                            </p>
+
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={handleResetConfirmed}
+                                    disabled={isSaving}
+                                    className="flex-1 rounded-md bg-red-600 py-2 text-sm font-medium hover:bg-red-700 disabled:opacity-60"
+                                >
+                                    {isSaving ? (
+                                        <Loader2
+                                            size={16}
+                                            className="mx-auto animate-spin"
+                                        />
+                                    ) : (
+                                        "Yes, Reset"
+                                    )}
+                                </button>
+
+                                <button
+                                    onClick={() => setConfirmingReset(false)}
+                                    disabled={isSaving}
+                                    className="flex-1 rounded-md bg-neutral-700 py-2 text-sm hover:bg-neutral-600 disabled:opacity-60"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </div>
+                    )}
 
                     {resetError && (
                         <div className="text-sm text-red-400">{resetError}</div>
                     )}
                 </div>
 
+                {/* Separator */}
+                <div className="border-t border-neutral-800" />
+
+                {/* Created Section */}
                 <div className="space-y-1">
                     <label className="block text-xs font-semibold text-gray-400">
                         Created

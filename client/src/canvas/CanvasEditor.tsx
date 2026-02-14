@@ -31,6 +31,7 @@ interface CanvasEditorProps {
     theme: "light" | "dark";
     setTheme: React.Dispatch<React.SetStateAction<"light" | "dark">>;
     openMyBoards: () => void;
+    onBoardReset: () => void;
 }
 
 // Handles saving and uploading data, as well as tool selection and all overlays
@@ -41,6 +42,7 @@ function CanvasEditor({
     theme,
     setTheme,
     openMyBoards,
+    onBoardReset,
 }: CanvasEditorProps) {
     // Settings & state data
     const [tool, setTool] = useState<Tool>("none");
@@ -290,12 +292,21 @@ function CanvasEditor({
     };
 
     const handleResetBoard = async () => {
-        try {
-            await resetBoard(currentBoard.id);
-            currentBoard.objects = []; // todo this doesnt work
-        } catch (err) {
-            throw new Error((err as Error)?.message);
+        if (
+            objectsBeingSavedOnDatabase.current.length !== 0 ||
+            objectsBeingUpdatedButNotReadyForSaving.current.size !== 0 ||
+            objectsToSaveOnDatabase.current.size !== 0
+        ) {
+            throw new Error(
+                "Can't reset board while objects are pending save."
+            );
         }
+        await resetBoard(currentBoard.id);
+        onBoardReset();
+        setSaveObjectsError({ error: null });
+        objectsBeingSavedOnDatabase.current = [];
+        objectsBeingUpdatedButNotReadyForSaving.current.clear();
+        objectsToSaveOnDatabase.current.clear();
     };
 
     // Prevent refreshing or leaving page if objects are currently being saved / awaiting save

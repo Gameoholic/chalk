@@ -60,6 +60,25 @@ export default function CanvasLoader({ theme, setTheme }: CanvasLoaderProps) {
         return <AuthError />;
     }
 
+    function onBoardReset() {
+        setData((prev) => {
+            if (!prev || !prev.success) return prev;
+
+            const updatedBoards = prev.boards.map((b) =>
+                b.id === prev.currentBoard.id ? { ...b, objects: [] } : b
+            );
+
+            return {
+                ...prev,
+                boards: updatedBoards,
+                currentBoard: {
+                    ...prev.currentBoard,
+                    objects: [],
+                },
+            };
+        });
+    }
+
     return (
         <div className="relative h-screen w-screen overflow-hidden">
             <div
@@ -76,6 +95,7 @@ export default function CanvasLoader({ theme, setTheme }: CanvasLoaderProps) {
                         setMyBoardsKey((k) => k + 1); // force my boards remount
                         setShowMyBoards(true);
                     }}
+                    onBoardReset={onBoardReset}
                 />
             </div>
             <div className="absolute inset-0 z-5">
