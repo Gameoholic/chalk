@@ -23,15 +23,18 @@ interface MyBoardsProps {
     onBoardFinishZoomIn: (boardData: BoardData) => void;
 }
 
-// boards - all board data
-// showBoard - signals that the zoom in animation's finished and we need to switch to a board in the canvas editor
 export default function MyBoards({
     boards,
     initialBoardId,
-    onBoardFinishZoomIn: showBoard,
+    onBoardFinishZoomIn,
 }: MyBoardsProps) {
-    // Selected means we're zooming in on it
+    // Selected means we're zoomg in on it
     const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
+
+    // The board that we're hovering on now, or were last hovering on in case we're now not hovering on any board rn
+    const [lastHoveredBoardId, setLastHoveredBoardId] = useState<string | null>(
+        null
+    );
 
     // We store the transform state for the grid
     const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 });
@@ -113,9 +116,8 @@ export default function MyBoards({
             scale: scale,
         });
         setSelectedBoardId(board.id);
+        setLastHoveredBoardId(board.id);
     };
-
-    const REACHED_MAX_BOARDS_IN_PAGE = boards.length == 9;
 
     return (
         <div className="fixed inset-0 flex flex-col items-center overflow-hidden bg-amber-400">
@@ -150,7 +152,7 @@ export default function MyBoards({
                             "Finished zooming IN to board:",
                             selectedBoardId
                         );
-                        showBoard(board);
+                        onBoardFinishZoomIn(board);
                     } else {
                         console.log("Finished zooming OUT to grid view");
                     }
@@ -164,7 +166,9 @@ export default function MyBoards({
                         windowAspect={windowAspect}
                         windowSize={windowSize}
                         isSelected={boards[i]?.id === selectedBoardId}
+                        isLastHovered={boards[i]?.id === lastHoveredBoardId}
                         onOpen={handleBoardClick}
+                        onHover={(id) => setLastHoveredBoardId(id)}
                     />
                 ))}
             </motion.div>
@@ -178,12 +182,16 @@ function BoardSlot({
     windowAspect,
     windowSize,
     isSelected,
+    isLastHovered,
+    onHover,
 }: {
     boardData?: BoardData;
     windowAspect: number;
     windowSize: Size;
     isSelected: boolean;
+    isLastHovered: boolean;
     onOpen: (board: BoardData, rect: Rect) => void;
+    onHover: (id: string | null) => void;
 }) {
     if (!boardData) return <EmptyBoard windowAspect={windowAspect} />;
 
@@ -193,7 +201,9 @@ function BoardSlot({
             windowAspect={windowAspect}
             windowSize={windowSize}
             isSelected={isSelected}
+            isLastHovered={isLastHovered}
             onOpen={onOpen}
+            onHover={onHover}
         />
     );
 }
@@ -204,12 +214,16 @@ function Board({
     windowAspect,
     windowSize,
     isSelected,
+    isLastHovered,
+    onHover,
 }: {
     boardData: BoardData;
     windowAspect: number;
     windowSize: Size;
     isSelected: boolean;
+    isLastHovered: boolean;
     onOpen: (board: BoardData, rect: Rect) => void;
+    onHover: (id: string | null) => void;
 }) {
     const ref = useRef<HTMLDivElement>(null);
     const [slotSize, setSlotSize] = useState<Vec2>({ x: 300, y: 300 });
@@ -224,20 +238,23 @@ function Board({
     const scaleX = slotSize.x / windowSize.width;
     const scaleY = slotSize.y / windowSize.height;
 
+    const zIndex = isSelected || isLastHovered ? 100 : undefined;
+
     return (
         <motion.div
             // 1. Hover is managed by the STABLE wrapper.
             // This prevents the scale-up from re-triggering mouse events.
             whileHover="hovered"
             initial="initial"
+            onHoverStart={() => onHover(boardData.id)}
             ref={(el) => {
                 observe(el);
                 if (el) (ref as any).current = el;
             }}
             style={{
                 aspectRatio: windowAspect,
-                // We use a relative z-index to ensure the hovered board is ALWAYS on top
-                zIndex: isSelected ? 100 : undefined,
+                // We use a relative z-index to ensure the selected board is ALWAYS on top
+                zIndex: zIndex,
             }}
             className="relative w-full"
             onClick={(e) => {
