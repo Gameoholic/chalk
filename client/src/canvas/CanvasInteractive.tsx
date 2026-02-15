@@ -360,8 +360,10 @@ function handleMouseEvents(
     };
 
     const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
+        if (currentInteraction.current?.type === "drawing") {
+            commitObjects();
+        }
         currentInteraction.current = null;
-        commitObjects();
     };
 
     // // Camera zoom
