@@ -1,5 +1,5 @@
 import Toolbox from "./Toolbox";
-import { RefObject, useEffect, useRef, useState } from "react";
+import { RefObject, useContext, useEffect, useRef, useState } from "react";
 import { Camera, Tool, Vec2, WorldObject } from "../types/canvas";
 import {
     Menu,
@@ -23,11 +23,9 @@ import LoginModal from "./modals/LogInModal";
 import { createUser } from "../api/users";
 import CanvasInteractive from "./CanvasInteractive";
 import { motion } from "motion/react";
+import { ChalkContext } from "../types/ChalkContext";
 
 interface CanvasEditorProps {
-    userData: UserData;
-    boards: BoardData[];
-    currentBoard: BoardData;
     theme: "light" | "dark";
     setTheme: React.Dispatch<React.SetStateAction<"light" | "dark">>;
     openMyBoards: () => void;
@@ -36,14 +34,13 @@ interface CanvasEditorProps {
 
 // Handles saving and uploading data, as well as tool selection and all overlays
 function CanvasEditor({
-    userData,
-    boards,
-    currentBoard,
     theme,
     setTheme,
     openMyBoards,
     onBoardReset,
 }: CanvasEditorProps) {
+    const chalkContext = useContext(ChalkContext);
+
     // Settings & state data
     const [tool, setTool] = useState<Tool>("none");
     const [color, setColor] = useState("#000000FF");
@@ -190,7 +187,7 @@ function CanvasEditor({
 
         try {
             await updateBoardObjects(
-                currentBoard.id,
+                chalkContext.data.currentBoardId,
                 objectsBeingSavedOnDatabase.current
             );
         } catch (err) {
@@ -283,30 +280,30 @@ function CanvasEditor({
     }, [saveObjectsError]);
 
     const handleRenameBoard = async (newName: string) => {
-        try {
-            await updateBoardName(currentBoard.id, newName);
-            currentBoard.name = newName;
-        } catch (err) {
-            throw new Error((err as Error)?.message);
-        }
+        // try {
+        //     await updateBoardName(chalkContext.data.currentBoardId, newName);
+        //     currentBoard.name = newName;
+        // } catch (err) {
+        //     throw new Error((err as Error)?.message);
+        // }
     };
 
     const handleResetBoard = async () => {
-        if (
-            objectsBeingSavedOnDatabase.current.length !== 0 ||
-            objectsBeingUpdatedButNotReadyForSaving.current.size !== 0 ||
-            objectsToSaveOnDatabase.current.size !== 0
-        ) {
-            throw new Error(
-                "Can't reset board while objects are pending save."
-            );
-        }
-        await resetBoard(currentBoard.id);
-        onBoardReset();
-        setSaveObjectsError({ error: null });
-        objectsBeingSavedOnDatabase.current = [];
-        objectsBeingUpdatedButNotReadyForSaving.current.clear();
-        objectsToSaveOnDatabase.current.clear();
+        // if (
+        //     objectsBeingSavedOnDatabase.current.length !== 0 ||
+        //     objectsBeingUpdatedButNotReadyForSaving.current.size !== 0 ||
+        //     objectsToSaveOnDatabase.current.size !== 0
+        // ) {
+        //     throw new Error(
+        //         "Can't reset board while objects are pending save."
+        //     );
+        // }
+        // await resetBoard(currentBoard.id);
+        // onBoardReset();
+        // setSaveObjectsError({ error: null });
+        // objectsBeingSavedOnDatabase.current = [];
+        // objectsBeingUpdatedButNotReadyForSaving.current.clear();
+        // objectsToSaveOnDatabase.current.clear();
     };
 
     // Prevent refreshing or leaving page if objects are currently being saved / awaiting save
@@ -342,8 +339,8 @@ function CanvasEditor({
             {/* Canvas */}
             <div className="h-full w-full">
                 <CanvasInteractive
-                    key={currentBoard?.id}
-                    initialObjects={currentBoard.objects}
+                    key={chalkContext.data.currentBoardId}
+                    initialObjects={chalkContext.getCurrentBoard().objects}
                     initialCameraPosition={{ x: 0, y: 0 }}
                     initialCameraZoom={1}
                     selectedTool={tool}
@@ -438,18 +435,19 @@ function CanvasEditor({
                         }`}
                         style={{ backgroundColor: "var(--card)" }}
                     >
-                        {userData.role === "guest" && (
+                        {chalkContext.data.userData.role === "guest" && (
                             <MenuItem
                                 icon={<User size={18} />}
                                 label="Login"
                                 onClick={() => setAuthView("login")}
                             />
                         )}
-                        {userData.role === "user" && (
+                        {chalkContext.data.userData.role === "user" && (
                             <MenuItem
                                 icon={<User size={18} />}
                                 label={
-                                    "Manage account: " + userData.displayName
+                                    "Manage account: " +
+                                    chalkContext.data.userData.displayName
                                 }
                                 onClick={() => setAuthView("manage-user")}
                             />
@@ -458,7 +456,9 @@ function CanvasEditor({
                         <MenuItem
                             icon={<LayoutDashboard size={18} />}
                             label="My Boards"
-                            disabled={userData.role === "guest"}
+                            disabled={
+                                chalkContext.data.userData.role === "guest"
+                            }
                             disabledTooltip="You must be logged in to access additional boards."
                             onClick={() => openMyBoards()}
                         />
@@ -530,8 +530,8 @@ function CanvasEditor({
             {/* Manage Board Modal */}
             {showManageThisBoardModal && (
                 <ManageThisBoardModal
-                    name={currentBoard.name}
-                    createdOn={currentBoard.createdOn}
+                    name={chalkContext.getCurrentBoard().name}
+                    createdOn={chalkContext.getCurrentBoard().createdOn}
                     onRename={handleRenameBoard}
                     onReset={handleResetBoard}
                     onClose={() => setShowManageThisBoardModal(false)}

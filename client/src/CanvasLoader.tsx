@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import CanvasEditor from "./canvas/CanvasEditor.tsx";
 import { BoardData, UserData, ObjectlessBoardData } from "./types/data.ts";
 import { BoardsAPI, AuthAPI, GuestUsersAPI } from "./api";
 import MyBoards from "./my-boards/MyBoards";
+import { ChalkContext, ChalkContextProvider } from "./types/ChalkContext.tsx";
 
 type LoadDataResult =
     | {
@@ -22,13 +23,7 @@ export default function CanvasLoader({ theme, setTheme }: CanvasLoaderProps) {
     const [data, setData] = useState<LoadDataResult | null>(null);
     const [loading, setLoading] = useState(true);
 
-    // My boards
-    const [showMyBoards, setShowMyBoards] = useState(false);
-    const [myBoardsKey, setMyBoardsKey] = useState(0);
-    const [canvasEditorKey, setCanvasEditorKey] = useState(0);
-
-    // Create a ref to hold the running promise
-    // This persists across the Strict Mode "double-mount"
+    // Fetch data only once despite react double mounting
     const dataFetchPromise = useRef<Promise<LoadDataResult> | null>(null);
 
     useEffect(() => {
@@ -60,23 +55,44 @@ export default function CanvasLoader({ theme, setTheme }: CanvasLoaderProps) {
         return <AuthError />;
     }
 
+    return (
+        <ChalkContextProvider
+            initialData={{
+                boards: data.boards,
+                currentBoardId: data.currentBoard.id,
+                userData: data.userData,
+            }}
+        >
+            <AfterSuccessfulAuth theme={theme} setTheme={setTheme} />
+        </ChalkContextProvider>
+    );
+}
+
+// todo: convert theme to context instead of passing as props everywhere.
+
+function AfterSuccessfulAuth({ theme, setTheme }: CanvasLoaderProps) {
+    const chalkContext = useContext(ChalkContext);
+
+    // My boards <--> Canvas transition
+    const [showMyBoards, setShowMyBoards] = useState(false);
+    const [myBoardsKey, setMyBoardsKey] = useState(0);
+    const [canvasEditorKey, setCanvasEditorKey] = useState(0);
+
     function onBoardReset() {
-        setData((prev) => {
-            if (!prev || !prev.success) return prev;
-
-            const updatedBoards = prev.boards.map((b) =>
-                b.id === prev.currentBoard.id ? { ...b, objects: [] } : b
-            );
-
-            return {
-                ...prev,
-                boards: updatedBoards,
-                currentBoard: {
-                    ...prev.currentBoard,
-                    objects: [],
-                },
-            };
-        });
+        // setData((prev) => {
+        //     if (!prev || !prev.success) return prev;
+        //     const updatedBoards = prev.boards.map((b) =>
+        //         b.id === prev.currentBoard.id ? { ...b, objects: [] } : b
+        //     );
+        //     return {
+        //         ...prev,
+        //         boards: updatedBoards,
+        //         currentBoard: {
+        //             ...prev.currentBoard,
+        //             objects: [],
+        //         },
+        //     };
+        // });
     }
 
     return (
@@ -86,11 +102,8 @@ export default function CanvasLoader({ theme, setTheme }: CanvasLoaderProps) {
             >
                 <CanvasEditor
                     key={canvasEditorKey}
-                    boards={data.boards}
-                    currentBoard={data.currentBoard}
                     theme={theme}
                     setTheme={setTheme}
-                    userData={data.userData}
                     openMyBoards={() => {
                         setMyBoardsKey((k) => k + 1); // force my boards remount
                         setShowMyBoards(true);
@@ -100,18 +113,14 @@ export default function CanvasLoader({ theme, setTheme }: CanvasLoaderProps) {
             </div>
             <div className="absolute inset-0 z-5">
                 <MyBoards
-                    initialBoardId={data.currentBoard.id}
+                    initialBoardId={chalkContext.data.currentBoardId}
                     key={myBoardsKey}
-                    boards={data.boards}
-                    onBoardFinishZoomIn={(newBoardToShow: BoardData) => {
+                    onBoardFinishZoomIn={(boardIdToShow: string) => {
                         setCanvasEditorKey((k) => k + 1); // force my boards remount
-                        setData((prev) => {
-                            if (!prev || !prev.success) return prev;
-                            return {
-                                ...prev,
-                                currentBoard: newBoardToShow,
-                            };
-                        });
+                        chalkContext.changeCurrentBoard(boardIdToShow);
+                        console.log(
+                            "changed current board to : " + boardIdToShow
+                        );
                         setShowMyBoards(false);
                     }}
                 />

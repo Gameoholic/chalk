@@ -1,21 +1,40 @@
 import { createContext, useState } from "react";
-import { BoardData, UserData } from "./data";
+import { BoardData, ChalkData, UserData } from "./data";
 import { WorldObject } from "./canvas";
 
-interface ChalkData {
-    userData: UserData;
-    boards: BoardData[];
-    currentBoardId: string;
+interface ChalkContextType {
+    data: ChalkData;
+    updateData: (data: ChalkData) => void;
+    updateCurrentBoard: (boardData: BoardData) => void;
+    updateCurrentBoard_Objects: (objects: WorldObject[]) => void;
+    updateUserData: (userData: UserData) => void;
+    updateCurrentBoardId: (currentBoardId: string) => void;
+    changeCurrentBoard: (boardId: string) => void;
+    getCurrentBoard: () => BoardData;
 }
 
-export const ChalkContext = createContext<ChalkData>(null!);
+export const ChalkContext = createContext<ChalkContextType>(null!);
 
 export function ChalkContextProvider({
     children,
+    initialData,
 }: {
     children: React.ReactNode;
+    initialData: ChalkData;
 }) {
-    const [data, setData] = useState<ChalkData>(null!);
+    const [data, setData] = useState<ChalkData>(initialData);
+
+    function updateData(data: ChalkData) {
+        setData(data);
+    }
+
+    function changeCurrentBoard(boardId: string) {
+        setData((prev) => ({
+            userData: prev.userData,
+            boards: prev.boards,
+            currentBoardId: boardId,
+        }));
+    }
 
     function updateCurrentBoard(boardData: BoardData) {
         setData((prev) => ({
@@ -53,7 +72,30 @@ export function ChalkContextProvider({
         }));
     }
 
+    function getCurrentBoard() {
+        const currentBoard = data.boards.find(
+            (x) => x.id === data.currentBoardId
+        );
+        if (currentBoard === undefined) {
+            throw new Error("Couldn't get current board in context!");
+        }
+        return currentBoard;
+    }
+
     return (
-        <ChalkContext.Provider value={data}>{children}</ChalkContext.Provider>
+        <ChalkContext.Provider
+            value={{
+                data,
+                updateData,
+                updateCurrentBoard,
+                updateCurrentBoard_Objects,
+                updateUserData,
+                updateCurrentBoardId,
+                changeCurrentBoard,
+                getCurrentBoard,
+            }}
+        >
+            {children}
+        </ChalkContext.Provider>
     );
 }

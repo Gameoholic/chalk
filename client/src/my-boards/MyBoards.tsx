@@ -2,9 +2,16 @@ import { Plus } from "lucide-react";
 import { BoardData } from "../types/data";
 import CanvasWorld from "../canvas/CanvasWorld";
 import useDimensions from "react-cool-dimensions";
-import { useState, useRef, useEffect, useLayoutEffect } from "react";
+import {
+    useState,
+    useRef,
+    useEffect,
+    useLayoutEffect,
+    useContext,
+} from "react";
 import { motion } from "motion/react";
 import { Vec2 } from "../types/canvas";
+import { ChalkContext, ChalkContextProvider } from "../types/ChalkContext";
 
 type Rect = {
     x: number;
@@ -18,16 +25,16 @@ type Size = { width: number; height: number };
 const BOARD_SLOT_ROUNDED = 6; // in pixels
 
 interface MyBoardsProps {
-    boards: BoardData[];
     initialBoardId: string;
-    onBoardFinishZoomIn: (boardData: BoardData) => void;
+    onBoardFinishZoomIn: (boardIdToShow: string) => void;
 }
 
 export default function MyBoards({
-    boards,
     initialBoardId,
     onBoardFinishZoomIn,
 }: MyBoardsProps) {
+    const chalkContext = useContext(ChalkContext);
+
     // Selected means we're zooming in on it
     const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
 
@@ -175,8 +182,8 @@ export default function MyBoards({
     };
 
     return (
-        // This motion.div fixes the flicker on mount zoom out by fading in
-        // only when initial transform is calculated
+        // {/* // This motion.div fixes the flicker on mount zoom out by fading in
+        // // only when initial transform is calculated */}
         <motion.div
             className="fixed inset-0 flex flex-col items-center overflow-hidden bg-amber-400"
             initial={{ opacity: 0 }}
@@ -246,11 +253,11 @@ export default function MyBoards({
                         setHasZoomedOut(true);
                     } else if (selectedBoardId) {
                         // Zoom in animation completed
-                        const selectedBoard = boards.find(
+                        const selectedBoard = chalkContext.data.boards.find(
                             (b) => b.id === selectedBoardId
                         );
                         if (selectedBoard) {
-                            onBoardFinishZoomIn(selectedBoard);
+                            onBoardFinishZoomIn(selectedBoard.id);
                         }
                     }
                 }}
@@ -265,12 +272,19 @@ export default function MyBoards({
                 {Array.from({ length: 8 }).map((_, i) => (
                     <BoardSlot
                         key={i}
-                        boardData={boards[i]}
+                        boardData={chalkContext.data.boards[i]}
                         windowAspect={windowAspect}
                         windowSize={windowSize}
-                        isSelected={boards[i]?.id === selectedBoardId}
-                        isLastHovered={boards[i]?.id === lastHoveredBoardId}
-                        isInitialBoard={boards[i]?.id === initialBoardId}
+                        isSelected={
+                            chalkContext.data.boards[i]?.id === selectedBoardId
+                        }
+                        isLastHovered={
+                            chalkContext.data.boards[i]?.id ===
+                            lastHoveredBoardId
+                        }
+                        isInitialBoard={
+                            chalkContext.data.boards[i]?.id === initialBoardId
+                        }
                         hasZoomedOut={hasZoomedOut}
                         onOpen={handleBoardClick}
                         onHover={(id) => setLastHoveredBoardId(id)}

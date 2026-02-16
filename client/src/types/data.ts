@@ -4,6 +4,12 @@ export type Result<T> =
     | { success: true; data: T }
     | { success: false; error: string };
 
+export interface ChalkData {
+    userData: UserData;
+    boards: BoardData[];
+    currentBoardId: string;
+}
+
 export interface UserData {
     displayName: string;
     role: string;
