@@ -39,9 +39,6 @@ export default function MyBoards({
     // Track if the initial zoom-out animation has completed
     const [hasZoomedOut, setHasZoomedOut] = useState(false);
 
-    // Whether myboards is zooming in, or zooming out
-    const [isUserZoomIn, setIsUserZoomIn] = useState(false);
-
     // Store the initial transform (calculated once, used for Motion's initial prop)
     const [initialTransform, setInitialTransform] = useState<{
         x: number;
@@ -226,11 +223,7 @@ export default function MyBoards({
                             }
                 }
                 transition={{
-                    duration: shouldAnimateOut
-                        ? 1.2
-                        : selectedBoardId === null
-                          ? 0 // For zooming out duration should be zero
-                          : 0.8,
+                    duration: shouldAnimateOut ? 1.2 : 0,
                     ease: shouldAnimateOut ? [0.52, 0.22, 0, 1] : undefined,
                 }}
                 onAnimationComplete={(definition) => {
