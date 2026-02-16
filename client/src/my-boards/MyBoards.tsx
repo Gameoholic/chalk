@@ -11,7 +11,7 @@ import {
 } from "react";
 import { motion } from "motion/react";
 import { Vec2 } from "../types/canvas";
-import { ChalkContext, ChalkContextProvider } from "../types/ChalkContext";
+import { SessionContext } from "../types/SessionContext";
 
 type Rect = {
     x: number;
@@ -33,7 +33,7 @@ export default function MyBoards({
     initialBoardId,
     onBoardFinishZoomIn,
 }: MyBoardsProps) {
-    const chalkContext = useContext(ChalkContext);
+    const sessionContext = useContext(SessionContext);
 
     // Selected means we're zooming in on it
     const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
@@ -253,7 +253,7 @@ export default function MyBoards({
                         setHasZoomedOut(true);
                     } else if (selectedBoardId) {
                         // Zoom in animation completed
-                        const selectedBoard = chalkContext.data.boards.find(
+                        const selectedBoard = sessionContext.boards.find(
                             (b) => b.id === selectedBoardId
                         );
                         if (selectedBoard) {
@@ -272,18 +272,17 @@ export default function MyBoards({
                 {Array.from({ length: 8 }).map((_, i) => (
                     <BoardSlot
                         key={i}
-                        boardData={chalkContext.data.boards[i]}
+                        boardData={sessionContext.boards[i]}
                         windowAspect={windowAspect}
                         windowSize={windowSize}
                         isSelected={
-                            chalkContext.data.boards[i]?.id === selectedBoardId
+                            sessionContext.boards[i]?.id === selectedBoardId
                         }
                         isLastHovered={
-                            chalkContext.data.boards[i]?.id ===
-                            lastHoveredBoardId
+                            sessionContext.boards[i]?.id === lastHoveredBoardId
                         }
                         isInitialBoard={
-                            chalkContext.data.boards[i]?.id === initialBoardId
+                            sessionContext.boards[i]?.id === initialBoardId
                         }
                         hasZoomedOut={hasZoomedOut}
                         onOpen={handleBoardClick}

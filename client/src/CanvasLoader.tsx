@@ -3,7 +3,14 @@ import CanvasEditor from "./canvas/CanvasEditor.tsx";
 import { BoardData, UserData, ObjectlessBoardData } from "./types/data.ts";
 import { BoardsAPI, AuthAPI, GuestUsersAPI } from "./api";
 import MyBoards from "./my-boards/MyBoards";
-import { ChalkContext, ChalkContextProvider } from "./types/ChalkContext.tsx";
+import {
+    SessionContext,
+    SessionContextProvider,
+} from "./types/SessionContext.tsx";
+import {
+    CanvasContext,
+    CanvasContextProvider,
+} from "./types/CanvasContext.tsx";
 
 type LoadDataResult =
     | {
@@ -56,27 +63,31 @@ export default function CanvasLoader({ theme, setTheme }: CanvasLoaderProps) {
     }
 
     return (
-        <ChalkContextProvider
-            initialData={{
-                boards: data.boards,
-                currentBoardId: data.currentBoard.id,
-                userData: data.userData,
-            }}
+        <SessionContextProvider
+            defaultUserData={data.userData}
+            defaultBoards={data.boards}
         >
-            <AfterSuccessfulAuth theme={theme} setTheme={setTheme} />
-        </ChalkContextProvider>
+            <AfterSuccessfulAuth
+                theme={theme}
+                setTheme={setTheme}
+                initialBoardId={data.currentBoard.id}
+            />
+        </SessionContextProvider>
     );
 }
 
-// todo: convert theme to context instead of passing as props everywhere.
-
-function AfterSuccessfulAuth({ theme, setTheme }: CanvasLoaderProps) {
-    const chalkContext = useContext(ChalkContext);
+function AfterSuccessfulAuth({
+    theme,
+    setTheme,
+    initialBoardId,
+}: CanvasLoaderProps & { initialBoardId: string }) {
+    const sessionContext = useContext(SessionContext);
 
     // My boards <--> Canvas transition
     const [showMyBoards, setShowMyBoards] = useState(false);
     const [myBoardsKey, setMyBoardsKey] = useState(0);
     const [canvasEditorKey, setCanvasEditorKey] = useState(0);
+    const [currentBoardId, setCurrentBoardId] = useState(initialBoardId); // Used to transfer board id from MyBoards to CanvasEditor (as MyBoard doesn't have access to CanvasContext)
 
     function onBoardReset() {
         // setData((prev) => {
@@ -100,32 +111,65 @@ function AfterSuccessfulAuth({ theme, setTheme }: CanvasLoaderProps) {
             <div
                 className={`absolute inset-0 z-${showMyBoards === false ? 100 : 1}`}
             >
-                <CanvasEditor
-                    key={canvasEditorKey}
-                    theme={theme}
-                    setTheme={setTheme}
-                    openMyBoards={() => {
-                        setMyBoardsKey((k) => k + 1); // force my boards remount
-                        setShowMyBoards(true);
-                    }}
-                    onBoardReset={onBoardReset}
-                />
+                <CanvasContextProvider initialBoardId={currentBoardId}>
+                    <CanvasEditorDiv
+                        canvasEditorKey={canvasEditorKey}
+                        currentBoardId={currentBoardId}
+                        theme={theme}
+                        setTheme={setTheme}
+                        onBoardReset={onBoardReset}
+                        setMyBoardsKey={setMyBoardsKey}
+                        setShowMyBoards={setShowMyBoards}
+                    />
+                </CanvasContextProvider>
             </div>
             <div className="absolute inset-0 z-5">
                 <MyBoards
-                    initialBoardId={chalkContext.data.currentBoardId}
+                    initialBoardId={currentBoardId}
                     key={myBoardsKey}
                     onBoardFinishZoomIn={(boardIdToShow: string) => {
                         setCanvasEditorKey((k) => k + 1); // force my boards remount
-                        chalkContext.changeCurrentBoard(boardIdToShow);
-                        console.log(
-                            "changed current board to : " + boardIdToShow
-                        );
+                        setCurrentBoardId(boardIdToShow);
+                        // chalkContext.changeCurrentBoard(boardIdToShow);
                         setShowMyBoards(false);
                     }}
                 />
             </div>
         </div>
+    );
+}
+
+function CanvasEditorDiv({
+    canvasEditorKey,
+    currentBoardId,
+    theme,
+    setTheme,
+    onBoardReset,
+    setMyBoardsKey,
+    setShowMyBoards,
+}: {
+    canvasEditorKey: number;
+    currentBoardId: string;
+    theme: "light" | "dark";
+    setTheme: React.Dispatch<React.SetStateAction<"light" | "dark">>;
+    onBoardReset: () => void;
+    setMyBoardsKey: React.Dispatch<React.SetStateAction<number>>;
+    setShowMyBoards: React.Dispatch<React.SetStateAction<boolean>>;
+}) {
+    const context = useContext(CanvasContext);
+    context.setBoardId(currentBoardId);
+
+    return (
+        <CanvasEditor
+            key={canvasEditorKey}
+            theme={theme}
+            setTheme={setTheme}
+            openMyBoards={() => {
+                setMyBoardsKey((k) => k + 1); // force my boards remount
+                setShowMyBoards(true);
+            }}
+            onBoardReset={onBoardReset}
+        />
     );
 }
 

@@ -23,7 +23,8 @@ import LoginModal from "./modals/LogInModal";
 import { createUser } from "../api/users";
 import CanvasInteractive from "./CanvasInteractive";
 import { motion } from "motion/react";
-import { ChalkContext } from "../types/ChalkContext";
+import { CanvasContext } from "../types/CanvasContext";
+import { SessionContext } from "../types/SessionContext";
 
 interface CanvasEditorProps {
     theme: "light" | "dark";
@@ -39,7 +40,8 @@ function CanvasEditor({
     openMyBoards,
     onBoardReset,
 }: CanvasEditorProps) {
-    const chalkContext = useContext(ChalkContext);
+    const canvasContext = useContext(CanvasContext);
+    const sessionContext = useContext(SessionContext);
 
     // Settings & state data
     const [tool, setTool] = useState<Tool>("none");
@@ -187,7 +189,7 @@ function CanvasEditor({
 
         try {
             await updateBoardObjects(
-                chalkContext.data.currentBoardId,
+                canvasContext.boardId,
                 objectsBeingSavedOnDatabase.current
             );
         } catch (err) {
@@ -339,8 +341,8 @@ function CanvasEditor({
             {/* Canvas */}
             <div className="h-full w-full">
                 <CanvasInteractive
-                    key={chalkContext.data.currentBoardId}
-                    initialObjects={chalkContext.getCurrentBoard().objects}
+                    key={canvasContext.boardId}
+                    initialObjects={canvasContext.getCurrentBoard().objects}
                     initialCameraPosition={{ x: 0, y: 0 }}
                     initialCameraZoom={1}
                     selectedTool={tool}
@@ -435,19 +437,19 @@ function CanvasEditor({
                         }`}
                         style={{ backgroundColor: "var(--card)" }}
                     >
-                        {chalkContext.data.userData.role === "guest" && (
+                        {sessionContext.userData.role === "guest" && (
                             <MenuItem
                                 icon={<User size={18} />}
                                 label="Login"
                                 onClick={() => setAuthView("login")}
                             />
                         )}
-                        {chalkContext.data.userData.role === "user" && (
+                        {sessionContext.userData.role === "user" && (
                             <MenuItem
                                 icon={<User size={18} />}
                                 label={
                                     "Manage account: " +
-                                    chalkContext.data.userData.displayName
+                                    sessionContext.userData.displayName
                                 }
                                 onClick={() => setAuthView("manage-user")}
                             />
@@ -456,9 +458,7 @@ function CanvasEditor({
                         <MenuItem
                             icon={<LayoutDashboard size={18} />}
                             label="My Boards"
-                            disabled={
-                                chalkContext.data.userData.role === "guest"
-                            }
+                            disabled={sessionContext.userData.role === "guest"}
                             disabledTooltip="You must be logged in to access additional boards."
                             onClick={() => openMyBoards()}
                         />
@@ -530,8 +530,8 @@ function CanvasEditor({
             {/* Manage Board Modal */}
             {showManageThisBoardModal && (
                 <ManageThisBoardModal
-                    name={chalkContext.getCurrentBoard().name}
-                    createdOn={chalkContext.getCurrentBoard().createdOn}
+                    name={canvasContext.getCurrentBoard().name}
+                    createdOn={canvasContext.getCurrentBoard().createdOn}
                     onRename={handleRenameBoard}
                     onReset={handleResetBoard}
                     onClose={() => setShowManageThisBoardModal(false)}
