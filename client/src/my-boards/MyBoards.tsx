@@ -175,7 +175,14 @@ export default function MyBoards({
     };
 
     return (
-        <div className="fixed inset-0 flex flex-col items-center overflow-hidden bg-amber-400">
+        // This motion.div fixes the flicker on mount zoom out by fading in
+        // only when initial transform is calculated
+        <motion.div
+            className="fixed inset-0 flex flex-col items-center overflow-hidden bg-amber-400"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: initialTransform !== null ? 1 : 0 }}
+            transition={{ duration: 0 }}
+        >
             {/* Boards page header - fades out when zoomed or during initial animation */}
             <motion.p
                 initial={{ opacity: 0, y: -50 }}
@@ -275,7 +282,7 @@ export default function MyBoards({
                     />
                 ))}
             </motion.div>
-        </div>
+        </motion.div>
     );
 }
 
