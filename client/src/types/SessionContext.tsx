@@ -4,8 +4,12 @@ import { WorldObject } from "./canvas";
 
 interface SessionContextType {
     userData: UserData;
+    /**
+     * Important: Boards here will only be updated right before loading MyBoards, and right before loading CanvasEditor. Will otherwise be out of date!
+     */
     boards: BoardData[];
     updateUserData: (userData: UserData) => void;
+    updateBoardById: (boardData: BoardData) => void;
 }
 
 export const SessionContext = createContext<SessionContextType>(null!);
@@ -29,23 +33,14 @@ export function SessionContextProvider({
     // setData(data);
     // }
 
-    // function changeCurrentBoard(boardId: string) {
-    //     setData((prev) => ({
-    //         userData: prev.userData,
-    //         boards: prev.boards,
-    //         currentBoardId: boardId,
-    //     }));
-    // }
-
-    // function updateCurrentBoard(boardData: BoardData) {
-    //     setData((prev) => ({
-    //         userData: prev.userData,
-    //         boards: prev.boards.map((board) =>
-    //             board.id === prev.currentBoardId ? boardData : board
-    //         ),
-    //         currentBoardId: prev.currentBoardId,
-    //     }));
-    // }
+    /**
+     * Will update an EXISTING board's data (excluding its id, which is used for querying it in the first place!)
+     */
+    function updateBoardById(boardData: BoardData) {
+        setBoards((prev) =>
+            prev.map((board) => (board.id === boardData.id ? boardData : board))
+        );
+    }
 
     // function updateCurrentBoard_Objects(objects: WorldObject[]) {
     //     setData((prev) => ({
@@ -79,6 +74,7 @@ export function SessionContextProvider({
                 userData,
                 boards,
                 updateUserData,
+                updateBoardById,
             }}
         >
             {children}

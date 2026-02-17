@@ -11,6 +11,7 @@ import {
     CanvasContext,
     CanvasContextProvider,
 } from "./types/CanvasContext.tsx";
+import { WorldObject } from "./types/canvas";
 
 type LoadDataResult =
     | {
@@ -71,6 +72,7 @@ export default function CanvasLoader({ theme, setTheme }: CanvasLoaderProps) {
                 theme={theme}
                 setTheme={setTheme}
                 initialBoardId={data.currentBoard.id}
+                initialBoardObjects={data.currentBoard.objects}
             />
         </SessionContextProvider>
     );
@@ -80,7 +82,11 @@ function AfterSuccessfulAuth({
     theme,
     setTheme,
     initialBoardId,
-}: CanvasLoaderProps & { initialBoardId: string }) {
+    initialBoardObjects,
+}: CanvasLoaderProps & {
+    initialBoardId: string;
+    initialBoardObjects: WorldObject[];
+}) {
     const sessionContext = useContext(SessionContext);
 
     // My boards <--> Canvas transition
@@ -111,7 +117,7 @@ function AfterSuccessfulAuth({
             <div
                 className={`absolute inset-0 z-${showMyBoards === false ? 100 : 1}`}
             >
-                <CanvasContextProvider initialBoardId={currentBoardId}>
+                <CanvasContextProvider defaultBoardId={currentBoardId}>
                     <CanvasEditorDiv
                         canvasEditorKey={canvasEditorKey}
                         currentBoardId={currentBoardId}
@@ -157,7 +163,7 @@ function CanvasEditorDiv({
     setShowMyBoards: React.Dispatch<React.SetStateAction<boolean>>;
 }) {
     const context = useContext(CanvasContext);
-    context.setBoardId(currentBoardId);
+    context.setCurrentBoardId(currentBoardId);
 
     return (
         <CanvasEditor

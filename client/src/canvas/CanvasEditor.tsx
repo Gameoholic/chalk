@@ -189,7 +189,7 @@ function CanvasEditor({
 
         try {
             await updateBoardObjects(
-                canvasContext.boardId,
+                canvasContext.currentBoardId,
                 objectsBeingSavedOnDatabase.current
             );
         } catch (err) {
@@ -228,6 +228,18 @@ function CanvasEditor({
         }
 
         console.log("Successfully saved the objects.");
+        canvasContext.updateCurrentBoard_Objects(
+            objectsBeingSavedOnDatabase.current
+        ); // todo this won't work
+        // todo stopped herer^^^^
+        // todo stopped herer^^^^
+        // todo stopped herer^^^^
+        // todo stopped herer^^^^
+        // todo stopped herer^^^^
+        // todo stopped herer^^^^
+        // todo stopped herer^^^^
+        // todo stopped herer^^^^
+
         setSaveObjectsError({ error: null });
         objectsBeingSavedOnDatabase.current = [];
 
@@ -341,7 +353,7 @@ function CanvasEditor({
             {/* Canvas */}
             <div className="h-full w-full">
                 <CanvasInteractive
-                    key={canvasContext.boardId}
+                    key={canvasContext.currentBoardId}
                     initialObjects={canvasContext.getCurrentBoard().objects}
                     initialCameraPosition={{ x: 0, y: 0 }}
                     initialCameraZoom={1}
