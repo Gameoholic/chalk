@@ -118,12 +118,6 @@ export default function MyBoards({
             const offsetX = -gridRect.left - relativeX * scale;
             const offsetY = -gridRect.top - relativeY * scale;
 
-            console.log("Initial zoom calculated:", {
-                offsetX,
-                offsetY,
-                scale,
-            });
-
             // Set the initial zoomed-in position
             setInitialTransform({
                 x: offsetX,
@@ -133,7 +127,6 @@ export default function MyBoards({
 
             // After a brief moment, start animating out
             setTimeout(() => {
-                console.log("Starting zoom out animation");
                 setShouldAnimateOut(true);
             }, 100);
         };
@@ -247,9 +240,8 @@ export default function MyBoards({
                           : 0.8,
                     ease: shouldAnimateOut ? [0.52, 0.22, 0, 1] : undefined,
                 }}
-                onAnimationComplete={(definition) => {
+                onAnimationComplete={() => {
                     if (shouldAnimateOut) {
-                        console.log("Zoom out animation completed");
                         setHasZoomedOut(true);
                     } else if (selectedBoardId) {
                         // Zoom in animation completed

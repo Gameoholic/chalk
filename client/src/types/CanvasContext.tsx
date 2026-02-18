@@ -67,21 +67,32 @@ export function CanvasContextProvider({
             throw new Error("Current board's data not found.");
         }
 
-        const savedObjectsMap = new Map(savedObjects.map((x) => [x.id, x]));
-        const existingIds = new Set(currentBoardData.objects.map((x) => x.id));
-
-        // Update existing objects in place (preserves order)
-        const updatedExisting = currentBoardData.objects.map(
-            (x) => savedObjectsMap.get(x.id) ?? x
+        const newObjectsMap = new Map(
+            currentBoardData.objects.map((x) => [x.id, x])
         );
+        savedObjects.forEach((x) => newObjectsMap.set(x.id, x));
 
-        // Append saved objects that are entirely new
-        const newObjects = savedObjects.filter((x) => !existingIds.has(x.id));
-
+        const newObjects = Array.from(newObjectsMap.values());
         sessionContext.updateBoardById({
             ...currentBoardData,
-            objects: [...updatedExisting, ...newObjects],
+            objects: newObjects,
         });
+
+        // const savedObjectsMap = new Map(savedObjects.map((x) => [x.id, x]));
+        // const existingIds = new Set(currentBoardData.objects.map((x) => x.id));
+
+        // // Update existing objects in place (preserves order)
+        // const updatedExisting = currentBoardData.objects.map(
+        //     (x) => savedObjectsMap.get(x.id) ?? x
+        // );
+
+        // // Append saved objects that are entirely new
+        // const newObjects = savedObjects.filter((x) => !existingIds.has(x.id));
+
+        // sessionContext.updateBoardById({
+        //     ...currentBoardData,
+        //     objects: [...updatedExisting, ...newObjects],
+        // });
     }
 
     // function updateCurrentBoard_Objects(objects: WorldObject[]) {

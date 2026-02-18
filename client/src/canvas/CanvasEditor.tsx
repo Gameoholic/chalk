@@ -29,11 +29,10 @@ import { ThemeContext } from "../types/ThemeContext";
 
 interface CanvasEditorProps {
     openMyBoards: () => void;
-    onBoardReset: () => void;
 }
 
 // Handles saving and uploading data, as well as tool selection and all overlays
-function CanvasEditor({ openMyBoards, onBoardReset }: CanvasEditorProps) {
+function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
     const themeContext = useContext(ThemeContext);
     const canvasContext = useContext(CanvasContext);
     const sessionContext = useContext(SessionContext);
@@ -117,7 +116,7 @@ function CanvasEditor({ openMyBoards, onBoardReset }: CanvasEditorProps) {
             const interval: number = window.setInterval(() => {
                 saveObjectsRequestOnCooldown.current = false;
                 // In case commit requests were sent during the delay, try to save now
-                requestSaveObjectsOnDatabase();
+                // requestSaveObjectsOnDatabase();  todo THIS IS BUGGED
             }, SAVE_REQUEST_COOLDOWN);
 
             return () => window.clearInterval(interval);
@@ -223,8 +222,14 @@ function CanvasEditor({ openMyBoards, onBoardReset }: CanvasEditorProps) {
         }
 
         console.log("Successfully saved the objects.");
+        console.log(
+            "a objects: " + canvasContext.getCurrentBoard().objects.length
+        );
         canvasContext.onCurrentBoardObjectsSaved(
             objectsBeingSavedOnDatabase.current
+        );
+        console.log(
+            "b objects: " + canvasContext.getCurrentBoard().objects.length
         );
 
         setSaveObjectsError({ error: null });
@@ -290,31 +295,28 @@ function CanvasEditor({ openMyBoards, onBoardReset }: CanvasEditorProps) {
     };
 
     const handleResetBoard = async () => {
-        // if (
-        //     objectsBeingSavedOnDatabase.current.length !== 0 ||
-        //     objectsBeingUpdatedButNotReadyForSaving.current.size !== 0 ||
-        //     objectsToSaveOnDatabase.current.size !== 0
-        // ) {
-        //     throw new Error(
-        //         "Can't reset board while objects are pending save."
-        //     );
-        // }
-        // await resetBoard(currentBoard.id);
-        // onBoardReset();
-        // setSaveObjectsError({ error: null });
-        // objectsBeingSavedOnDatabase.current = [];
-        // objectsBeingUpdatedButNotReadyForSaving.current.clear();
-        // objectsToSaveOnDatabase.current.clear();
+        if (
+            objectsBeingSavedOnDatabase.current.length !== 0 ||
+            objectsBeingUpdatedButNotReadyForSaving.current.size !== 0 ||
+            objectsToSaveOnDatabase.current.size !== 0
+        ) {
+            throw new Error(
+                "Can't reset board while objects are pending save."
+            );
+        }
+        await resetBoard(canvasContext.currentBoardId);
+
+        canvasContext.updateCurrentBoardObjects([]);
+        setSaveObjectsError({ error: null });
+        objectsBeingSavedOnDatabase.current = [];
+        objectsBeingUpdatedButNotReadyForSaving.current.clear();
+        objectsToSaveOnDatabase.current.clear();
     };
 
     // Prevent refreshing or leaving page if objects are currently being saved / awaiting save
     useEffect(() => {
         const preventLeaving = (e: any) => {
-            if (
-                objectsBeingSavedOnDatabase.current.length === 0 &&
-                objectsToSaveOnDatabase.current.size === 0 &&
-                objectsBeingUpdatedButNotReadyForSaving.current.size === 0
-            ) {
+            if (!hasPendingSaveOperations()) {
                 return;
             }
             e.preventDefault();
@@ -327,6 +329,14 @@ function CanvasEditor({ openMyBoards, onBoardReset }: CanvasEditorProps) {
             window.removeEventListener("beforeunload", preventLeaving);
         };
     }, []);
+
+    function hasPendingSaveOperations() {
+        return (
+            objectsBeingSavedOnDatabase.current.length !== 0 ||
+            objectsToSaveOnDatabase.current.size !== 0 ||
+            objectsBeingUpdatedButNotReadyForSaving.current.size !== 0
+        );
+    }
 
     // Used upon loading from my boards. Used for toolbox, burger menu, debug panel etc.
     const fadeInAnimation = {
@@ -459,7 +469,9 @@ function CanvasEditor({ openMyBoards, onBoardReset }: CanvasEditorProps) {
                             label="My Boards"
                             disabled={sessionContext.userData.role === "guest"}
                             disabledTooltip="You must be logged in to access additional boards."
-                            onClick={() => openMyBoards()}
+                            onClick={() => {
+                                if (!hasPendingSaveOperations()) openMyBoards();
+                            }}
                         />
 
                         <MenuItem

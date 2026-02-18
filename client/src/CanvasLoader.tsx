@@ -89,23 +89,6 @@ function AfterSuccessfulAuth({
     const [canvasEditorKey, setCanvasEditorKey] = useState(0);
     const [currentBoardId, setCurrentBoardId] = useState(initialBoardId); // Used to transfer board id from MyBoards to CanvasEditor (as MyBoard doesn't have access to CanvasContext)
 
-    function onBoardReset() {
-        // setData((prev) => {
-        //     if (!prev || !prev.success) return prev;
-        //     const updatedBoards = prev.boards.map((b) =>
-        //         b.id === prev.currentBoard.id ? { ...b, objects: [] } : b
-        //     );
-        //     return {
-        //         ...prev,
-        //         boards: updatedBoards,
-        //         currentBoard: {
-        //             ...prev.currentBoard,
-        //             objects: [],
-        //         },
-        //     };
-        // });
-    }
-
     return (
         <div className="relative h-screen w-screen overflow-hidden">
             <div
@@ -115,7 +98,6 @@ function AfterSuccessfulAuth({
                     <CanvasEditorDiv
                         canvasEditorKey={canvasEditorKey}
                         currentBoardId={currentBoardId}
-                        onBoardReset={onBoardReset}
                         setMyBoardsKey={setMyBoardsKey}
                         setShowMyBoards={setShowMyBoards}
                     />
@@ -140,13 +122,11 @@ function AfterSuccessfulAuth({
 function CanvasEditorDiv({
     canvasEditorKey,
     currentBoardId,
-    onBoardReset,
     setMyBoardsKey,
     setShowMyBoards,
 }: {
     canvasEditorKey: number;
     currentBoardId: string;
-    onBoardReset: () => void;
     setMyBoardsKey: React.Dispatch<React.SetStateAction<number>>;
     setShowMyBoards: React.Dispatch<React.SetStateAction<boolean>>;
 }) {
@@ -160,7 +140,6 @@ function CanvasEditorDiv({
                 setMyBoardsKey((k) => k + 1); // force my boards remount
                 setShowMyBoards(true);
             }}
-            onBoardReset={onBoardReset}
         />
     );
 }
