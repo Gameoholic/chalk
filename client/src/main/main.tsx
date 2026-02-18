@@ -2,27 +2,21 @@ import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./index.css";
 import App from "./App";
+import { ThemeContextProvider } from "../types/ThemeContext";
 
 const container = document.getElementById("root");
 if (!container) throw new Error("Root container not found");
 
 function Root() {
-    const [theme, setTheme] = useState<"light" | "dark">(() => {
-        // Get localStorage saved theme
-        const saved = localStorage.getItem("theme");
-        if (saved === "dark" || saved === "light") return saved;
-        // Default to light mode
-        return "light";
-    });
+    // Get localStorage saved theme
+    const saved = localStorage.getItem("theme");
+    const theme = saved === "dark" || saved === "light" ? saved : "light"; // Default to light mode
 
-    // Apply theme to <body> whenever it changes
-    useEffect(() => {
-        document.body.classList.remove("light", "dark");
-        document.body.classList.add(theme);
-        localStorage.setItem("theme", theme);
-    }, [theme]);
-
-    return <App theme={theme} setTheme={setTheme} />;
+    return (
+        <ThemeContextProvider defaultTheme={theme}>
+            <App />
+        </ThemeContextProvider>
+    );
 }
 
 const root = createRoot(container);

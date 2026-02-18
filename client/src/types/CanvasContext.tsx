@@ -9,7 +9,8 @@ interface CanvasContextType {
     setCurrentBoardId: React.Dispatch<React.SetStateAction<string>>;
     getCurrentBoard: () => BoardData;
     updateCurrentBoard: (boardData: BoardData) => void;
-    updateCurrentBoard_Objects: (objects: WorldObject[]) => void;
+    updateCurrentBoardObjects: (objects: WorldObject[]) => void;
+    onCurrentBoardObjectsSaved: (savedObjects: WorldObject[]) => void;
 }
 
 export const CanvasContext = createContext<CanvasContextType>(null!);
@@ -45,7 +46,7 @@ export function CanvasContextProvider({
         sessionContext.updateBoardById(boardData);
     }
 
-    function updateCurrentBoard_Objects(objects: WorldObject[]) {
+    function updateCurrentBoardObjects(objects: WorldObject[]) {
         const currentBoardData = sessionContext.boards.find(
             (x) => x.id === currentBoardId
         );
@@ -56,6 +57,31 @@ export function CanvasContextProvider({
         currentBoardData.objects = objects;
 
         sessionContext.updateBoardById(currentBoardData);
+    }
+
+    function onCurrentBoardObjectsSaved(savedObjects: WorldObject[]) {
+        const currentBoardData = sessionContext.boards.find(
+            (x) => x.id === currentBoardId
+        );
+        if (currentBoardData === undefined) {
+            throw new Error("Current board's data not found.");
+        }
+
+        const savedObjectsMap = new Map(savedObjects.map((x) => [x.id, x]));
+        const existingIds = new Set(currentBoardData.objects.map((x) => x.id));
+
+        // Update existing objects in place (preserves order)
+        const updatedExisting = currentBoardData.objects.map(
+            (x) => savedObjectsMap.get(x.id) ?? x
+        );
+
+        // Append saved objects that are entirely new
+        const newObjects = savedObjects.filter((x) => !existingIds.has(x.id));
+
+        sessionContext.updateBoardById({
+            ...currentBoardData,
+            objects: [...updatedExisting, ...newObjects],
+        });
     }
 
     // function updateCurrentBoard_Objects(objects: WorldObject[]) {
@@ -75,7 +101,8 @@ export function CanvasContextProvider({
                 setCurrentBoardId,
                 getCurrentBoard,
                 updateCurrentBoard,
-                updateCurrentBoard_Objects,
+                updateCurrentBoardObjects,
+                onCurrentBoardObjectsSaved,
             }}
         >
             {children}

@@ -25,21 +25,16 @@ import CanvasInteractive from "./CanvasInteractive";
 import { motion } from "motion/react";
 import { CanvasContext } from "../types/CanvasContext";
 import { SessionContext } from "../types/SessionContext";
+import { ThemeContext } from "../types/ThemeContext";
 
 interface CanvasEditorProps {
-    theme: "light" | "dark";
-    setTheme: React.Dispatch<React.SetStateAction<"light" | "dark">>;
     openMyBoards: () => void;
     onBoardReset: () => void;
 }
 
 // Handles saving and uploading data, as well as tool selection and all overlays
-function CanvasEditor({
-    theme,
-    setTheme,
-    openMyBoards,
-    onBoardReset,
-}: CanvasEditorProps) {
+function CanvasEditor({ openMyBoards, onBoardReset }: CanvasEditorProps) {
+    const themeContext = useContext(ThemeContext);
     const canvasContext = useContext(CanvasContext);
     const sessionContext = useContext(SessionContext);
 
@@ -228,17 +223,9 @@ function CanvasEditor({
         }
 
         console.log("Successfully saved the objects.");
-        canvasContext.updateCurrentBoard_Objects(
+        canvasContext.onCurrentBoardObjectsSaved(
             objectsBeingSavedOnDatabase.current
-        ); // todo this won't work
-        // todo stopped herer^^^^
-        // todo stopped herer^^^^
-        // todo stopped herer^^^^
-        // todo stopped herer^^^^
-        // todo stopped herer^^^^
-        // todo stopped herer^^^^
-        // todo stopped herer^^^^
-        // todo stopped herer^^^^
+        );
 
         setSaveObjectsError({ error: null });
         objectsBeingSavedOnDatabase.current = [];
@@ -485,15 +472,19 @@ function CanvasEditor({
 
                         <MenuItem
                             icon={
-                                theme === "light" ? (
+                                themeContext.theme === "light" ? (
                                     <Moon size={18} />
                                 ) : (
                                     <Sun size={18} />
                                 )
                             }
-                            label={`Switch to ${theme === "light" ? "Dark" : "Light"} Mode`}
+                            label={`Switch to ${themeContext.theme === "light" ? "Dark" : "Light"} Mode`}
                             onClick={() =>
-                                setTheme(theme === "light" ? "dark" : "light")
+                                themeContext.updateTheme(
+                                    themeContext.theme === "light"
+                                        ? "dark"
+                                        : "light"
+                                )
                             }
                         />
                         <MenuItem

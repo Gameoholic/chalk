@@ -5,7 +5,7 @@ import { WorldObject } from "./canvas";
 interface SessionContextType {
     userData: UserData;
     /**
-     * Important: Boards here will only be updated right before loading MyBoards, and right before loading CanvasEditor. Will otherwise be out of date!
+     * Important: Boards' objects will only be updated after a successful db save.
      */
     boards: BoardData[];
     updateUserData: (userData: UserData) => void;

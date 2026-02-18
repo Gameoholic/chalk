@@ -12,6 +12,7 @@ import {
     CanvasContextProvider,
 } from "./types/CanvasContext.tsx";
 import { WorldObject } from "./types/canvas";
+import { ThemeContext } from "./types/ThemeContext";
 
 type LoadDataResult =
     | {
@@ -22,12 +23,9 @@ type LoadDataResult =
       }
     | { success: false };
 
-interface CanvasLoaderProps {
-    theme: "light" | "dark";
-    setTheme: React.Dispatch<React.SetStateAction<"light" | "dark">>;
-}
+export default function CanvasLoader() {
+    const themeContext = useContext(ThemeContext);
 
-export default function CanvasLoader({ theme, setTheme }: CanvasLoaderProps) {
     const [data, setData] = useState<LoadDataResult | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -69,8 +67,6 @@ export default function CanvasLoader({ theme, setTheme }: CanvasLoaderProps) {
             defaultBoards={data.boards}
         >
             <AfterSuccessfulAuth
-                theme={theme}
-                setTheme={setTheme}
                 initialBoardId={data.currentBoard.id}
                 initialBoardObjects={data.currentBoard.objects}
             />
@@ -79,11 +75,9 @@ export default function CanvasLoader({ theme, setTheme }: CanvasLoaderProps) {
 }
 
 function AfterSuccessfulAuth({
-    theme,
-    setTheme,
     initialBoardId,
     initialBoardObjects,
-}: CanvasLoaderProps & {
+}: {
     initialBoardId: string;
     initialBoardObjects: WorldObject[];
 }) {
@@ -121,8 +115,6 @@ function AfterSuccessfulAuth({
                     <CanvasEditorDiv
                         canvasEditorKey={canvasEditorKey}
                         currentBoardId={currentBoardId}
-                        theme={theme}
-                        setTheme={setTheme}
                         onBoardReset={onBoardReset}
                         setMyBoardsKey={setMyBoardsKey}
                         setShowMyBoards={setShowMyBoards}
@@ -148,16 +140,12 @@ function AfterSuccessfulAuth({
 function CanvasEditorDiv({
     canvasEditorKey,
     currentBoardId,
-    theme,
-    setTheme,
     onBoardReset,
     setMyBoardsKey,
     setShowMyBoards,
 }: {
     canvasEditorKey: number;
     currentBoardId: string;
-    theme: "light" | "dark";
-    setTheme: React.Dispatch<React.SetStateAction<"light" | "dark">>;
     onBoardReset: () => void;
     setMyBoardsKey: React.Dispatch<React.SetStateAction<number>>;
     setShowMyBoards: React.Dispatch<React.SetStateAction<boolean>>;
@@ -168,8 +156,6 @@ function CanvasEditorDiv({
     return (
         <CanvasEditor
             key={canvasEditorKey}
-            theme={theme}
-            setTheme={setTheme}
             openMyBoards={() => {
                 setMyBoardsKey((k) => k + 1); // force my boards remount
                 setShowMyBoards(true);
