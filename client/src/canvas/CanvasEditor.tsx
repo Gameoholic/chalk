@@ -152,7 +152,7 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
         if (saveObjectsRequestOnCooldown.current) {
             return;
         }
-        saveObjectsRequestOnCooldown.current = true;
+        // saveObjectsRequestOnCooldown.current = true; // temporarily disable rate limiting
 
         if (objectsBeingSavedOnDatabase.current.length > 0) {
             console.warn(
