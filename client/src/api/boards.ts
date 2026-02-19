@@ -1,7 +1,7 @@
 import { BoardData, ObjectlessBoardData, UserData } from "../types/data";
 import { fetchHelper } from ".";
 import { Result } from "../types/data";
-import { WorldObject } from "../types/canvas";
+import { Vec2, WorldObject } from "../types/canvas";
 
 // export async function getAllBoards(): Promise<ObjectlessBoardData[]> {
 //     const result = await fetchHelper<ObjectlessBoardData[]>(
@@ -77,6 +77,24 @@ export async function updateBoardName(boardId: string, name: string) {
 
     if (!result.success) {
         console.error("Error executing updateBoardName: " + result.error);
+        throw Error(result.error);
+    }
+
+    return;
+}
+
+export async function updateBoardCamera(
+    boardId: string,
+    cameraPosition: Vec2,
+    caemraZoom: number
+) {
+    const result = await fetchHelper<undefined>(`me/boards/${boardId}`, "PUT", {
+        lastCameraPosition: cameraPosition,
+        lastCameraZoom: caemraZoom,
+    });
+
+    if (!result.success) {
+        console.error("Error executing updateBoardCamera: " + result.error);
         throw Error(result.error);
     }
 

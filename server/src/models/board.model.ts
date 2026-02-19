@@ -1,6 +1,6 @@
 import db from "../db/mongo.js";
 import { ObjectId, type UpdateFilter } from "mongodb";
-import type { WorldObject } from "../types/board.types.js";
+import type { Vec2, WorldObject } from "../types/board.types.js";
 import { ok, baseErr, type Result, err } from "../types/result.types.js";
 
 const collection = db.collection<Board>("boards");
@@ -12,6 +12,8 @@ export interface Board {
     objects: WorldObject[];
     createdOn: Date;
     lastOpened: Date;
+    lastCameraPosition: Vec2;
+    lastCameraZoom: number;
 }
 
 /**

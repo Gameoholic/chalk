@@ -15,7 +15,12 @@ import {
     Moon,
     Sun,
 } from "lucide-react";
-import { resetBoard, updateBoardName, updateBoardObjects } from "../api/boards";
+import {
+    resetBoard,
+    updateBoardCamera,
+    updateBoardName,
+    updateBoardObjects,
+} from "../api/boards";
 import { BoardData, UserData } from "../types/data";
 import ManageThisBoardModal from "./modals/ManageThisBoardModal";
 import CreateAccountModal from "./modals/CreateAccountModal";
@@ -285,13 +290,30 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
         return () => {};
     }, [saveObjectsError]);
 
+    // Update lastCameraPosition and lastCameraZoom on database
+    useEffect(() => {
+        const update = async () => {
+            try {
+                await updateBoardCamera(
+                    canvasContext.getCurrentBoard().id,
+                    cameraPosition,
+                    cameraZoom
+                );
+            } catch (err) {
+                console.error("Couldnt update board camera: " + err);
+            }
+        };
+
+        update();
+    }, [cameraPosition, cameraZoom]);
+
     const handleRenameBoard = async (newName: string) => {
-        // try {
-        //     await updateBoardName(chalkContext.data.currentBoardId, newName);
-        //     currentBoard.name = newName;
-        // } catch (err) {
-        //     throw new Error((err as Error)?.message);
-        // }
+        try {
+            await updateBoardName(canvasContext.getCurrentBoard().id, newName);
+            canvasContext.getCurrentBoard().name = newName;
+        } catch (err) {
+            throw new Error((err as Error)?.message);
+        }
     };
 
     const handleResetBoard = async () => {

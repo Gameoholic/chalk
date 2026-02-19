@@ -1,7 +1,7 @@
 import type { Response } from "express";
 import * as BoardService from "../services/board.service.js";
 import type { AuthenticatedRequest } from "../middleware/auth.middleware.js";
-import type { WorldObject } from "../types/board.types.js";
+import type { Vec2, WorldObject } from "../types/board.types.js";
 
 export async function getAll(req: AuthenticatedRequest, res: Response) {
     try {
@@ -201,11 +201,18 @@ export async function updateBoard(req: AuthenticatedRequest, res: Response) {
         // Optional parameters to update board with
         const name = req.body.name as string;
         const objects = req.body.objects as WorldObject[]; // todo this check does nothing. so do all these parameter checks in controller. we need to use zod instead.
+        const lastCameraPosition = req.body.lastCameraPosition as Vec2;
+        const lastCameraZoom = req.body.lastCameraZoom as number;
 
         const result = await BoardService.updateBoardForUser(
             req.authenticatedUser.id,
             boardId,
-            { name: name, objects: objects }
+            {
+                name: name,
+                objects: objects,
+                lastCameraPosition: lastCameraPosition,
+                lastCameraZoom: lastCameraZoom,
+            }
         );
 
         if (result.success) {

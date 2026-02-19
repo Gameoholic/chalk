@@ -1,6 +1,6 @@
 import { ObjectId } from "mongodb";
 import * as BoardModel from "../models/board.model.js";
-import type { WorldObject } from "../types/board.types.js";
+import type { Vec2, WorldObject } from "../types/board.types.js";
 import { baseErr, err, ok } from "../types/result.types.js";
 
 /**
@@ -362,6 +362,8 @@ export async function createBoard(ownerId: ObjectId, name: string) {
         objects: [],
         createdOn: now,
         lastOpened: now,
+        lastCameraPosition: { x: 0, y: 0 },
+        lastCameraZoom: 1,
     };
 
     const result = await BoardModel.createBoard(board);
@@ -404,7 +406,12 @@ export async function createBoard(ownerId: ObjectId, name: string) {
 export async function updateBoardForUser(
     userId: string,
     boardId: string,
-    updates: { name?: string; objects?: WorldObject[] }
+    updates: {
+        name?: string;
+        objects?: WorldObject[];
+        lastCameraPosition: Vec2;
+        lastCameraZoom: number;
+    }
 ) {
     if (!ObjectId.isValid(userId)) {
         return err({ reason: "User ID is invalid." });
@@ -414,7 +421,12 @@ export async function updateBoardForUser(
     }
 
     // Whenever we add a possible update to the function params, add it to the check here
-    if (updates.name === undefined && updates.objects === undefined) {
+    if (
+        updates.name === undefined &&
+        updates.objects === undefined &&
+        updates.lastCameraPosition === undefined &&
+        updates.lastCameraZoom === undefined
+    ) {
         return err({ reason: "No updates provided." });
     }
 
@@ -442,6 +454,12 @@ export async function updateBoardForUser(
     }
     if (updates.objects !== undefined) {
         updatePartial.objects = updates.objects;
+    }
+    if (updates.lastCameraPosition !== undefined) {
+        updatePartial.lastCameraPosition = updates.lastCameraPosition;
+    }
+    if (updates.lastCameraZoom !== undefined) {
+        updatePartial.lastCameraZoom = updates.lastCameraZoom;
     }
 
     const result = await BoardModel.updateBoardForOwner(
