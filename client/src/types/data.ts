@@ -1,4 +1,4 @@
-import { WorldObject } from "./canvas";
+import { Vec2, WorldObject } from "./canvas";
 
 export type Result<T> =
     | { success: true; data: T }
@@ -21,6 +21,8 @@ export interface ObjectlessBoardData {
     name: string;
     createdOn: Date;
     lastOpened: Date;
+    lastCameraPosition: Vec2;
+    lastCameraZoom: number;
 }
 export interface BoardData extends ObjectlessBoardData {
     objects: WorldObject[];

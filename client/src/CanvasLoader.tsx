@@ -230,6 +230,8 @@ async function loadData(): Promise<
                 lastOpened: createBoardResult.createdOn, // todo waht is this what do we do here??
                 name: defaultBoardName,
                 objects: [],
+                lastCameraPosition: { x: 0, y: 0 },
+                lastCameraZoom: 1,
             };
         } catch (err) {
             console.error("Couldn't create board!");

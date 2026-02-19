@@ -455,12 +455,12 @@ function Board({
                                 new Map(boardData.objects.map((o) => [o.id, o]))
                             }
                             camera={{
-                                position: { x: 0, y: 0 },
+                                position: boardData.lastCameraPosition,
                                 size: {
                                     x: windowSize.width,
                                     y: windowSize.height,
                                 },
-                                zoom: 1,
+                                zoom: boardData.lastCameraZoom,
                             }}
                         />
                     </div>

@@ -47,9 +47,15 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
     const [color, setColor] = useState("#000000FF");
     const [stroke, setStroke] = useState(1);
 
+    // Camera
+    const [cameraPosition, setCameraPosition] = useState<Vec2>(
+        canvasContext.getCurrentBoard().lastCameraPosition
+    );
+    const [cameraZoom, setCameraZoom] = useState<number>(
+        canvasContext.getCurrentBoard().lastCameraZoom
+    );
+
     // Debug data
-    const [cameraPosition, setCameraPosition] = useState<Vec2>({ x: 0, y: 0 });
-    const [cameraZoom, setCameraZoom] = useState<number>(1);
     const [objectAmount, setObjectAmount] = useState<number>(0);
     // FPS
     const [fps, setFps] = useState(0);
@@ -227,14 +233,8 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
         }
 
         console.log("Successfully saved the objects.");
-        console.log(
-            "a objects: " + canvasContext.getCurrentBoard().objects.length
-        );
         canvasContext.onCurrentBoardObjectsSaved(
             objectsBeingSavedOnDatabase.current
-        );
-        console.log(
-            "b objects: " + canvasContext.getCurrentBoard().objects.length
         );
 
         setSaveObjectsError({ error: null });
@@ -296,6 +296,10 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
             try {
                 await updateBoardCamera(
                     canvasContext.getCurrentBoard().id,
+                    cameraPosition,
+                    cameraZoom
+                );
+                canvasContext.updateCurrentBoardCamera(
                     cameraPosition,
                     cameraZoom
                 );
@@ -374,8 +378,12 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
                 <CanvasInteractive
                     key={canvasContext.currentBoardId}
                     initialObjects={canvasContext.getCurrentBoard().objects}
-                    initialCameraPosition={{ x: 0, y: 0 }}
-                    initialCameraZoom={1}
+                    initialCameraPosition={
+                        canvasContext.getCurrentBoard().lastCameraPosition
+                    }
+                    initialCameraZoom={
+                        canvasContext.getCurrentBoard().lastCameraZoom
+                    }
                     selectedTool={tool}
                     selectedColor={color}
                     selectedStroke={stroke}

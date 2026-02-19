@@ -1,6 +1,6 @@
 import { createContext, useContext, useState } from "react";
 import { BoardData, ChalkData, UserData } from "./data";
-import { WorldObject } from "./canvas";
+import { Vec2, WorldObject } from "./canvas";
 import { SessionContext } from "./SessionContext";
 import { ViewportEventHandler } from "framer-motion";
 
@@ -9,6 +9,10 @@ interface CanvasContextType {
     setCurrentBoardId: React.Dispatch<React.SetStateAction<string>>;
     getCurrentBoard: () => BoardData;
     updateCurrentBoard: (boardData: BoardData) => void;
+    updateCurrentBoardCamera: (
+        cameraPosition: Vec2,
+        cameraZoom: number
+    ) => void;
     updateCurrentBoardObjects: (objects: WorldObject[]) => void;
     onCurrentBoardObjectsSaved: (savedObjects: WorldObject[]) => void;
 }
@@ -44,6 +48,23 @@ export function CanvasContextProvider({
         }
 
         sessionContext.updateBoardById(boardData);
+    }
+
+    function updateCurrentBoardCamera(
+        cameraPosition: Vec2,
+        cameraZoom: number
+    ) {
+        const currentBoardData = sessionContext.boards.find(
+            (x) => x.id === currentBoardId
+        );
+        if (currentBoardData === undefined) {
+            throw new Error("Current board's data not found.");
+        }
+
+        currentBoardData.lastCameraPosition = cameraPosition;
+        currentBoardData.lastCameraZoom = cameraZoom;
+
+        sessionContext.updateBoardById(currentBoardData);
     }
 
     function updateCurrentBoardObjects(objects: WorldObject[]) {
@@ -112,6 +133,7 @@ export function CanvasContextProvider({
                 setCurrentBoardId,
                 getCurrentBoard,
                 updateCurrentBoard,
+                updateCurrentBoardCamera,
                 updateCurrentBoardObjects,
                 onCurrentBoardObjectsSaved,
             }}

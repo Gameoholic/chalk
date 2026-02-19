@@ -158,6 +158,8 @@ export async function findBoardsByOwner_WithoutObjects(ownerId: ObjectId) {
                 name: string;
                 createdOn: Date;
                 lastOpened: Date;
+                lastCameraPosition: Vec2;
+                lastCameraZoom: number;
             }>(
                 { ownerId },
                 {
@@ -196,6 +198,8 @@ export async function findBoardsByOwner(ownerId: ObjectId) {
                 createdOn: Date;
                 lastOpened: Date;
                 objects: WorldObject[];
+                lastCameraPosition: Vec2;
+                lastCameraZoom: number;
             }>(
                 { ownerId },
                 {
@@ -277,6 +281,8 @@ export async function findBoardByIdForUser(
             createdOn: Date;
             lastOpened: Date;
             objects: WorldObject[];
+            lastCameraPosition: Vec2;
+            lastCameraZoom: number;
         }>(
             {
                 _id: new ObjectId(boardId),
