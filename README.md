@@ -18,28 +18,26 @@ chalk.gameoholic.dev
 
 ## Planned Features & Fixes
 
----
-
-### 🧩 Collaborative real-time board sharing
+#### 🧩 Collaborative real-time board sharing
 - [ ] Invite collaborators to board (with link)
 - [ ] Manage board's collaborators (kick, see last access timestamp)
 
 ---
 
-### 🖌️ Canvas
+#### 🖌️ Canvas
 - [ ] Create boards
 - [ ] Eraser tool
 
 ---
 
-### 🎨 Visual & Polish
+#### 🎨 Visual & Polish
 - [ ] Improve my boards page design
 - [ ] Better light mode
 - [ ] Keybinds in bottom left corner ([Shift] Move [LMB] Draw)
 
 ---
 
-### 🔒 Security
+#### 🔒 Security
 - [ ] Server-side ratelimiting
 - [ ] Hash password on client before sending it to server
 - [ ] Bring back and fix object save client-side ratelimit: requestSaveObjectsOnDatabase()
@@ -52,20 +50,20 @@ chalk.gameoholic.dev
 
 ---
 
-### 👤 Accounts
+#### 👤 Accounts
 - [ ] Send verification email on sign-up
 - [ ] Forgot password
 - [ ] OAuth
 
 ---
 
-### ⚡ Performance
+#### ⚡ Performance
 - [ ] Divide boards into 'zones' - only load necessary zones
 - [ ] Auto-share of objects with websockets is dynamic - if server is lagging, slow down rate, otherwise, speed it up
 
 ---
 
-### 🐞 Bugs
+#### 🐞 Bugs
 - [ ] Sometimes drawn objects disappear on save
 - [ ] Changing opacity in color picker doesn't work
 - [ ] Objects flicker on zoom
@@ -73,7 +71,7 @@ chalk.gameoholic.dev
 
 ---
 
-### 🔒 Dev Experience
+#### 🔒 Dev Experience
 - [ ] Move as many props in canvas types to the new context stores
 - [ ] Use [zod](https://zod.dev/) for type safety
 - [ ] Merge types between server and client, create shared package
