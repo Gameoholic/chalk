@@ -21,20 +21,14 @@ chalk.gameoholic.dev
 - [ ] Invite collaborators to board (with link)
 - [ ] Manage board's collaborators (kick, see last access timestamp)
 
----
-
 #### 🖌️ Canvas
 - [ ] Create boards
 - [ ] Eraser tool
-
----
 
 #### 🎨 Visual & Polish
 - [ ] Improve my boards page design
 - [ ] Better light mode
 - [ ] Keybinds in bottom left corner ([Shift] Move [LMB] Draw)
-
----
 
 #### 🔒 Security
 - [ ] Server-side ratelimiting
