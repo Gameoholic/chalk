@@ -1,13 +1,12 @@
 # Chalk - Online Whiteboard
 
-## Try it here:
-chalk.gameoholic.dev
-
-## Description
 > An infinite modern canvas board app, allowing users to create whiteboards and save them on the cloud. Doesn't require creating an account.
 
 **Backend:** Node.js, Express, MongoDB, JWT  
 **Frontend:** React, Vite, TailwindCSS
+
+Try it here:
+chalk.gameoholic.dev
 
 ## Features
 
@@ -48,28 +47,20 @@ chalk.gameoholic.dev
 - [ ] Ensure objects are valid (no objects with 1m points, etc.)
 - [ ] Object limit on upsert doesn't work
 
----
-
 #### 👤 Accounts
 - [ ] Send verification email on sign-up
 - [ ] Forgot password
 - [ ] OAuth
 
----
-
 #### ⚡ Performance
 - [ ] Divide boards into 'zones' - only load necessary zones
 - [ ] Auto-share of objects with websockets is dynamic - if server is lagging, slow down rate, otherwise, speed it up
-
----
 
 #### 🐞 Bugs
 - [ ] Sometimes drawn objects disappear on save
 - [ ] Changing opacity in color picker doesn't work
 - [ ] Objects flicker on zoom
 - [ ] Object opacity/stroke changes on zoom
-
----
 
 #### 🔒 Dev Experience
 - [ ] Move as many props in canvas types to the new context stores
