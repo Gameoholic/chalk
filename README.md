@@ -13,7 +13,7 @@ chalk.gameoholic.dev
 - Allow users to store boards on the database without having to create an account.
 - Custom authentication solution via JWT and DB refresh tokens, passwords hashed & salted
 - Error handling with queued object changes and automatic retrying, data-efficient auto-save of data.
-- Server written with best practices: (MVC, authentication & authorization, exhaustive type-safe error handling using discriminated unions with `satisfies`)
+- Server written with best practices: (MVC, authentication & authorization, exhaustive type-safe error handling using discriminated unions with Typescript's `satisfies`)
 
 ## Planned Features & Fixes
 
