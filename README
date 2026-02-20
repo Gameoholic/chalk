@@ -5,8 +5,8 @@ chalk.gameoholic.dev
 
 ## Description
 > An infinite modern canvas board app, allowing users to create whiteboards and save them on the cloud. Doesn't require creating an account.
-> Backend: Node.js, Express, MongoDB, JWT
-> Frontend: React, Vite, TailwindCSS
+Backend: Node.js, Express, MongoDB, JWT
+Frontend: React, Vite, TailwindCSS
 
 ## Features
 - Allow users to store boards on the database without having to create an account.
