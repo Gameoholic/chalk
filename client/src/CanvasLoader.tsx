@@ -238,7 +238,7 @@ async function loadData(): Promise<
             boards[0] = {
                 id: createBoardResult.id,
                 createdOn: createBoardResult.createdOn,
-                lastOpened: createBoardResult.createdOn, // todo waht is this what do we do here??
+                lastOpened: createBoardResult.createdOn,
                 name: defaultBoardName,
                 objects: [],
                 lastCameraPosition: { x: 0, y: 0 },

@@ -63,6 +63,7 @@ chalk.gameoholic.dev
 
 #### 🐞 Bugs
 - [ ] Creating account doesn't refresh page
+- [ ] Refresh token invalid error when changing board/user name
 - [ ] Sometimes drawn objects disappear on save (look at console warnings when it happens)
 - [ ] Changing opacity in color picker doesn't work
 - [ ] Resizing MyBoards page replays animation
