@@ -1,11 +1,14 @@
 import { Router } from "express";
-import { login, logout } from "../controllers/auth.controller.js";
 import auth from "../middleware/auth.middleware.js";
+import { get } from "../controllers/me.controller.js";
 
 const router = Router();
 
-router.post("/login", login);
 router.use(auth); // apply auth middleware to all routes below
-router.post("/logout", logout);
+
+router.get("", get);
+
+// router.get("/", getAll);
+// router.route("/:id").get(getById).put(update).delete(remove);
 
 export default router;

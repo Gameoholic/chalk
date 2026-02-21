@@ -6,7 +6,7 @@ export async function createUser(
     password: string,
     displayName: string
 ) {
-    const result = await fetchHelper<undefined>("users/", "POST", {
+    const result = await fetchHelper<undefined>("users", "POST", {
         email,
         password,
         displayName,

@@ -1,7 +1,7 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import CanvasEditor from "./canvas/CanvasEditor.tsx";
 import { BoardData, UserData, ObjectlessBoardData } from "./types/data.ts";
-import { BoardsAPI, AuthAPI, GuestUsersAPI } from "./api";
+import { BoardsAPI, AuthAPI, GuestUsersAPI, MeAPI } from "./api";
 import MyBoards from "./my-boards/MyBoards";
 import {
     SessionContext,
@@ -279,7 +279,7 @@ async function loadUserDataOrCreateGuestUser(): Promise<UserData> {
     let getUserDataErrorMessage;
     try {
         console.log("Attempting to retrieve current user data.");
-        const getUserDataResult = await AuthAPI.getUserData();
+        const getUserDataResult = await MeAPI.getUserData();
         return getUserDataResult;
     } catch (err) {
         if (err instanceof Error) {
@@ -319,7 +319,7 @@ async function loadUserDataOrCreateGuestUser(): Promise<UserData> {
     try {
         console.log("Attempting to create guest user.");
         await GuestUsersAPI.createGuestUser();
-        const getUserDataResult = await AuthAPI.getUserData();
+        const getUserDataResult = await MeAPI.getUserData();
         return getUserDataResult;
     } catch (err) {
         console.error("Couldn't create guest user. " + err);

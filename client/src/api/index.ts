@@ -3,6 +3,7 @@ import { Result } from "../types/data";
 export * as GuestUsersAPI from "./guest-users.ts";
 export * as BoardsAPI from "./boards.ts";
 export * as AuthAPI from "./auth.ts";
+export * as MeAPI from "./me.ts";
 
 export async function fetchHelper<T>(
     path: string,

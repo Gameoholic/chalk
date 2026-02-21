@@ -30,6 +30,7 @@ chalk.gameoholic.dev
 #### 🎨 Visual & Polish & QOL
 - [ ] Make creation of board update MyBoards instead of reloading
 - [ ] Responsive design for mobile and all window sizes
+- [ ] Fade out of CanvasEditor when visiting My Boards
 - [ ] Better light mode
 - [ ] Keybinds in bottom left corner ([Shift] Move [LMB] Draw)
 - [ ] Make lastOpen property of board nullable, so when we create the board it doesn't automatically set its lastOpened to now

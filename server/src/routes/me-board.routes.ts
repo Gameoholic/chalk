@@ -6,7 +6,7 @@ import {
     updateBoard,
     updateWorldObjects,
     deleteById,
-} from "../controllers/board.controller.js";
+} from "../controllers/me-board.controller.js";
 import auth from "../middleware/auth.middleware.js";
 
 const router = Router();

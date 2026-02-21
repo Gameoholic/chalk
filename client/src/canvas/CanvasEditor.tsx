@@ -34,6 +34,7 @@ import { SessionContext } from "../types/SessionContext";
 import { ThemeContext } from "../types/ThemeContext";
 import ManageAccountModal from "./modals/ManageAccountModal";
 import { logout } from "../api/auth";
+import { updateUserDisplayName } from "../api/me";
 
 interface CanvasEditorProps {
     openMyBoards: () => void;
@@ -357,7 +358,9 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
         window.location.reload();
     };
 
-    const handleUserChangeDisplayName = async () => {};
+    const handleUserChangeDisplayName = async (displayName: string) => {
+        await updateUserDisplayName(displayName);
+    };
 
     // Prevent refreshing or leaving page if objects are currently being saved / awaiting save
     useEffect(() => {
