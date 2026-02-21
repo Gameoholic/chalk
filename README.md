@@ -24,11 +24,16 @@ chalk.gameoholic.dev
 #### 🖌️ Canvas
 - [ ] Create boards
 - [ ] Eraser tool
+- [ ] Edit specific objects (color, stroke, move..)
+- [ ] Delete specific objects
+- [ ] Snap camera zoom
+- [ ] Delete board
 
 #### 🎨 Visual & Polish
 - [ ] Improve my boards page design
 - [ ] Better light mode
 - [ ] Keybinds in bottom left corner ([Shift] Move [LMB] Draw)
+- [ ] Unify style app-wide
 
 #### 🔒 Security
 - [ ] Server-side ratelimiting
@@ -42,6 +47,8 @@ chalk.gameoholic.dev
 - [ ] Object limit on upsert doesn't work
 
 #### 👤 Accounts
+- [ ] Manage account: Log out
+- [ ] Manage account: Change displayname
 - [ ] Send verification email on sign-up
 - [ ] Forgot password
 - [ ] OAuth
@@ -49,10 +56,13 @@ chalk.gameoholic.dev
 #### ⚡ Performance
 - [ ] Divide boards into 'zones' - only load necessary zones
 - [ ] Auto-share of objects with websockets is dynamic - if server is lagging, slow down rate, otherwise, speed it up
+- [ ] Pagination for my boards
 
 #### 🐞 Bugs
+- [ ] Creating account doesn't refresh page
 - [ ] Sometimes drawn objects disappear on save
 - [ ] Changing opacity in color picker doesn't work
+- [ ] Resizing MyBoards page replays animation
 - [ ] Objects flicker on zoom
 - [ ] Object opacity/stroke changes on zoom
 

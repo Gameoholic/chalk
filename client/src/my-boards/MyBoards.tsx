@@ -12,6 +12,7 @@ import {
 import { motion } from "motion/react";
 import { Vec2 } from "../types/canvas";
 import { SessionContext } from "../types/SessionContext";
+import CreateBoardModal from "./CreateBoardModal";
 
 type Rect = {
     x: number;
@@ -35,6 +36,8 @@ export default function MyBoards({
 }: MyBoardsProps) {
     const sessionContext = useContext(SessionContext);
 
+    const [isCreateBoardModalOpen, setIsCreateBoardModalOpen] = useState(false);
+
     // Selected means we're zooming in on it
     const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
 
@@ -45,9 +48,6 @@ export default function MyBoards({
 
     // Track if the initial zoom-out animation has completed
     const [hasZoomedOut, setHasZoomedOut] = useState(false);
-
-    // Whether myboards is zooming in, or zooming out
-    const [isUserZoomIn, setIsUserZoomIn] = useState(false);
 
     // Store the initial transform (calculated once, used for Motion's initial prop)
     const [initialTransform, setInitialTransform] = useState<{
@@ -258,6 +258,7 @@ export default function MyBoards({
                 <CreateBoard
                     windowAspect={windowAspect}
                     hasZoomedOut={hasZoomedOut}
+                    onClick={() => setIsCreateBoardModalOpen(true)}
                 />
 
                 {/* Rest are normal boards or empty board slots */}
@@ -287,6 +288,16 @@ export default function MyBoards({
                     />
                 ))}
             </motion.div>
+
+            {isCreateBoardModalOpen && (
+                <CreateBoardModal
+                    onClose={() => setIsCreateBoardModalOpen(false)}
+                    onCreated={(name) => {
+                        // todo: replace with just updating context?
+                        window.location.reload();
+                    }}
+                />
+            )}
         </motion.div>
     );
 }
@@ -482,15 +493,20 @@ function EmptyBoard({ windowAspect }: { windowAspect: number }) {
 function CreateBoard({
     windowAspect,
     hasZoomedOut,
+    onClick,
 }: {
     windowAspect: number;
     hasZoomedOut: boolean;
+    onClick: () => void;
 }) {
     return (
         <motion.div
             style={{ aspectRatio: windowAspect }}
             whileHover={{ scale: hasZoomedOut ? 1.05 : 1 }}
             whileTap={{ scale: hasZoomedOut ? 0.95 : 1 }}
+            onClick={() => {
+                onClick();
+            }}
             className={`flex w-full cursor-pointer items-center justify-center rounded-[${BOARD_SLOT_ROUNDED}px] bg-black/10`}
         >
             <Plus className="text-white opacity-50" />
