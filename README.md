@@ -30,13 +30,14 @@ chalk.gameoholic.dev
 #### 🎨 Visual & Polish & QOL
 - [ ] Responsive design for mobile and all window sizes
 - [ ] Better error messages (like in our modify board/account modals!) when fail to create account / log in
-- [ ] Make creation of board update MyBoards instead of reloading
+- [ ] Make creation of board update MyBoards instead of reloading (animation to add the board instead of just updating it plainly)
+- [ ] My boards: separate zoom in and zoom out easings, improve values
 - [ ] Fade out of CanvasEditor when visiting My Boards
 - [ ] Better light mode
 - [ ] Keybinds in bottom left corner ([Shift] Move [LMB] Draw)
 - [ ] Make lastOpen property of board nullable, so when we create the board it doesn't automatically set its lastOpened to now
-- [ ] My boards: separate zoom in and zoom out easings, improve values
-- [ ] Unify style app-wide (colors, behavior, animation of modals...)
+- [ ] Unify style app-wide (colors, behavior, animation of modals (I particularly like the style of create board modal)...)
+- [ ] When deleting board, zoom out to My Boards and Thanos-particle destroy the board. All other boards will then "cascade" with an animation.
 
 #### 🔒 Security
 - [ ] Server-side ratelimiting
@@ -76,5 +77,6 @@ chalk.gameoholic.dev
 - [ ] Use [zod](https://zod.dev/) for type safety
 - [ ] Merge types between server and client, create shared package
 - [ ] Load .env.local on app startup, save in context, crash immediately if some arguments not provided
+- [ ] Rename my PUT methods into PATCH: https://stackoverflow.com/questions/21660791/what-is-the-main-difference-between-patch-and-put-request
 - [ ] Review and get rid of TODO's
 - [ ] Use [React Query](https://www.youtube.com/watch?v=novnyCaa7To)
