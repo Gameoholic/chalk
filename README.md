@@ -27,7 +27,6 @@ chalk.gameoholic.dev
 - [ ] Edit specific objects (color, stroke, move..)
 - [ ] Delete specific objects
 - [ ] Snap camera zoom
-- [ ] Delete board
 
 #### 🎨 Visual & Polish & QOL
 - [ ] Better light mode
