@@ -35,7 +35,7 @@ chalk.gameoholic.dev
 - [ ] Keybinds in bottom left corner ([Shift] Move [LMB] Draw)
 - [ ] Make lastOpen property of board nullable, so when we create the board it doesn't automatically set its lastOpened to now
 - [ ] My boards: separate zoom in and zoom out easings, improve values
-- [ ] Unify style app-wide
+- [ ] Unify style app-wide (colors, behavior, animation of modals...)
 
 #### 🔒 Security
 - [ ] Server-side ratelimiting
@@ -73,6 +73,7 @@ chalk.gameoholic.dev
 
 #### 🔒 Dev Experience
 - [ ] Move as many props in canvas types to the new context stores
+- [ ] Make all models fetch requests behave the same way (right now login and create account behave differently than modify account/board modals)
 - [ ] Make ALL components use tailwindcss theme colors instead of arbitrary colors
 - [ ] Use [zod](https://zod.dev/) for type safety
 - [ ] Merge types between server and client, create shared package

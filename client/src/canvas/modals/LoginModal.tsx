@@ -35,7 +35,7 @@ export default function LoginModal({
             setHasLoggedIn(true);
             setIsSubmitting(false);
 
-            // Optional: slight delay so user sees success message
+            // Slight delay so user sees success message
             setTimeout(() => {
                 window.location.reload();
             }, 1000);

@@ -34,7 +34,11 @@ export default function LoginModal({ onLogin, onClose }: Props) {
             console.log("Attempting to create user");
             await createUser(email, password, displayName);
             console.log("Successfully created user");
-            onClose();
+
+            // Slight delay so user sees success message
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
         } catch {
             console.error("Failed to create user.");
             setError("Couldn't create account.");
