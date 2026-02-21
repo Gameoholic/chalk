@@ -337,15 +337,15 @@ export async function getUserData(userId: string, userRole: string) {
     }
 
     if (userRole === "guest") {
-        return getUserData_user(userId);
-    } else if (userRole === "user") {
         return getUserData_guest(userId);
+    } else if (userRole === "user") {
+        return getUserData_user(userId);
     } else {
         return err({ reason: "User's role is invalid" });
     }
 }
 
-async function getUserData_user(userId: string) {
+async function getUserData_guest(userId: string) {
     const getGuestUserResult = await GuestUserService.getGuestUserById(userId);
 
     if (!getGuestUserResult.success) {
@@ -386,7 +386,7 @@ async function getUserData_user(userId: string) {
     });
 }
 
-async function getUserData_guest(userId: string) {
+async function getUserData_user(userId: string) {
     const getUserResult = await UserService.getUserById(userId);
 
     if (!getUserResult.success) {
