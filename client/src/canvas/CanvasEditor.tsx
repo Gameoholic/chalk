@@ -360,6 +360,7 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
 
     const handleUserChangeDisplayName = async (displayName: string) => {
         await updateUserDisplayName(displayName);
+        sessionContext.updateUserDisplayName(displayName);
     };
 
     // Prevent refreshing or leaving page if objects are currently being saved / awaiting save

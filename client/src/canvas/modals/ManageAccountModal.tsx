@@ -57,13 +57,11 @@ export default function ManageAccountModal({
             setIsSaving(true);
             setNameError(null);
             await onUpdateDisplayName(trimmed);
-            setDisplayName(trimmed);
-            setIsEditing(false);
         } catch (err) {
             setNameError("Failed to update name: " + (err as Error)?.message);
-        } finally {
-            setIsSaving(false);
         }
+        setIsSaving(false);
+        setIsEditing(false);
     };
 
     const handleLogoutConfirmed = async () => {

@@ -9,6 +9,7 @@ interface SessionContextType {
      */
     boards: BoardData[];
     updateUserData: (userData: UserData) => void;
+    updateUserDisplayName: (displayName: string) => void;
     updateBoardById: (boardData: BoardData) => void;
     updateBoards: (boards: BoardData[]) => void;
 }
@@ -61,11 +62,11 @@ export function SessionContextProvider({
     // }
 
     function updateUserData(userData: UserData) {
-        // setData((prev) => ({
-        //     userData: userData,
-        //     boards: prev.boards,
-        //     currentBoardId: prev.currentBoardId,
-        // }));
+        setUserData(userData);
+    }
+
+    function updateUserDisplayName(displayName: string) {
+        setUserData((prev) => ({ ...prev, displayName }));
     }
 
     // function updateCurrentBoardId(currentBoardId: string) {
@@ -82,6 +83,7 @@ export function SessionContextProvider({
                 userData,
                 boards,
                 updateUserData,
+                updateUserDisplayName,
                 updateBoardById,
                 updateBoards,
             }}
