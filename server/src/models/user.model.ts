@@ -83,7 +83,7 @@ export async function findUserById(id: ObjectId) {
             email: string;
             password: string;
             displayName: string;
-            creaedOn: Date;
+            createdOn: Date;
         }>({ _id: id });
 
         if (result === null) {
@@ -96,7 +96,7 @@ export async function findUserById(id: ObjectId) {
             displayName: result.displayName,
             email: result.email,
             password: result.password,
-            createdOn: result.creaedOn,
+            createdOn: result.createdOn,
         });
     } catch (error) {
         if (error instanceof Error) {
