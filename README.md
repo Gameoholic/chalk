@@ -28,8 +28,9 @@ chalk.gameoholic.dev
 - [ ] Snap camera zoom
 
 #### 🎨 Visual & Polish & QOL
-- [ ] Make creation of board update MyBoards instead of reloading
 - [ ] Responsive design for mobile and all window sizes
+- [ ] Better error messages (like in our modify board/account modals!) when fail to create account / log in
+- [ ] Make creation of board update MyBoards instead of reloading
 - [ ] Fade out of CanvasEditor when visiting My Boards
 - [ ] Better light mode
 - [ ] Keybinds in bottom left corner ([Shift] Move [LMB] Draw)
