@@ -33,7 +33,6 @@ export default function LoginModal({
             await login(email, password);
             console.log("Successfully logged in");
             setHasLoggedIn(true);
-            setIsSubmitting(false);
 
             // Slight delay so user sees success message
             setTimeout(() => {
@@ -42,8 +41,8 @@ export default function LoginModal({
         } catch {
             console.error("Failed to log in.");
             setError("Couldn't log in.");
-            setIsSubmitting(false);
         }
+        setIsSubmitting(false);
     };
 
     return (

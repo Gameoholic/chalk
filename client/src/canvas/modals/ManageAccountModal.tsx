@@ -70,6 +70,11 @@ export default function ManageAccountModal({
             setLogoutError(null);
             await onLogout();
             setLoggedOut(true);
+
+            // Slight delay so user sees success message
+            setTimeout(() => {
+                window.location.reload();
+            }, 1000);
         } catch (err) {
             setLogoutError("Failed to log out: " + (err as Error)?.message);
             setIsSaving(false);

@@ -17,6 +17,7 @@ export default function LoginModal({ onLogin, onClose }: Props) {
     const [error, setError] = useState<string | null>(null);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [hasCreatedAccount, setHasCreatedAccount] = useState(false);
 
     const handleSubmit = async () => {
         if (!email || !password || !displayName) {
@@ -34,6 +35,7 @@ export default function LoginModal({ onLogin, onClose }: Props) {
             console.log("Attempting to create user");
             await createUser(email, password, displayName);
             console.log("Successfully created user");
+            setHasCreatedAccount(true);
 
             // Slight delay so user sees success message
             setTimeout(() => {
@@ -75,7 +77,7 @@ export default function LoginModal({ onLogin, onClose }: Props) {
                     placeholder="Email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value.trim())}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || hasCreatedAccount}
                     className="border-account-modal-secondary bg-account-modal text-account-modal-foreground w-full rounded-xl border px-3 py-2 focus:outline-none"
                 />
 
@@ -85,7 +87,7 @@ export default function LoginModal({ onLogin, onClose }: Props) {
                     placeholder="Display name (can change later)"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value.trim())}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || hasCreatedAccount}
                     className="border-account-modal-secondary bg-account-modal text-account-modal-foreground w-full rounded-xl border px-3 py-2 focus:outline-none"
                 />
 
@@ -96,7 +98,7 @@ export default function LoginModal({ onLogin, onClose }: Props) {
                         placeholder="Password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || hasCreatedAccount}
                         className="border-account-modal-secondary bg-account-modal text-account-modal-foreground w-full rounded-xl border px-3 py-2 pr-10 focus:outline-none" // Added pr-10 for space
                     />
                     <button
@@ -119,7 +121,7 @@ export default function LoginModal({ onLogin, onClose }: Props) {
                         placeholder="Confirm password"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || hasCreatedAccount}
                         className="border-account-modal-secondary bg-account-modal text-account-modal-foreground w-full rounded-xl border px-3 py-2 pr-10 focus:outline-none" // Added pr-10 for space
                     />
                     <button
@@ -140,14 +142,16 @@ export default function LoginModal({ onLogin, onClose }: Props) {
                 {/* Create account button */}
                 <button
                     onClick={handleSubmit}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || hasCreatedAccount}
                     className="bg-account-modal-accent text-account-modal-foreground relative flex cursor-pointer items-center justify-center rounded-2xl py-2 font-medium transition hover:brightness-110 disabled:cursor-default disabled:opacity-50"
                 >
                     <div className="relative flex items-center justify-center">
                         <span>
                             {isSubmitting
                                 ? "Creating account..."
-                                : "Create account"}
+                                : hasCreatedAccount
+                                  ? "Created account!"
+                                  : "Create account"}
                         </span>
 
                         {isSubmitting && (
@@ -159,6 +163,13 @@ export default function LoginModal({ onLogin, onClose }: Props) {
                     </div>
                 </button>
 
+                {/* Success message */}
+                {hasCreatedAccount && (
+                    <p className="animate-fade-in text-success text-sm font-medium">
+                        Created account!
+                    </p>
+                )}
+
                 {/* Error message */}
                 {error && <p className="text-destructive text-sm">{error}</p>}
 
@@ -166,7 +177,7 @@ export default function LoginModal({ onLogin, onClose }: Props) {
                 <div className="text-account-modal-secondary text-md mt-auto flex justify-between">
                     <button
                         onClick={onLogin}
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || hasCreatedAccount}
                         className="cursor-pointer hover:brightness-110"
                     >
                         Login

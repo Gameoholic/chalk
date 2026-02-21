@@ -355,7 +355,6 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
 
     const handleUserLogout = async () => {
         await logout();
-        window.location.reload();
     };
 
     const handleUserChangeDisplayName = async (displayName: string) => {
