@@ -27,6 +27,7 @@ export default function ManageAccountModal({
     const [nameError, setNameError] = useState<string | null>(null);
     const [logoutError, setLogoutError] = useState<string | null>(null);
     const [confirmingLogout, setConfirmingLogout] = useState(false);
+    const [loggedOut, setLoggedOut] = useState(false);
 
     useEffect(() => {
         const trimmed = sessionContext.userData.displayName.slice(
@@ -70,7 +71,7 @@ export default function ManageAccountModal({
             setIsSaving(true);
             setLogoutError(null);
             await onLogout();
-            // We do not set isSaving to false here assuming the app redirects/reloads on logout
+            setLoggedOut(true);
         } catch (err) {
             setLogoutError("Failed to log out: " + (err as Error)?.message);
             setIsSaving(false);
@@ -211,6 +212,11 @@ export default function ManageAccountModal({
                                     Cancel
                                 </button>
                             </div>
+                        </div>
+                    )}
+                    {loggedOut && (
+                        <div className="text-center text-sm font-medium text-green-400">
+                            Logged out!
                         </div>
                     )}
                     {logoutError && (

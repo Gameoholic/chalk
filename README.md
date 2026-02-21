@@ -41,7 +41,7 @@ chalk.gameoholic.dev
 - [ ] Hash password on client before sending it to server
 - [ ] Bring back and fix object save client-side ratelimit: requestSaveObjectsOnDatabase()
 - [ ] Ensure users' emails are unique
-- [ ] Refresh tokens database should contain user id, so upon changing password we will log all users out
+- [ ] Refresh tokens database should contain user id, so upon changing password / logging out we will log all users out
 - [ ] IP log and send email when logging in from different IP
 - [ ] Process boards to make sure there's no data that would crash client (invalid colors, invalid shape or rectangle with negative length etc. ellipse negative radius etc.)
 - [ ] Ensure objects are valid (no objects with 1m points, etc.)

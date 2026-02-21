@@ -510,10 +510,27 @@ export async function login(email: string, password: string) {
 }
 
 /**
+ * @param refreshTokenCookie The refresh token COOKIE, not the refresh token ID.
  * Removes the user's refresh token
  * Only for user, not guest user
  */
-export async function logout(refreshTokenId: string) {
+export async function logout(refreshTokenCookie: string) {
+    let refreshTokenPayload: AuthService.RefreshTokenPayload;
+    // Is refresh token valid?
+    try {
+        refreshTokenPayload = jwt.verify(
+            refreshTokenCookie!,
+            process.env.JWT_SECRET!
+        ) as RefreshTokenPayload;
+    } catch (error) {
+        if (error instanceof jwt.TokenExpiredError) {
+            return err({ reason: "Refresh token expired." });
+        }
+        return err({ reason: "Refresh token cookie is invalid." });
+    }
+
+    const refreshTokenId = refreshTokenPayload.id;
+
     if (!ObjectId.isValid(refreshTokenId)) {
         return err({ reason: "Refresh token Id is invalid." });
     }

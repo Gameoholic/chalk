@@ -33,6 +33,7 @@ import { CanvasContext } from "../types/CanvasContext";
 import { SessionContext } from "../types/SessionContext";
 import { ThemeContext } from "../types/ThemeContext";
 import ManageAccountModal from "./modals/ManageAccountModal";
+import { logout } from "../api/auth";
 
 interface CanvasEditorProps {
     openMyBoards: () => void;
@@ -351,7 +352,10 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
         window.location.reload();
     };
 
-    const handleUserLogout = async () => {};
+    const handleUserLogout = async () => {
+        await logout();
+        window.location.reload();
+    };
 
     const handleUserChangeDisplayName = async () => {};
 
