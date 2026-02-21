@@ -22,13 +22,14 @@ chalk.gameoholic.dev
 - [ ] Manage board's collaborators (kick, see last access timestamp)
 
 #### 🖌️ Canvas
-- [ ] Create boards
 - [ ] Eraser tool
 - [ ] Edit specific objects (color, stroke, move..)
 - [ ] Delete specific objects
 - [ ] Snap camera zoom
 
 #### 🎨 Visual & Polish & QOL
+- [ ] Make creation of board update MyBoards instead of reloading
+- [ ] Responsive design for mobile and all window sizes
 - [ ] Better light mode
 - [ ] Keybinds in bottom left corner ([Shift] Move [LMB] Draw)
 - [ ] Make lastOpen property of board nullable, so when we create the board it doesn't automatically set its lastOpened to now
