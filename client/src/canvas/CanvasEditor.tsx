@@ -32,6 +32,7 @@ import { motion } from "motion/react";
 import { CanvasContext } from "../types/CanvasContext";
 import { SessionContext } from "../types/SessionContext";
 import { ThemeContext } from "../types/ThemeContext";
+import ManageAccountModal from "./modals/ManageAccountModal";
 
 interface CanvasEditorProps {
     openMyBoards: () => void;
@@ -350,6 +351,10 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
         window.location.reload();
     };
 
+    const handleUserLogout = async () => {};
+
+    const handleUserChangeDisplayName = async () => {};
+
     // Prevent refreshing or leaving page if objects are currently being saved / awaiting save
     useEffect(() => {
         const preventLeaving = (e: any) => {
@@ -608,6 +613,15 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
             {authView === "create-account" && (
                 <CreateAccountModal
                     onLogin={() => setAuthView("login")}
+                    onClose={() => setAuthView(null)}
+                />
+            )}
+
+            {/* Create Account Modal */}
+            {authView === "manage-user" && (
+                <ManageAccountModal
+                    onLogout={handleUserLogout}
+                    onUpdateDisplayName={handleUserChangeDisplayName}
                     onClose={() => setAuthView(null)}
                 />
             )}

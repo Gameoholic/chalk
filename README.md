@@ -71,6 +71,7 @@ chalk.gameoholic.dev
 
 #### 🔒 Dev Experience
 - [ ] Move as many props in canvas types to the new context stores
+- [ ] Make ALL components use tailwindcss theme colors instead of arbitrary colors
 - [ ] Use [zod](https://zod.dev/) for type safety
 - [ ] Merge types between server and client, create shared package
 - [ ] Load .env.local on app startup, save in context, crash immediately if some arguments not provided

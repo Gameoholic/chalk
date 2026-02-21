@@ -14,6 +14,8 @@ export interface UserData {
     displayName: string;
     role: string;
     id: string;
+    createdOn: Date;
+    email: string;
 }
 
 export interface ObjectlessBoardData {
