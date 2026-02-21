@@ -7,6 +7,7 @@ import { ObjectId, type WithId } from "mongodb";
 import * as AuthService from "../services/auth.service.js";
 import type { StringValue } from "ms";
 import { err, ok } from "../types/result.types.js";
+import * as UserModel from "../models/user.model.js";
 
 export interface AccessTokenPayload extends JwtPayload {
     id: string;
@@ -326,110 +327,6 @@ export async function issueNewTokens(userId: string, userRole: string) {
     const tokens = refreshTokensResult.data;
 
     return ok(tokens);
-}
-
-/**
- * @returns Data for user/guest user (displayname and createdOn)
- */
-export async function getUserData(userId: string, userRole: string) {
-    if (!ObjectId.isValid(userId)) {
-        return err({ reason: "User ID is invalid." });
-    }
-
-    if (userRole === "guest") {
-        const guestUserData = await getUserData_guest(userId);
-        if (guestUserData.success) {
-            return ok({ ...guestUserData.data, email: undefined }); // users have email field, and this method must return the same success type. might rewrite this in the future but ok for now
-        }
-        return guestUserData;
-    } else if (userRole === "user") {
-        return getUserData_user(userId);
-    } else {
-        return err({ reason: "User's role is invalid" });
-    }
-}
-
-async function getUserData_guest(userId: string) {
-    const getGuestUserResult = await GuestUserService.getGuestUserById(userId);
-
-    if (!getGuestUserResult.success) {
-        const error = getGuestUserResult.error;
-        const errorReason = error.reason;
-        switch (errorReason) {
-            case "Couldn't search for user.": {
-                return err({
-                    reason: "Couldn't search for user.",
-                    previousError: error,
-                });
-            }
-            case "Guest user ID is invalid.": {
-                return err({
-                    reason: "User ID is invalid.",
-                    previousError: error,
-                });
-            }
-            case "User doesn't exist.": {
-                return err({
-                    reason: "User doesn't exist.",
-                    previousError: error,
-                });
-            }
-            default: {
-                throw new Error(
-                    `Unhandled error: ${errorReason satisfies never}`
-                );
-            }
-        }
-    }
-
-    const userData = getGuestUserResult.data;
-
-    return ok({
-        displayName: userData.displayName,
-        createdOn: userData.createdOn,
-    });
-}
-
-async function getUserData_user(userId: string) {
-    const getUserResult = await UserService.getUserById(userId);
-
-    if (!getUserResult.success) {
-        const error = getUserResult.error;
-        const errorReason = error.reason;
-        switch (errorReason) {
-            case "Couldn't search for user.": {
-                return err({
-                    reason: "Couldn't search for user.",
-                    previousError: error,
-                });
-            }
-            case "User ID is invalid.": {
-                return err({
-                    reason: "User ID is invalid.",
-                    previousError: error,
-                });
-            }
-            case "User doesn't exist.": {
-                return err({
-                    reason: "User doesn't exist.",
-                    previousError: error,
-                });
-            }
-            default: {
-                throw new Error(
-                    `Unhandled error: ${errorReason satisfies never}`
-                );
-            }
-        }
-    }
-
-    const userData = getUserResult.data;
-
-    return ok({
-        displayName: userData.displayName,
-        createdOn: userData.createdOn,
-        email: userData.email,
-    });
 }
 
 export async function login(email: string, password: string) {

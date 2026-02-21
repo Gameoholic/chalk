@@ -292,10 +292,10 @@ export async function createUser(
 }
 
 export async function updateUser(
-    id: string,
+    userId: string,
     updates: { displayName?: string }
 ) {
-    if (!ObjectId.isValid(id)) {
+    if (!ObjectId.isValid(userId)) {
         return err({ reason: "User ID is invalid." });
     }
 
@@ -306,13 +306,13 @@ export async function updateUser(
 
     if (updates.displayName !== undefined) {
         if (updates.displayName.length === 0) {
-            return err({ reason: "Update displayname is empty." });
+            return err({ reason: "Update displayName's length is zero." });
         }
         if (
             updates.displayName.length >
             Number(process.env.DISPLAY_NAME_MAX_LENGTH) // todo: all process.env parameters should be loaded on app load, because we could crash here if it wasn't provided, we don't check on app load so this could happen.
         ) {
-            return err({ reason: "Update displayname is too long." });
+            return err({ reason: "Update displayName is too long." });
         }
     }
 
@@ -322,7 +322,7 @@ export async function updateUser(
         updatePartial.displayName = updates.displayName;
     }
 
-    const result = await UserModel.updateUser(new ObjectId(id), updates);
+    const result = await UserModel.updateUser(new ObjectId(userId), updates);
 
     if (!result.success) {
         const error = result.error;

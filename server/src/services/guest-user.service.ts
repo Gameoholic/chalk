@@ -18,19 +18,19 @@ export async function getGuestUserById(id: string) {
         switch (errorReason) {
             case "Couldn't find user.": {
                 return err({
-                    reason: "User doesn't exist.",
+                    reason: "Guest user doesn't exist.",
                     previousError: error,
                 });
             }
             case "Unknown error.": {
                 return err({
-                    reason: "Couldn't search for user.",
+                    reason: "Couldn't search for guest user.",
                     previousError: error,
                 });
             }
             case "Unknown error and unknown type.": {
                 return err({
-                    reason: "Couldn't search for user.",
+                    reason: "Couldn't search for guest user.",
                     previousError: error,
                 });
             }
@@ -179,10 +179,10 @@ export async function deleteGuestUser(id: string) {
 }
 
 export async function updateGuestUser(
-    id: string,
+    userId: string,
     updates: { displayName?: string }
 ) {
-    if (!ObjectId.isValid(id)) {
+    if (!ObjectId.isValid(userId)) {
         return err({ reason: "Guest user ID is invalid." });
     }
 
@@ -193,13 +193,13 @@ export async function updateGuestUser(
 
     if (updates.displayName !== undefined) {
         if (updates.displayName.length === 0) {
-            return err({ reason: "Update displayname is empty." });
+            return err({ reason: "Update displayName's length is zero." });
         }
         if (
             updates.displayName.length >
             Number(process.env.DISPLAY_NAME_MAX_LENGTH) // todo: all process.env parameters should be loaded on app load, because we could crash here if it wasn't provided, we don't check on app load so this could happen.
         ) {
-            return err({ reason: "Update displayname is too long." });
+            return err({ reason: "Update displayName is too long." });
         }
     }
 
@@ -210,7 +210,7 @@ export async function updateGuestUser(
     }
 
     const result = await GuestUserModel.updateGuestUser(
-        new ObjectId(id),
+        new ObjectId(userId),
         updates
     );
 
@@ -221,31 +221,31 @@ export async function updateGuestUser(
         switch (errorReason) {
             case "Couldn't find user.": {
                 return err({
-                    reason: "Couldn't find user.",
+                    reason: "Couldn't find guest user.",
                     previousError: error,
                 });
             }
             case "Couldn't update user.": {
                 return err({
-                    reason: "Couldn't update user.",
+                    reason: "Couldn't update guest user.",
                     previousError: error,
                 });
             }
             case "MongoDB did not acknowledge the operation.": {
                 return err({
-                    reason: "Couldn't update user.",
+                    reason: "Couldn't update guest user.",
                     previousError: error,
                 });
             }
             case "Unknown error.": {
                 return err({
-                    reason: "Couldn't update user.",
+                    reason: "Couldn't update guest user.",
                     previousError: error,
                 });
             }
             case "Unknown error and unknown type.": {
                 return err({
-                    reason: "Couldn't update user.",
+                    reason: "Couldn't update guest user.",
                     previousError: error,
                 });
             }
