@@ -1,25 +1,27 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { X, Check, Loader2, Trash2, RotateCcw } from "lucide-react";
+import { SessionContext } from "../../types/SessionContext";
+import { CanvasContext } from "../../types/CanvasContext";
 
 const MAX_NAME_LENGTH = 50;
 
 export default function ManageThisBoardModal({
-    name,
-    createdOn,
     onRename,
     onReset,
     onDelete,
     onClose,
 }: {
-    name: string;
-    createdOn: string | Date;
     onRename: (newName: string) => Promise<void>;
     onReset: () => Promise<void>;
     onDelete: () => Promise<void>;
     onClose: () => void;
 }) {
-    const [draftName, setDraftName] = useState(name);
-    const [displayName, setDisplayName] = useState(name);
+    const canvasContext = useContext(CanvasContext);
+
+    const [draftName, setDraftName] = useState(
+        canvasContext.getCurrentBoard().name
+    );
+    const [name, setName] = useState(canvasContext.getCurrentBoard().name);
     const [isEditing, setIsEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [isDeleted, setIsDeleted] = useState(false); // New success state
@@ -32,7 +34,7 @@ export default function ManageThisBoardModal({
     useEffect(() => {
         const trimmed = name.slice(0, MAX_NAME_LENGTH);
         setDraftName(trimmed);
-        setDisplayName(trimmed);
+        setName(trimmed);
     }, [name]);
 
     useEffect(() => {
@@ -45,7 +47,7 @@ export default function ManageThisBoardModal({
 
     const handleSave = async () => {
         const trimmed = draftName.trim().slice(0, MAX_NAME_LENGTH);
-        if (!trimmed || trimmed === displayName) {
+        if (!trimmed || trimmed === name) {
             setIsEditing(false);
             return;
         }
@@ -54,13 +56,12 @@ export default function ManageThisBoardModal({
             setIsSaving(true);
             setNameError(null);
             await onRename(trimmed);
-            setDisplayName(trimmed);
             setIsEditing(false);
+            setName(trimmed); // todo wanna get rid of this
         } catch (err) {
             setNameError("Failed to rename board: " + (err as Error)?.message);
-        } finally {
-            setIsSaving(false);
         }
+        setIsSaving(false);
     };
 
     const handleResetConfirmed = async () => {
@@ -91,7 +92,9 @@ export default function ManageThisBoardModal({
         }
     };
 
-    const formattedDate = new Date(createdOn).toLocaleDateString(undefined, {
+    const formattedDate = new Date(
+        canvasContext.getCurrentBoard().createdOn
+    ).toLocaleDateString(undefined, {
         year: "numeric",
         month: "long",
         day: "numeric",
@@ -150,7 +153,7 @@ export default function ManageThisBoardModal({
                                 </button>
                                 <button
                                     onClick={() => {
-                                        setDraftName(displayName);
+                                        setDraftName(name);
                                         setIsEditing(false);
                                     }}
                                     disabled={isSaving || isDeleted}
@@ -162,7 +165,7 @@ export default function ManageThisBoardModal({
                         ) : (
                             <>
                                 <span className="flex-1 truncate text-sm">
-                                    {displayName}
+                                    {name}
                                 </span>
                                 <button
                                     onClick={() => setIsEditing(true)}

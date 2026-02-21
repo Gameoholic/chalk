@@ -599,8 +599,6 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
             {/* Manage Board Modal */}
             {showManageThisBoardModal && (
                 <ManageThisBoardModal
-                    name={canvasContext.getCurrentBoard().name}
-                    createdOn={canvasContext.getCurrentBoard().createdOn}
                     onRename={handleRenameBoard}
                     onReset={handleResetBoard}
                     onDelete={handleDeleteBoard}
