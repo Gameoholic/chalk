@@ -25,7 +25,7 @@ import {
 import { BoardData, UserData } from "../types/data";
 import ManageThisBoardModal from "./modals/ManageThisBoardModal";
 import CreateAccountModal from "./modals/CreateAccountModal";
-import LoginModal from "./modals/LogInModal";
+import LoginModal from "./modals/LoginModal";
 import { createUser } from "../api/users";
 import CanvasInteractive from "./CanvasInteractive";
 import { motion } from "motion/react";
