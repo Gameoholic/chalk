@@ -33,6 +33,7 @@ chalk.gameoholic.dev
 - [ ] Better light mode
 - [ ] Keybinds in bottom left corner ([Shift] Move [LMB] Draw)
 - [ ] Make lastOpen property of board nullable, so when we create the board it doesn't automatically set its lastOpened to now
+- [ ] My boards: separate zoom in and zoom out easings, improve values
 - [ ] Unify style app-wide
 
 #### 🔒 Security

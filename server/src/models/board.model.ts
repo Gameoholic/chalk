@@ -313,6 +313,41 @@ export async function findBoardByIdForUser(
     }
 }
 
+/**
+ * Deletes a specific board for the owner.
+ */
+export async function deleteBoardByIdForUser(
+    ownerId: ObjectId,
+    boardId: ObjectId
+) {
+    try {
+        const query = { _id: boardId, ownerId: ownerId };
+        const result = await collection.deleteOne(query);
+
+        if (!result.acknowledged) {
+            return err({
+                reason: "MongoDB did not acknowledge the operation.",
+            });
+        }
+
+        if (result.deletedCount === 0) {
+            return err({ reason: "Board not found." });
+        }
+
+        return ok(undefined);
+    } catch (error) {
+        if (error instanceof Error) {
+            return err({
+                reason: "Unknown error.",
+                previousError: {
+                    reason: error.message,
+                },
+            });
+        }
+        return err({ reason: "Unknown error and unknown type." });
+    }
+}
+
 export async function countBoardsByOwner(ownerId: ObjectId) {
     try {
         const result = await collection.countDocuments({ ownerId });

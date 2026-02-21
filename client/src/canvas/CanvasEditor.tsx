@@ -16,6 +16,7 @@ import {
     Sun,
 } from "lucide-react";
 import {
+    deleteBoard,
     resetBoard,
     updateBoardCamera,
     updateBoardName,
@@ -312,12 +313,8 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
     }, [cameraPosition, cameraZoom]);
 
     const handleRenameBoard = async (newName: string) => {
-        try {
-            await updateBoardName(canvasContext.getCurrentBoard().id, newName);
-            canvasContext.getCurrentBoard().name = newName;
-        } catch (err) {
-            throw new Error((err as Error)?.message);
-        }
+        await updateBoardName(canvasContext.getCurrentBoard().id, newName);
+        canvasContext.getCurrentBoard().name = newName;
     };
 
     const handleResetBoard = async () => {
@@ -337,6 +334,20 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
         objectsBeingSavedOnDatabase.current = [];
         objectsBeingUpdatedButNotReadyForSaving.current.clear();
         objectsToSaveOnDatabase.current.clear();
+    };
+
+    const handleDeleteBoard = async () => {
+        if (
+            objectsBeingSavedOnDatabase.current.length !== 0 ||
+            objectsBeingUpdatedButNotReadyForSaving.current.size !== 0 ||
+            objectsToSaveOnDatabase.current.size !== 0
+        ) {
+            throw new Error(
+                "Can't delete board while objects are pending save."
+            );
+        }
+        await deleteBoard(canvasContext.currentBoardId);
+        window.location.reload();
     };
 
     // Prevent refreshing or leaving page if objects are currently being saved / awaiting save
@@ -579,6 +590,7 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
                     createdOn={canvasContext.getCurrentBoard().createdOn}
                     onRename={handleRenameBoard}
                     onReset={handleResetBoard}
+                    onDelete={handleDeleteBoard}
                     onClose={() => setShowManageThisBoardModal(false)}
                 />
             )}

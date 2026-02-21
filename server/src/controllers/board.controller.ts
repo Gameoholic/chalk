@@ -187,6 +187,70 @@ export async function getById(req: AuthenticatedRequest, res: Response) {
     }
 }
 
+export async function deleteById(req: AuthenticatedRequest, res: Response) {
+    try {
+        if (!req.authenticatedUser) {
+            return res.sendStatus(401);
+        }
+
+        const id = req.params.id as string;
+        if (id === undefined) {
+            res.status(400).json({ error: "Board id required." });
+            return;
+        }
+
+        const result = await BoardService.deleteBoardByIdForUser(
+            req.authenticatedUser.id,
+            id
+        );
+
+        if (result.success) {
+            return res.sendStatus(204);
+        }
+
+        const error = result.error;
+        const errorReason = error.reason;
+
+        switch (errorReason) {
+            case "User ID is invalid.": {
+                return res.status(400).json({
+                    error: "Your user ID is invalid.",
+                });
+            }
+            case "Board ID is invalid.": {
+                return res.status(400).json({
+                    error: "The board ID is invalid.",
+                });
+            }
+            case "Board not found for this user.": {
+                return res.status(404).json({
+                    error: "Board not found.",
+                });
+            }
+            case "Couldn't delete board.": {
+                return res.status(500).json({
+                    error: "Failed to delete board due to an internal error.",
+                });
+            }
+            case "Couldn't get board.": {
+                return res.status(500).json({
+                    error: "Failed to delete board due to an internal error.",
+                });
+            }
+
+            default: {
+                throw new Error(
+                    `Unhandled error: ${errorReason satisfies never}`
+                );
+            }
+        }
+    } catch (err) {
+        return res.status(500).json({
+            error: "Failed to delete board due to an internal error.",
+        });
+    }
+}
+
 export async function updateBoard(req: AuthenticatedRequest, res: Response) {
     try {
         if (!req.authenticatedUser) {

@@ -126,3 +126,17 @@ export async function resetBoard(boardId: string) {
 
     return;
 }
+
+export async function deleteBoard(boardId: string) {
+    const result = await fetchHelper<undefined>(
+        `me/boards/${boardId}`,
+        "DELETE"
+    );
+
+    if (!result.success) {
+        console.error("Error executing deleteBoard: " + result.error);
+        throw Error(result.error);
+    }
+
+    return;
+}

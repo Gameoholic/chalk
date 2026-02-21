@@ -289,6 +289,59 @@ export async function getBoardByIdForUser(userId: string, boardId: string) {
     return ok(board);
 }
 
+export async function deleteBoardByIdForUser(userId: string, boardId: string) {
+    if (!ObjectId.isValid(userId)) {
+        return err({ reason: "User ID is invalid." });
+    }
+    if (!ObjectId.isValid(boardId)) {
+        return err({ reason: "Board ID is invalid." });
+    }
+
+    const result = await BoardModel.deleteBoardByIdForUser(
+        new ObjectId(userId),
+        new ObjectId(boardId)
+    );
+
+    if (!result.success) {
+        const error = result.error;
+        const errorReason = error.reason;
+        switch (errorReason) {
+            case "MongoDB did not acknowledge the operation.": {
+                return err({
+                    reason: "Couldn't delete board.",
+                    previousError: error,
+                });
+            }
+            case "Board not found.": {
+                return err({
+                    reason: "Board not found for this user.",
+                    previousError: error,
+                });
+            }
+            case "Unknown error.": {
+                return err({
+                    reason: "Couldn't get board.",
+                    previousError: error,
+                });
+            }
+            case "Unknown error and unknown type.": {
+                return err({
+                    reason: "Couldn't delete board.",
+                    previousError: error,
+                });
+            }
+
+            default: {
+                throw new Error(
+                    `Unhandled error: ${errorReason satisfies never}`
+                );
+            }
+        }
+    }
+
+    return ok(undefined);
+}
+
 /**
  * Assumes ownerId and name are sanitized.
  * @return Board id and created on.
