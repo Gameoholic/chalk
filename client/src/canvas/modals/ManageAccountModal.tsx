@@ -215,7 +215,7 @@ export default function ManageAccountModal({
                         </div>
                     )}
                     {loggedOut && (
-                        <div className="text-center text-sm font-medium text-green-400">
+                        <div className="text-sm font-medium text-green-400">
                             Logged out!
                         </div>
                     )}
