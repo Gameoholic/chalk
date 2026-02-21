@@ -29,10 +29,10 @@ chalk.gameoholic.dev
 - [ ] Snap camera zoom
 - [ ] Delete board
 
-#### 🎨 Visual & Polish
-- [ ] Improve my boards page design
+#### 🎨 Visual & Polish & QOL
 - [ ] Better light mode
 - [ ] Keybinds in bottom left corner ([Shift] Move [LMB] Draw)
+- [ ] Make lastOpen property of board nullable, so when we create the board it doesn't automatically set its lastOpened to now
 - [ ] Unify style app-wide
 
 #### 🔒 Security
@@ -57,6 +57,7 @@ chalk.gameoholic.dev
 - [ ] Divide boards into 'zones' - only load necessary zones
 - [ ] Auto-share of objects with websockets is dynamic - if server is lagging, slow down rate, otherwise, speed it up
 - [ ] Pagination for my boards
+- [ ] Don't update board's last camera properties every frame. Do it at the same time as object save. (in fact, put their logic in the same function)
 
 #### 🐞 Bugs
 - [ ] Creating account doesn't refresh page

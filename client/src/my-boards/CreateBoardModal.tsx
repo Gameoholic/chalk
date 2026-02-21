@@ -47,6 +47,10 @@ export default function CreateBoardModal({
 
             onCreated(trimmed);
             setSuccess(true);
+
+            setTimeout(() => {
+                window.location.reload();
+            }, 1200);
         } catch (err) {
             setError(err instanceof Error ? err.message : "Failed.");
             setIsLoading(false);
@@ -58,7 +62,7 @@ export default function CreateBoardModal({
             {/* Backdrop */}
             <motion.div
                 className="fixed inset-0 z-200"
-                style={{ backgroundColor: "rgba(0,0,0,0.25)" }}
+                style={{ backgroundColor: "rgba(0,0,0,0.15)" }}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
@@ -71,30 +75,28 @@ export default function CreateBoardModal({
             {/* Modal */}
             <div className="pointer-events-none fixed inset-0 z-250 flex items-center justify-center">
                 <motion.div
-                    className="pointer-events-auto w-80 overflow-hidden rounded-2xl bg-white shadow-2xl"
-                    initial={{ opacity: 0, scale: 0.88, y: 16 }}
+                    className="pointer-events-auto w-80 overflow-hidden rounded-xl shadow-xl"
+                    style={{ backgroundColor: "var(--card)" }}
+                    initial={{ opacity: 0, scale: 0.95, y: 8 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.88, y: 16 }}
-                    transition={{ duration: 0.35, ease: [0.52, 0.22, 0, 1] }}
+                    exit={{ opacity: 0, scale: 0.95, y: 8 }}
+                    transition={{ duration: 0.2, ease: [0.52, 0.22, 0, 1] }}
                     onClick={(e) => e.stopPropagation()}
                 >
-                    {/* Amber accent bar — turns green on success */}
-                    <motion.div
-                        className="h-1.5 w-full"
-                        animate={{
-                            backgroundColor: success ? "#22c55e" : "#fbbf24",
-                        }}
-                        transition={{ duration: 0.4 }}
-                    />
-
-                    <div className="flex flex-col gap-5 px-7 pt-6 pb-7">
-                        <p className="text-lg font-semibold tracking-tight text-gray-800">
+                    <div className="flex flex-col gap-4 p-5">
+                        <p
+                            className="text-sm font-medium"
+                            style={{ color: "var(--card-foreground)" }}
+                        >
                             New Board
                         </p>
 
                         {/* Name input */}
                         <div className="flex flex-col gap-1.5">
-                            <label className="text-xs font-medium tracking-widest text-gray-500 uppercase">
+                            <label
+                                className="text-xs tracking-widest uppercase"
+                                style={{ color: "var(--muted-foreground)" }}
+                            >
                                 Name
                             </label>
                             <input
@@ -106,7 +108,19 @@ export default function CreateBoardModal({
                                     setError(null);
                                 }}
                                 disabled={isLoading || success}
-                                className="w-full rounded-lg border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-sm text-gray-800 transition-all outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-200 disabled:opacity-50"
+                                className="w-full rounded-lg px-3 py-2 text-sm transition-all outline-none disabled:opacity-50"
+                                style={{
+                                    backgroundColor: "var(--accent)",
+                                    color: "var(--card-foreground)",
+                                    border: "1px solid transparent",
+                                }}
+                                onFocus={(e) =>
+                                    (e.target.style.borderColor =
+                                        "var(--muted-foreground)")
+                                }
+                                onBlur={(e) =>
+                                    (e.target.style.borderColor = "transparent")
+                                }
                                 placeholder="Board name"
                                 maxLength={64}
                             />
@@ -130,7 +144,7 @@ export default function CreateBoardModal({
                                         initial={{ opacity: 0, y: -4 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         exit={{ opacity: 0, y: -4 }}
-                                        className="text-xs font-medium text-green-500"
+                                        className="text-xs text-green-500"
                                     >
                                         Created board!
                                     </motion.p>
@@ -142,16 +156,28 @@ export default function CreateBoardModal({
                         <div className="flex justify-end gap-2">
                             <motion.button
                                 whileHover={{
-                                    scale: isLoading || success ? 1 : 1.03,
+                                    scale: isLoading || success ? 1 : 1.02,
                                 }}
                                 whileTap={{
-                                    scale: isLoading || success ? 1 : 0.97,
+                                    scale: isLoading || success ? 1 : 0.98,
                                 }}
                                 onClick={() => {
                                     if (!isLoading && !success) onClose();
                                 }}
                                 disabled={isLoading || success}
-                                className="rounded-lg px-4 py-2 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 disabled:opacity-40"
+                                className="rounded-lg px-3 py-1.5 text-xs transition-colors disabled:opacity-40"
+                                style={{
+                                    color: "var(--muted-foreground)",
+                                    backgroundColor: "transparent",
+                                }}
+                                onMouseEnter={(e) =>
+                                    (e.currentTarget.style.backgroundColor =
+                                        "var(--accent)")
+                                }
+                                onMouseLeave={(e) =>
+                                    (e.currentTarget.style.backgroundColor =
+                                        "transparent")
+                                }
                             >
                                 Cancel
                             </motion.button>
@@ -160,21 +186,25 @@ export default function CreateBoardModal({
                                     scale:
                                         !name.trim() || isLoading || success
                                             ? 1
-                                            : 1.03,
+                                            : 1.02,
                                 }}
                                 whileTap={{
                                     scale:
                                         !name.trim() || isLoading || success
                                             ? 1
-                                            : 0.97,
+                                            : 0.98,
                                 }}
                                 onClick={handleCreate}
                                 disabled={!name.trim() || isLoading || success}
-                                className="flex min-w-[72px] items-center justify-center rounded-lg bg-amber-400 px-5 py-2 text-sm font-semibold text-white shadow-sm transition-opacity disabled:opacity-60"
+                                className="flex min-w-[60px] items-center justify-center rounded-lg px-3 py-1.5 text-xs font-medium transition-opacity disabled:opacity-50"
+                                style={{
+                                    backgroundColor: "var(--card-foreground)",
+                                    color: "var(--card)",
+                                }}
                             >
                                 {isLoading ? (
                                     <svg
-                                        className="h-4 w-4 animate-spin"
+                                        className="h-3.5 w-3.5 animate-spin"
                                         viewBox="0 0 24 24"
                                         fill="none"
                                     >

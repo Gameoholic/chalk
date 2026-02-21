@@ -1,4 +1,4 @@
-import { Plus } from "lucide-react";
+import { Plus, ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react";
 import { BoardData } from "../types/data";
 import CanvasWorld from "../canvas/CanvasWorld";
 import useDimensions from "react-cool-dimensions";
@@ -24,6 +24,9 @@ type Rect = {
 type Size = { width: number; height: number };
 
 const BOARD_SLOT_ROUNDED = 6; // in pixels
+const ZOOM_DURATION = 1.0;
+const ZOOM_EASE = [0.52, 0.22, 0, 1] as const;
+const BOARDS_PER_PAGE = 8; // Exactly 8 boards + 1 Create slot = 9 slots (3x3 grid)
 
 interface MyBoardsProps {
     initialBoardId: string;
@@ -59,6 +62,16 @@ export default function MyBoards({
     // Store whether we should animate to grid view
     const [shouldAnimateOut, setShouldAnimateOut] = useState(false);
 
+    // PAGINATION STATE
+    // Find which page the initial board is on so we load the right page out of the gate
+    const [currentPage, setCurrentPage] = useState(() => {
+        if (!initialBoardId) return 1;
+        const index = sessionContext.boards.findIndex(
+            (b) => b.id === initialBoardId
+        );
+        return index >= 0 ? Math.floor(index / BOARDS_PER_PAGE) + 1 : 1;
+    });
+
     // Ref for the grid container to calculate relative positions
     const gridRef = useRef<HTMLDivElement>(null);
 
@@ -71,6 +84,15 @@ export default function MyBoards({
     });
 
     const windowAspect = windowSize.width / windowSize.height;
+
+    // PAGINATION CALCULATIONS
+    const totalBoards = sessionContext.boards.length;
+    const totalPages = Math.max(1, Math.ceil(totalBoards / BOARDS_PER_PAGE));
+    const startIndex = (currentPage - 1) * BOARDS_PER_PAGE;
+    const visibleBoards = sessionContext.boards.slice(
+        startIndex,
+        startIndex + BOARDS_PER_PAGE
+    );
 
     useEffect(() => {
         const handleResize = () => {
@@ -140,7 +162,7 @@ export default function MyBoards({
         initialBoardId,
         windowSize.width,
         windowSize.height,
-        boardRefs.current.size,
+        boardRefs.current.size, // this ensures we recalculate if refs populate
     ]);
 
     const handleBoardClick = (board: BoardData, slotRect: Rect) => {
@@ -174,24 +196,40 @@ export default function MyBoards({
         });
     };
 
+    // Helper to generate pagination numbers (1, 2, ..., n)
+    const generatePagination = () => {
+        const pages = [];
+        for (let i = 1; i <= totalPages; i++) {
+            // Simple truncation for many pages: 1, 2, 3 ... last
+            if (
+                i === 1 ||
+                i === totalPages ||
+                (i >= currentPage - 1 && i <= currentPage + 1)
+            ) {
+                pages.push(i);
+            } else if (pages[pages.length - 1] !== "...") {
+                pages.push("...");
+            }
+        }
+        return pages;
+    };
+
     return (
-        // {/* // This motion.div fixes the flicker on mount zoom out by fading in
-        // // only when initial transform is calculated */}
         <motion.div
-            className="fixed inset-0 flex flex-col items-center overflow-hidden bg-amber-400"
+            className="fixed inset-0 flex flex-col items-center justify-center overflow-hidden bg-gray-300"
             initial={{ opacity: 0 }}
             animate={{ opacity: initialTransform !== null ? 1 : 0 }}
             transition={{ duration: 0 }}
         >
-            {/* Boards page header - fades out when zoomed or during initial animation */}
+            {/* Boards page header - fades out when zoomed in, fades in immediately during initial zoom out */}
             <motion.p
                 initial={{ opacity: 0, y: -50 }}
                 animate={{
-                    opacity: selectedBoardId || !hasZoomedOut ? 0 : 1,
-                    y: selectedBoardId || !hasZoomedOut ? -50 : 0,
+                    opacity: selectedBoardId || !shouldAnimateOut ? 0 : 1,
+                    y: selectedBoardId || !shouldAnimateOut ? -50 : 0,
                 }}
-                transition={{ duration: 0.8, ease: [0.52, 0.22, 0, 1] }}
-                className="pointer-events-none z-10 mt-4 mb-5 text-4xl"
+                transition={{ duration: ZOOM_DURATION, ease: ZOOM_EASE }}
+                className="pointer-events-none z-10 mb-8 text-4xl"
             >
                 Boards
             </motion.p>
@@ -233,12 +271,12 @@ export default function MyBoards({
                             }
                 }
                 transition={{
-                    duration: shouldAnimateOut
-                        ? 1.2
-                        : selectedBoardId === null
-                          ? 0 // For zooming out duration should be zero
-                          : 0.8,
-                    ease: shouldAnimateOut ? [0.52, 0.22, 0, 1] : undefined,
+                    // If we are animating out or in, use duration. Otherwise, 0 to set initial state
+                    duration:
+                        shouldAnimateOut || selectedBoardId !== null
+                            ? ZOOM_DURATION
+                            : 0,
+                    ease: ZOOM_EASE,
                 }}
                 onAnimationComplete={() => {
                     if (shouldAnimateOut) {
@@ -261,22 +299,19 @@ export default function MyBoards({
                     onClick={() => setIsCreateBoardModalOpen(true)}
                 />
 
-                {/* Rest are normal boards or empty board slots */}
-                {Array.from({ length: 8 }).map((_, i) => (
+                {/* Rest are normal boards or empty board slots mapped to current page */}
+                {Array.from({ length: BOARDS_PER_PAGE }).map((_, i) => (
                     <BoardSlot
                         key={i}
-                        boardData={sessionContext.boards[i]}
+                        boardData={visibleBoards[i]}
                         windowAspect={windowAspect}
                         windowSize={windowSize}
-                        isSelected={
-                            sessionContext.boards[i]?.id === selectedBoardId
-                        }
+                        isSelected={visibleBoards[i]?.id === selectedBoardId}
                         isLastHovered={
-                            sessionContext.boards[i]?.id === lastHoveredBoardId
+                            visibleBoards[i]?.id === lastHoveredBoardId
                         }
-                        isInitialBoard={
-                            sessionContext.boards[i]?.id === initialBoardId
-                        }
+                        isInitialBoard={visibleBoards[i]?.id === initialBoardId}
+                        shouldAnimateOut={shouldAnimateOut}
                         hasZoomedOut={hasZoomedOut}
                         onOpen={handleBoardClick}
                         onHover={(id) => setLastHoveredBoardId(id)}
@@ -289,11 +324,62 @@ export default function MyBoards({
                 ))}
             </motion.div>
 
+            {/* PAGINATION - Fades out just like the title when zoomed */}
+            <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{
+                    opacity: selectedBoardId || !shouldAnimateOut ? 0 : 1,
+                    y: selectedBoardId || !shouldAnimateOut ? 20 : 0,
+                }}
+                transition={{ duration: ZOOM_DURATION, ease: ZOOM_EASE }}
+                className="mt-8 flex items-center justify-center gap-1"
+            >
+                <button
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-black/10 disabled:pointer-events-none disabled:opacity-50"
+                >
+                    <ChevronLeft className="h-4 w-4" />
+                </button>
+
+                {generatePagination().map((page, index) =>
+                    page === "..." ? (
+                        <span
+                            key={`ellipsis-${index}`}
+                            className="flex h-9 w-9 items-center justify-center"
+                        >
+                            <MoreHorizontal className="h-4 w-4 opacity-50" />
+                        </span>
+                    ) : (
+                        <button
+                            key={`page-${page}`}
+                            onClick={() => setCurrentPage(page as number)}
+                            className={`inline-flex h-9 w-9 items-center justify-center rounded-md text-sm font-medium transition-colors ${
+                                currentPage === page
+                                    ? "bg-white text-gray-900 shadow-sm"
+                                    : "hover:bg-black/10"
+                            }`}
+                        >
+                            {page}
+                        </button>
+                    )
+                )}
+
+                <button
+                    onClick={() =>
+                        setCurrentPage((p) => Math.min(totalPages, p + 1))
+                    }
+                    disabled={currentPage === totalPages}
+                    className="inline-flex h-9 w-9 items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-black/10 disabled:pointer-events-none disabled:opacity-50"
+                >
+                    <ChevronRight className="h-4 w-4" />
+                </button>
+            </motion.div>
+
             {isCreateBoardModalOpen && (
                 <CreateBoardModal
                     onClose={() => setIsCreateBoardModalOpen(false)}
                     onCreated={(name) => {
-                        // todo: replace with just updating context?
                         window.location.reload();
                     }}
                 />
@@ -310,6 +396,7 @@ function BoardSlot({
     isSelected,
     isLastHovered,
     isInitialBoard,
+    shouldAnimateOut,
     hasZoomedOut,
     onHover,
     onRefReady,
@@ -320,6 +407,7 @@ function BoardSlot({
     isSelected: boolean;
     isLastHovered: boolean;
     isInitialBoard: boolean;
+    shouldAnimateOut: boolean;
     hasZoomedOut: boolean;
     onOpen: (board: BoardData, rect: Rect) => void;
     onHover: (id: string | null) => void;
@@ -335,6 +423,7 @@ function BoardSlot({
             isSelected={isSelected}
             isLastHovered={isLastHovered}
             isInitialBoard={isInitialBoard}
+            shouldAnimateOut={shouldAnimateOut}
             hasZoomedOut={hasZoomedOut}
             onOpen={onOpen}
             onHover={onHover}
@@ -351,6 +440,7 @@ function Board({
     isSelected,
     isLastHovered,
     isInitialBoard,
+    shouldAnimateOut,
     hasZoomedOut,
     onHover,
     onRefReady,
@@ -361,6 +451,7 @@ function Board({
     isSelected: boolean;
     isLastHovered: boolean;
     isInitialBoard: boolean;
+    shouldAnimateOut: boolean;
     hasZoomedOut: boolean;
     onOpen: (board: BoardData, rect: Rect) => void;
     onHover: (id: string | null) => void;
@@ -388,8 +479,9 @@ function Board({
 
     const zIndex = isSelected || isLastHovered ? 100 : undefined;
 
-    // Determine if this board should appear zoomed (selected or initial board before zoom out)
-    const isZoomed = isSelected || (isInitialBoard && !hasZoomedOut);
+    // Determine if this board should appear zoomed.
+    // By using `!shouldAnimateOut` instead of `!hasZoomedOut`, it accurately determines when the zoom-out animation begins.
+    const isZoomed = isSelected || (isInitialBoard && !shouldAnimateOut);
 
     return (
         <motion.div
@@ -436,11 +528,11 @@ function Board({
                 transition={{ type: "spring", stiffness: 300, damping: 25 }}
                 className="pointer-events-auto relative h-full w-full cursor-pointer overflow-hidden bg-white shadow-sm"
             >
-                {/* Title - Fade out when zoomed (selected or during initial animation) */}
+                {/* Title - Fade out when zoomed in, fade in immediately when zoom out animation starts */}
                 <motion.div
                     initial={{ opacity: isZoomed ? 0 : 1 }}
                     animate={{ opacity: isZoomed ? 0 : 1 }}
-                    transition={{ duration: 0.8, ease: [0.52, 0.22, 0, 1] }}
+                    transition={{ duration: ZOOM_DURATION, ease: ZOOM_EASE }}
                     className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-white/50 font-bold"
                 >
                     {boardData.name}
