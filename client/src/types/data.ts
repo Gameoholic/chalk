@@ -15,7 +15,7 @@ export interface UserData {
     role: string;
     id: string;
     createdOn: Date;
-    email: string;
+    email: string | undefined; // Undefined if user is guest
 }
 
 export interface ObjectlessBoardData {

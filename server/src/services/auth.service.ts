@@ -337,7 +337,11 @@ export async function getUserData(userId: string, userRole: string) {
     }
 
     if (userRole === "guest") {
-        return getUserData_guest(userId);
+        const guestUserData = await getUserData_guest(userId);
+        if (guestUserData.success) {
+            return ok({ ...guestUserData.data, email: undefined }); // users have email field, and this method must return the same success type. might rewrite this in the future but ok for now
+        }
+        return guestUserData;
     } else if (userRole === "user") {
         return getUserData_user(userId);
     } else {
@@ -424,6 +428,7 @@ async function getUserData_user(userId: string) {
     return ok({
         displayName: userData.displayName,
         createdOn: userData.createdOn,
+        email: userData.email,
     });
 }
 

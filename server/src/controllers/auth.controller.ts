@@ -159,6 +159,7 @@ export async function me(req: AuthenticatedRequest, res: Response) {
                     role: req.authenticatedUser.role,
                     id: req.authenticatedUser.id,
                     createdOn: userData.createdOn,
+                    email: userData.email, // note: is undefined in case of guest user!
                 },
             });
         }
