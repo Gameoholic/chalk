@@ -49,8 +49,6 @@ chalk.gameoholic.dev
 - [ ] Object limit on upsert doesn't work
 
 #### 👤 Accounts
-- [ ] Manage account: Log out
-- [ ] Manage account: Change displayname
 - [ ] Send verification email on sign-up
 - [ ] Forgot password
 - [ ] OAuth
@@ -62,7 +60,6 @@ chalk.gameoholic.dev
 - [ ] Don't update board's last camera properties every frame. Do it at the same time as object save. (in fact, put their logic in the same function)
 
 #### 🐞 Bugs
-- [ ] Creating account doesn't refresh page
 - [ ] Refresh token invalid error when changing board/user name
 - [ ] Sometimes drawn objects disappear on save (look at console warnings when it happens)
 - [ ] Changing opacity in color picker doesn't work

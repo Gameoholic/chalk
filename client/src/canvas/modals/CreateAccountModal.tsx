@@ -40,7 +40,7 @@ export default function LoginModal({ onLogin, onClose }: Props) {
             // Slight delay so user sees success message
             setTimeout(() => {
                 window.location.reload();
-            }, 1000);
+            }, 500);
         } catch {
             console.error("Failed to create user.");
             setError("Couldn't create account.");

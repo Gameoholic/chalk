@@ -37,7 +37,7 @@ export default function LoginModal({
             // Slight delay so user sees success message
             setTimeout(() => {
                 window.location.reload();
-            }, 1000);
+            }, 500);
         } catch {
             console.error("Failed to log in.");
             setError("Couldn't log in.");
