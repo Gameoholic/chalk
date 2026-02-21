@@ -411,6 +411,7 @@ export async function updateBoardForUser(
         objects?: WorldObject[];
         lastCameraPosition: Vec2;
         lastCameraZoom: number;
+        lastOpened: true;
     }
 ) {
     if (!ObjectId.isValid(userId)) {
@@ -425,7 +426,8 @@ export async function updateBoardForUser(
         updates.name === undefined &&
         updates.objects === undefined &&
         updates.lastCameraPosition === undefined &&
-        updates.lastCameraZoom === undefined
+        updates.lastCameraZoom === undefined &&
+        updates.lastOpened === undefined
     ) {
         return err({ reason: "No updates provided." });
     }
@@ -460,6 +462,9 @@ export async function updateBoardForUser(
     }
     if (updates.lastCameraZoom !== undefined) {
         updatePartial.lastCameraZoom = updates.lastCameraZoom;
+    }
+    if (updates.lastOpened !== undefined) {
+        updatePartial.lastOpened = new Date();
     }
 
     const result = await BoardModel.updateBoardForOwner(

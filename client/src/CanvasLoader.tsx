@@ -13,6 +13,7 @@ import {
 } from "./types/CanvasContext.tsx";
 import { WorldObject } from "./types/canvas";
 import { ThemeContext } from "./types/ThemeContext";
+import { updateBoardLastOpened } from "./api/boards";
 
 type LoadDataResult =
     | {
@@ -89,6 +90,16 @@ function AfterSuccessfulAuth({
     const [canvasEditorKey, setCanvasEditorKey] = useState(0);
     const [currentBoardId, setCurrentBoardId] = useState(initialBoardId); // Used to transfer board id from MyBoards to CanvasEditor (as MyBoard doesn't have access to CanvasContext)
 
+    async function updateNewBoardLastOpened(newBoardId: string) {
+        // this entire method is hopeful api call - no need to display error to user if failed
+        await updateBoardLastOpened(newBoardId);
+        // At this point the newly opened board's lastOpened property was opened
+        // The API sorts boards by last opened before returning it to us
+        // Meaning if we get all boards, it'll be sorted so that this new board is at the top.
+        const newSortedBoards = await BoardsAPI.getAllBoards();
+        sessionContext.updateBoards(newSortedBoards);
+    }
+
     return (
         <div className="relative h-screen w-screen overflow-hidden">
             <div
@@ -110,8 +121,8 @@ function AfterSuccessfulAuth({
                     onBoardFinishZoomIn={(boardIdToShow: string) => {
                         setCanvasEditorKey((k) => k + 1); // force my boards remount
                         setCurrentBoardId(boardIdToShow);
-                        // chalkContext.changeCurrentBoard(boardIdToShow);
                         setShowMyBoards(false);
+                        updateNewBoardLastOpened(boardIdToShow);
                     }}
                 />
             </div>

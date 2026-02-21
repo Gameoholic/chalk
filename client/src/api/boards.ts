@@ -83,6 +83,19 @@ export async function updateBoardName(boardId: string, name: string) {
     return;
 }
 
+export async function updateBoardLastOpened(boardId: string) {
+    const result = await fetchHelper<undefined>(`me/boards/${boardId}`, "PUT", {
+        lastOpened: true,
+    });
+
+    if (!result.success) {
+        console.error("Error executing updateBoardLastOpened: " + result.error);
+        throw Error(result.error);
+    }
+
+    return;
+}
+
 export async function updateBoardCamera(
     boardId: string,
     cameraPosition: Vec2,

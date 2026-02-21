@@ -10,6 +10,7 @@ interface SessionContextType {
     boards: BoardData[];
     updateUserData: (userData: UserData) => void;
     updateBoardById: (boardData: BoardData) => void;
+    updateBoards: (boards: BoardData[]) => void;
 }
 
 export const SessionContext = createContext<SessionContextType>(null!);
@@ -40,6 +41,13 @@ export function SessionContextProvider({
         setBoards((prev) =>
             prev.map((board) => (board.id === boardData.id ? boardData : board))
         );
+    }
+
+    /**
+     * Will update ALL boards.
+     */
+    function updateBoards(boards: BoardData[]) {
+        setBoards(boards);
     }
 
     // function updateCurrentBoard_Objects(objects: WorldObject[]) {
@@ -75,6 +83,7 @@ export function SessionContextProvider({
                 boards,
                 updateUserData,
                 updateBoardById,
+                updateBoards,
             }}
         >
             {children}

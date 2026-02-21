@@ -203,6 +203,7 @@ export async function updateBoard(req: AuthenticatedRequest, res: Response) {
         const objects = req.body.objects as WorldObject[]; // todo this check does nothing. so do all these parameter checks in controller. we need to use zod instead.
         const lastCameraPosition = req.body.lastCameraPosition as Vec2;
         const lastCameraZoom = req.body.lastCameraZoom as number;
+        const lastOpened = req.body.lastOpened as true;
 
         const result = await BoardService.updateBoardForUser(
             req.authenticatedUser.id,
@@ -212,6 +213,7 @@ export async function updateBoard(req: AuthenticatedRequest, res: Response) {
                 objects: objects,
                 lastCameraPosition: lastCameraPosition,
                 lastCameraZoom: lastCameraZoom,
+                lastOpened: lastOpened,
             }
         );
 
