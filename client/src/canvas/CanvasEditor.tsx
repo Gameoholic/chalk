@@ -67,7 +67,7 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
     const lastTime = useRef(performance.now());
 
     // Menu
-    const [showDebug, setShowDebug] = useState(true);
+    const [showDebug, setShowDebug] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
     const [showManageThisBoardModal, setShowManageThisBoardModal] =
         useState(false);
@@ -533,7 +533,12 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
                             onClick={() => setShowManageThisBoardModal(true)}
                         />
 
-                        <MenuItem icon={<Share2 size={18} />} label="Share" />
+                        <MenuItem
+                            icon={<Share2 size={18} />}
+                            label="Share Board"
+                            disabled={true}
+                            disabledTooltip="This feature is not available yet."
+                        />
 
                         <MenuItem
                             icon={

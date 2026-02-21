@@ -65,6 +65,7 @@ chalk.gameoholic.dev
 - [ ] Refresh token invalid error when changing board/user name
 - [ ] Sometimes drawn objects disappear on save (look at console warnings when it happens)
 - [ ] Changing opacity in color picker doesn't work
+- [ ] Default color is white and not black..?
 - [ ] Resizing MyBoards page replays animation
 - [ ] Can't click in top left "dead area" of canvas menu
 - [ ] Objects flicker on zoom
