@@ -10,7 +10,7 @@ if (!container) throw new Error("Root container not found");
 function Root() {
     // Get localStorage saved theme
     const saved = localStorage.getItem("theme");
-    const theme = saved === "dark" || saved === "light" ? saved : "light"; // Default to light mode
+    const theme = saved === "dark" || saved === "light" ? saved : "dark"; // Default to dark mode
 
     return (
         <ThemeContextProvider defaultTheme={theme}>
