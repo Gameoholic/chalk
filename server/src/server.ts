@@ -16,7 +16,7 @@ app.use(
     cors({
         origin:
             process.env.NODE_ENV === "production"
-                ? "https://domain...:5173"
+                ? "https://chalk.gameoholic.dev"
                 : "http://localhost:5173", // TODO
         credentials: true,
     })

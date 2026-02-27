@@ -49,6 +49,7 @@ chalk.gameoholic.dev
 - [ ] Process boards to make sure there's no data that would crash client (invalid colors, invalid shape or rectangle with negative length etc. ellipse negative radius etc.)
 - [ ] Ensure objects are valid (no objects with 1m points, etc.)
 - [ ] Object limit on upsert doesn't work
+- [ ] Captcha for signing up
 
 #### 👤 Accounts
 - [ ] Send verification email on sign-up
