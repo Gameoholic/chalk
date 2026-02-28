@@ -29,6 +29,7 @@ export async function create(req: Request, res: Response) {
 
         switch (errorReason) {
             case "Couldn't create guest user.": {
+                console.log("hi");
                 console.log(getCompleteErrorStack(error));
                 return res.status(500).json({
                     error: "Failed to create guest user due to an internal error.",
@@ -46,6 +47,10 @@ export async function create(req: Request, res: Response) {
             }
         }
     } catch (err) {
+        console.log("hi2 " + err);
+        if (err instanceof Error) {
+            console.log(err.message);
+        }
         return res.status(500).json({
             error: "Failed to create guest user due to an internal error.",
         });
