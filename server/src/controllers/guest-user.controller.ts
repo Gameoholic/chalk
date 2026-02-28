@@ -1,5 +1,6 @@
 import type { Response, Request } from "express";
 import * as GuestUserService from "../services/guest-user.service.js";
+import { getCompleteErrorStack } from "../types/result.types.js";
 
 export async function create(req: Request, res: Response) {
     try {
@@ -28,6 +29,7 @@ export async function create(req: Request, res: Response) {
 
         switch (errorReason) {
             case "Couldn't create guest user.": {
+                console.log(getCompleteErrorStack(error));
                 return res.status(500).json({
                     error: "Failed to create guest user due to an internal error.",
                 });
