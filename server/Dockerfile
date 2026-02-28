@@ -2,17 +2,17 @@ FROM node:22-alpine
 
 WORKDIR /app
 
-# Install deps (INCLUDING dev for build)
 COPY package*.json .
+# Install deps (INCLUDING dev for compiling ts)
 RUN npm install
 
-# Copy source
+# Copy source files
 COPY . .
 
-# Build TS → JS
+# Compile TS → JS
 RUN npx tsc
 
-# Remove dev deps after build (keeps image small)
+# Remove dev deps (including typescript) after build
 RUN npm prune --omit=dev
 
 EXPOSE 5050
