@@ -1,6 +1,7 @@
 import type { Response, Request } from "express";
 import * as GuestUserService from "../services/guest-user.service.js";
 import { getCompleteErrorStack } from "../types/result.types.js";
+import type { StringValue } from "ms";
 
 export async function create(req: Request, res: Response) {
     try {
@@ -50,6 +51,8 @@ export async function create(req: Request, res: Response) {
         console.log("hi2 " + err);
         if (err instanceof Error) {
             console.log(err.message);
+            console.log(process.env.ACCESS_TOKEN_EXPIRY!);
+            console.log(process.env.ACCESS_TOKEN_EXPIRY! as StringValue);
         }
         return res.status(500).json({
             error: "Failed to create guest user due to an internal error.",
