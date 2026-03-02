@@ -4,6 +4,8 @@ import jwt, { type JwtPayload } from "jsonwebtoken";
 import type { AuthenticatedRequest } from "../middleware/auth.middleware.js";
 
 export async function get(req: AuthenticatedRequest, res: Response) {
+    throw new Error("My first Sentry error!");
+
     try {
         if (!req.authenticatedUser) {
             res.sendStatus(401);
