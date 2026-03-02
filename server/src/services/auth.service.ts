@@ -360,7 +360,7 @@ export async function login(email: string, password: string) {
 
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) {
-        return err({ reason: "Incorrect password" });
+        return err({ reason: "Incorrect password." });
     }
 
     const issueTokensResult = await issueNewTokens(user.id, "user");

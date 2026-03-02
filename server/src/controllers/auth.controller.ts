@@ -2,71 +2,75 @@ import type { Request, Response } from "express";
 import * as AuthService from "../services/auth.service.js";
 import jwt, { type JwtPayload } from "jsonwebtoken";
 import type { AuthenticatedRequest } from "../middleware/auth.middleware.js";
+import * as Sentry from "@sentry/node";
+import {
+    ChalkInternalException,
+    err,
+    getCompleteErrorStack,
+} from "../types/result.types.js";
 
 export async function login(req: Request, res: Response) {
-    try {
-        const email = req.body.email as string;
-        const password = req.body.password as string;
-        if (!email || !password) {
-            return res
-                .status(400)
-                .json({ error: "Not all arguments provided." });
-        }
+    const email = req.body.email as string;
+    const password = req.body.password as string;
+    if (!email || !password) {
+        return res.status(400).json({ error: "Not all arguments provided." });
+    }
 
-        const result = await AuthService.login(email, password);
+    const result = await AuthService.login(email, password);
 
-        if (result.success) {
-            const tokens = result.data;
+    if (result.success) {
+        const tokens = result.data;
 
-            res.cookie("refresh-token", tokens.refreshToken, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === "production",
-                sameSite: "strict",
-            });
-
-            res.cookie("access-token", tokens.accessToken, {
-                httpOnly: true,
-                secure: process.env.NODE_ENV === "production",
-                sameSite: "strict",
-            });
-
-            return res.sendStatus(204);
-        }
-
-        const error = result.error;
-        const errorReason = error.reason;
-
-        switch (errorReason) {
-            case "Incorrect password": {
-                return res.status(401).json({
-                    error: "Login credentials are incorrect.",
-                });
-            }
-            case "User doesn't exist.": {
-                return res.status(401).json({
-                    error: "Login credentials are incorrect.",
-                });
-            }
-            case "Couldn't issue tokens.": {
-                return res.status(500).json({
-                    error: "Failed to log in due to an internal error.",
-                });
-            }
-            case "Couldn't search for user.": {
-                return res.status(500).json({
-                    error: "Failed to log in due to an internal error.",
-                });
-            }
-            default: {
-                throw new Error(
-                    `Unhandled error: ${errorReason satisfies never}`
-                );
-            }
-        }
-    } catch (err) {
-        return res.status(500).json({
-            error: "Failed to log in due to an internal error.",
+        res.cookie("refresh-token", tokens.refreshToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
         });
+
+        res.cookie("access-token", tokens.accessToken, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "strict",
+        });
+
+        return res.sendStatus(204);
+    }
+
+    const error = result.error;
+    const errorReason = error.reason;
+
+    switch (errorReason) {
+        case "Incorrect password.": {
+            throw new ChalkInternalException(
+                401,
+                "Login credentials are incorrect.",
+                error
+            );
+        }
+        case "User doesn't exist.": {
+            throw new ChalkInternalException(
+                401,
+                "Login credentials are incorrect.",
+                error
+            );
+        }
+        case "Couldn't issue tokens.": {
+            throw new ChalkInternalException(
+                500,
+                "Failed to log in due to an internal error.",
+                error
+            );
+        }
+        case "Couldn't search for user.": {
+            throw new ChalkInternalException(
+                500,
+                "Failed to log in due to an internal error.",
+                error
+            );
+        }
+        default: {
+            throw new Error(`Unhandled error: ${errorReason satisfies never}`);
+        }
     }
 }
 
@@ -76,72 +80,68 @@ export async function login(req: Request, res: Response) {
  * Even if unsuccessful, will delete token cookies from browser.
  */
 export async function logout(req: AuthenticatedRequest, res: Response) {
-    try {
-        // Deleting refresh token is best case scenario, either way, we want to at least delete the tokens
-        res.clearCookie("refresh-token");
-        res.clearCookie("access-token");
+    // Deleting refresh token is best case scenario, either way, we want to at least delete the tokens
+    res.clearCookie("refresh-token");
+    res.clearCookie("access-token");
 
-        if (!req.authenticatedUser) {
-            return res.sendStatus(401);
-        }
+    if (!req.authenticatedUser) {
+        return res.sendStatus(401);
+    }
 
-        if (req.authenticatedUser.role === "guest") {
-            return res
-                .status(400)
-                .json({ error: "Cannot log out as guest user." });
-        }
+    if (req.authenticatedUser.role === "guest") {
+        return res.status(400).json({ error: "Cannot log out as guest user." });
+    }
 
-        const refreshTokenCookie: string | undefined = (req as any).cookies[
-            "refresh-token"
-        ];
-        // In case refresh token was not provided:
-        if (refreshTokenCookie === undefined) {
-            return res.sendStatus(401);
-        }
+    const refreshTokenCookie: string | undefined = (req as any).cookies[
+        "refresh-token"
+    ];
+    // In case refresh token was not provided:
+    if (refreshTokenCookie === undefined) {
+        return res.sendStatus(401);
+    }
 
-        // Deletes refresh token id
-        const result = await AuthService.logout(refreshTokenCookie);
+    // Deletes refresh token id
+    const result = await AuthService.logout(refreshTokenCookie);
 
-        if (result.success) {
+    if (result.success) {
+        return res.sendStatus(204);
+    }
+
+    const error = result.error;
+    const errorReason = error.reason;
+
+    switch (errorReason) {
+        case "Couldn't find refresh token.": {
+            // This means refresh token was already deleted, so it's fine.
             return res.sendStatus(204);
         }
-
-        const error = result.error;
-        const errorReason = error.reason;
-
-        switch (errorReason) {
-            case "Couldn't find refresh token.": {
-                // This means refresh token was already deleted, so it's fine.
-                return res.sendStatus(204);
-            }
-            case "Refresh token expired.": {
-                // This means refresh token won't work for refreshing tokens meaning user is effictively logged out, so it's fine.
-                return res.sendStatus(204);
-            }
-            case "Couldn't delete refresh token.": {
-                return res.status(500).json({
-                    error: "Failed to log out due to an internal error.",
-                });
-            }
-            case "Refresh token Id is invalid.": {
-                return res.status(401).json({
-                    error: "Refresh token is invalid.",
-                });
-            }
-            case "Refresh token cookie is invalid.": {
-                return res.status(401).json({
-                    error: "Refresh token is invalid.",
-                });
-            }
-            default: {
-                throw new Error(
-                    `Unhandled error: ${errorReason satisfies never}`
-                );
-            }
+        case "Refresh token expired.": {
+            // This means refresh token won't work for refreshing tokens meaning user is effictively logged out, so it's fine.
+            return res.sendStatus(204);
         }
-    } catch (err) {
-        return res.status(500).json({
-            error: "Failed to log out due to an internal error.",
-        });
+        case "Couldn't delete refresh token.": {
+            throw new ChalkInternalException(
+                500,
+                "Failed to log out due to an internal error.",
+                error
+            );
+        }
+        case "Refresh token Id is invalid.": {
+            throw new ChalkInternalException(
+                401,
+                "Refresh token is invalid.",
+                error
+            );
+        }
+        case "Refresh token cookie is invalid.": {
+            throw new ChalkInternalException(
+                401,
+                "Refresh token is invalid.",
+                error
+            );
+        }
+        default: {
+            throw new Error(`Unhandled error: ${errorReason satisfies never}`);
+        }
     }
 }

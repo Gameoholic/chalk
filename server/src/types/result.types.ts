@@ -51,3 +51,37 @@ export function getCompleteErrorStack<
 >(error: E) {
     return [error.reason, ...error.previousErrorReasons.reverse()].join("\n");
 }
+
+export class ChalkInternalException<
+    const Reason extends string,
+    E extends { reason: Reason; previousErrorReasons: string[] },
+> extends Error {
+    public readonly statusCode: number;
+    public readonly errorPayload: {
+        reason: string;
+        previousErrorReasons: string[];
+    };
+
+    constructor(statusCode: number, clientMessage: string, error: E) {
+        const newErrorAsResult = err({
+            reason: clientMessage,
+            previousError: error,
+        });
+        if (newErrorAsResult.success) {
+            throw new Error("This is never gonna get thrown.");
+        }
+
+        const message =
+            "Chalk error stack is as follows separated by new lines, starting with client message:\n" +
+            getCompleteErrorStack(newErrorAsResult.error);
+        super(message);
+
+        this.errorPayload = newErrorAsResult.error;
+
+        this.name = this.constructor.name;
+        this.statusCode = statusCode;
+
+        // Captures the stack trace correctly in Node.js (V8 engine)
+        Error.captureStackTrace(this, this.constructor);
+    }
+}
