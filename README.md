@@ -14,6 +14,7 @@ chalk.gameoholic.dev
 - Custom authentication solution via JWT and DB refresh tokens, passwords hashed & salted
 - Error handling with queued object changes and automatic retrying, data-efficient auto-save of data.
 - Server written with best practices: (MVC, authentication & authorization, exhaustive type-safe error handling using discriminated unions with Typescript's `satisfies`)
+- Error monitoring via [sentry](https://sentry.io/)
 
 ## Planned Features & Fixes
 
