@@ -14,10 +14,7 @@ const app = express();
 
 app.use(
     cors({
-        origin:
-            process.env.NODE_ENV === "production"
-                ? "https://chalk.gameoholic.dev"
-                : "http://localhost:5173", // TODO
+        origin: process.env.ALLOWED_ORIGIN,
         credentials: true,
     })
 );
