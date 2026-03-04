@@ -23,7 +23,7 @@ jobs:
         run: npm install
         working-directory: ./server
 
-      - name: Run TypeScript build
+      - name: Type-check code
         run: npx tsc --noEmit
         working-directory: ./server
 
@@ -42,14 +42,14 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install client dependencies
+      - name: Install dependencies
         run: npm install
         working-directory: ./client
 
-      - name: Type-check client code
+      - name: Type-check code
         run: npx tsc --noEmit
         working-directory: ./client
 
-      - name: Run client tests
+      - name: Run tests
         run: npm test
         working-directory: ./client
