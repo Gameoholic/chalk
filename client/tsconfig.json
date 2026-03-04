@@ -20,7 +20,6 @@
         "strictNullChecks": false,
         "noUnusedLocals": false,
         "noUnusedParameters": false,
-        "reportUnusedDisableDirectives": false,
         "verbatimModuleSyntax": false
     },
     "include": ["src"]
