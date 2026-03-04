@@ -8,6 +8,6 @@ describe("add()", () => {
     });
 
     test("adds zero correctly", () => {
-        expect(5 + 5).toBe(9);
+        expect(5 + 5).toBe(10);
     });
 });

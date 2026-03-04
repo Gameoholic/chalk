@@ -7,7 +7,7 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
+  build-server:
     runs-on: ubuntu-latest
 
     steps:
@@ -30,3 +30,26 @@ jobs:
       - name: Run tests
         run: npm test
         working-directory: ./server
+  build-client:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install client dependencies
+        run: npm install
+        working-directory: ./client
+
+      - name: Type-check client code
+        run: npx tsc --noEmit
+        working-directory: ./client
+
+      - name: Run client tests
+        run: npm test
+        working-directory: ./client
