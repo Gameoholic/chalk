@@ -256,7 +256,7 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
 
     // Handle error retry
     useEffect(() => {
-        if (!saveObjectsError.error) return;
+        if (saveObjectsError.error === null) return;
 
         // Start retry timer
         if (saveObjectsError.retryStatus === "start-retry-timer") {

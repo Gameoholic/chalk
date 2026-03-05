@@ -15,12 +15,11 @@
         "jsx": "react-jsx",
 
         /* Linting / Strictness */
-        "strict": false,
+        "strict": true,
         "noImplicitAny": false,
-        "strictNullChecks": false,
+        "strictNullChecks": true,
         "noUnusedLocals": false,
-        "noUnusedParameters": false,
-        "verbatimModuleSyntax": false
+        "noUnusedParameters": false
     },
     "include": ["src"]
 }
