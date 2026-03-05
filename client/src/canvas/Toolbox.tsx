@@ -57,7 +57,7 @@ const Toolbox = ({
 
     // Checkerboard grid for transparent color preview
     const renderCheckerboard = () => {
-        const squares = [];
+        const squares: JSX.Element[] = [];
         for (let row = 0; row < 4; row++) {
             for (let col = 0; col < 4; col++) {
                 const isLight = (row + col) % 2 === 0;

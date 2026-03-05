@@ -198,7 +198,7 @@ export default function MyBoards({
 
     // Helper to generate pagination numbers (1, 2, ..., n)
     const generatePagination = () => {
-        const pages = [];
+        const pages: (string | number)[] = [];
         for (let i = 1; i <= totalPages; i++) {
             // Simple truncation for many pages: 1, 2, 3 ... last
             if (

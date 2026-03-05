@@ -14,7 +14,6 @@ export async function fetchHelper<T>(
         const controller = new AbortController();
         setTimeout(
             () => controller.abort(),
-            // @ts-expect-error Fix: IntelliJ complains about import.meta.env
             Number(import.meta.env.VITE_FETCH_TIMEOUT)
         );
 
