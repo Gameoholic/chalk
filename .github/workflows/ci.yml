@@ -11,6 +11,19 @@ jobs:
   build-server:
     runs-on: ubuntu-latest
 
+    env:
+      JWT_SECRET:                 ${{ secrets.JWT_SECRET }}
+      ATLAS_URI:                  ${{ secrets.ATLAS_URI }}
+      BCRYPT_SALT_ROUNDS:         ${{ secrets.BCRYPT_SALT_ROUNDS }}
+      PORT:                       ${{ vars.PORT }}
+      ALLOWED_ORIGIN:             ${{ vars.ALLOWED_ORIGIN }}
+      ACCESS_TOKEN_EXPIRY:        ${{ vars.ACCESS_TOKEN_EXPIRY }}
+      REFRESH_TOKEN_EXPIRY:       ${{ vars.REFRESH_TOKEN_EXPIRY }}
+      REFRESH_TOKEN_EXPIRY_GUEST: ${{ vars.REFRESH_TOKEN_EXPIRY_GUEST }}
+      BOARD_NAME_MAX_LENGTH:      ${{ vars.BOARD_NAME_MAX_LENGTH }}
+      DISPLAY_NAME_MAX_LENGTH:    ${{ vars.DISPLAY_NAME_MAX_LENGTH }}
+      BOARD_MAX_OBJECTS:          ${{ vars.BOARD_MAX_OBJECTS }}
+    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
