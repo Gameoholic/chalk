@@ -22,11 +22,19 @@ jobs:
       BOARD_MAX_OBJECTS:          ${{ vars.BOARD_MAX_OBJECTS }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - name: Use Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: 20
+
+      - name: Cache dependencies
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 #v4.3.0
+        with:
+          path: server/node_modules
+          key: server-${{ hashFiles('server/package-lock.json') }}
+          restore-keys: server-
+
       - name: Install dependencies
         run: npm install
         working-directory: ./server
@@ -46,11 +54,19 @@ jobs:
       VITE_SAVE_REQUEST_COOLDOWN:   ${{ vars.VITE_SAVE_REQUEST_COOLDOWN }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Use Node.js
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with:
           node-version: 20
+
+
+      - name: Cache dependencies
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 #v4.3.0
+        with:
+          path: client/node_modules
+          key: client-${{ hashFiles('client/package-lock.json') }}
+          restore-keys: client-
       - name: Install dependencies
         run: npm install
         working-directory: ./client
