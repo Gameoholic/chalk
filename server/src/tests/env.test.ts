@@ -1,3 +1,5 @@
+import { describe, test, expect } from "@jest/globals";
+
 describe("Environment variables", () => {
     const required: Record<string, (val: string) => boolean> = {
         JWT_SECRET: (val) => val.length >= 32,

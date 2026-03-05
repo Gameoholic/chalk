@@ -7,6 +7,7 @@
         "dev": "vite",
         "build": "vite build",
         "lint": "eslint .",
+        "test": "vitest run",
         "preview": "vite preview"
     },
     "dependencies": {
@@ -23,13 +24,17 @@
     },
     "devDependencies": {
         "@eslint/js": "^9.39.1",
+        "@testing-library/jest-dom": "^6.9.1",
+        "@testing-library/react": "^16.3.2",
+        "@types/node": "^25.3.3",
         "@types/react": "^19.2.5",
         "@types/react-color": "^3.0.13",
         "@types/react-dom": "^19.2.3",
         "@typescript-eslint/eslint-plugin": "^8.54.0",
         "@typescript-eslint/parser": "^8.54.0",
-        "@vitejs/plugin-react": "^5.1.1",
+        "@vitejs/plugin-react": "^5.1.4",
         "autoprefixer": "^10.4.24",
+        "dotenv": "^17.3.1",
         "eslint": "^9.39.2",
         "eslint-config-prettier": "^10.1.8",
         "eslint-plugin-next": "^0.0.0",
@@ -37,11 +42,13 @@
         "eslint-plugin-react-hooks": "^7.0.1",
         "eslint-plugin-react-refresh": "^0.4.26",
         "globals": "^16.5.0",
+        "jsdom": "^28.1.0",
         "postcss": "^8.5.6",
         "prettier": "^3.8.1",
         "prettier-plugin-tailwindcss": "^0.7.2",
         "tailwindcss": "^4.1.18",
-        "vite": "^7.2.4"
+        "vite": "^7.2.4",
+        "vitest": "^4.0.18"
     },
     "prettier": {
         "trailingComma": "es5",
