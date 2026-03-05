@@ -1,13 +1,15 @@
 name: CI
+
 on:
-  workflow_dispatch:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+
 jobs:
   build-server:
     runs-on: ubuntu-latest
+
     env:
       JWT_SECRET:                 ${{ secrets.JWT_SECRET }}
       ATLAS_URI:                  ${{ secrets.ATLAS_URI }}
@@ -20,43 +22,47 @@ jobs:
       BOARD_NAME_MAX_LENGTH:      ${{ vars.BOARD_NAME_MAX_LENGTH }}
       DISPLAY_NAME_MAX_LENGTH:    ${{ vars.DISPLAY_NAME_MAX_LENGTH }}
       BOARD_MAX_OBJECTS:          ${{ vars.BOARD_MAX_OBJECTS }}
+    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
+
       - name: Install dependencies
         run: npm install
         working-directory: ./server
+
       - name: Type-check code
         run: npx tsc --noEmit
         working-directory: ./server
+
       - name: Run tests
         run: npm test
         working-directory: ./server
   build-client:
     runs-on: ubuntu-latest
-    env:
-      VITE_FETCH_TIMEOUT:           ${{ vars.VITE_FETCH_TIMEOUT }}
-      VITE_API_URL:                 ${{ vars.VITE_API_URL }}
-      VITE_SAVE_RETRY_COOLDOWN:     ${{ vars.VITE_SAVE_RETRY_COOLDOWN }}
-      VITE_SAVE_RETRY_MAX_COOLDOWN: ${{ vars.VITE_SAVE_RETRY_MAX_COOLDOWN }}
-      VITE_SAVE_REQUEST_COOLDOWN:   ${{ vars.VITE_SAVE_REQUEST_COOLDOWN }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
+
       - name: Install dependencies
         run: npm install
         working-directory: ./client
+
       - name: Type-check code
         run: npx tsc --noEmit
         working-directory: ./client
+
       - name: Run tests
         run: npm test
         working-directory: ./client
