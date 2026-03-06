@@ -6,6 +6,7 @@ import * as GuestUserService from "../services/guest-user.service.js";
 import * as BoardService from "../services/board.service.js";
 import * as AuthService from "../services/auth.service.js";
 import { err, ok } from "../types/result.types.js";
+import { env } from "../env.js";
 
 export async function getUserById(id: string) {
     if (!ObjectId.isValid(id)) {
@@ -115,7 +116,7 @@ export async function createUser(
         return err({ reason: "Password is invalid." });
     }
 
-    if (displayName.length > Number(process.env.DISPLAY_NAME_MAX_LENGTH!)) {
+    if (displayName.length > Number(env.DISPLAY_NAME_MAX_LENGTH!)) {
         return err({ reason: "Display name is too long." });
     }
     if (displayName.length === 0) {
@@ -165,7 +166,7 @@ export async function createUser(
         }
     }
 
-    const salt = await bcrypt.genSalt(Number(process.env.BCRYPT_SALT_ROUNDS));
+    const salt = await bcrypt.genSalt(Number(env.BCRYPT_SALT_ROUNDS));
     const password = await bcrypt.hash(plaintextPassword, salt);
 
     const newUser: UserModel.User = {
@@ -309,8 +310,7 @@ export async function updateUser(
             return err({ reason: "Update displayName's length is zero." });
         }
         if (
-            updates.displayName.length >
-            Number(process.env.DISPLAY_NAME_MAX_LENGTH) // todo: all process.env parameters should be loaded on app load, because we could crash here if it wasn't provided, we don't check on app load so this could happen.
+            updates.displayName.length > Number(env.DISPLAY_NAME_MAX_LENGTH) // todo: all env parameters should be loaded on app load, because we could crash here if it wasn't provided, we don't check on app load so this could happen.
         ) {
             return err({ reason: "Update displayName is too long." });
         }

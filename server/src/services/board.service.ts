@@ -2,6 +2,7 @@ import { ObjectId } from "mongodb";
 import * as BoardModel from "../models/board.model.js";
 import type { Vec2, WorldObject } from "../types/board.types.js";
 import { baseErr, err, ok } from "../types/result.types.js";
+import { env } from "../env.js";
 
 /**
  * @return Boards created by the owner, without {objects, ownerId}, sorted by most recently opened first
@@ -99,7 +100,7 @@ export async function createBoardForUser(
     if (name.length == 0) {
         return err({ reason: "Name length is zero." });
     }
-    if (name.length > Number(process.env.BOARD_NAME_MAX_LENGTH)) {
+    if (name.length > Number(env.BOARD_NAME_MAX_LENGTH)) {
         return err({ reason: "Name is too long." });
     }
 
@@ -490,14 +491,14 @@ export async function updateBoardForUser(
             return err({ reason: "Update name's length is zero." });
         }
         if (
-            updates.name.length > Number(process.env.BOARD_NAME_MAX_LENGTH) // todo: all process.env parameters should be loaded on app load, because we could crash here if it wasn't provided, we don't check on app load so this could happen.
+            updates.name.length > Number(env.BOARD_NAME_MAX_LENGTH) // todo: all env parameters should be loaded on app load, because we could crash here if it wasn't provided, we don't check on app load so this could happen.
         ) {
             return err({ reason: "Update name is too long." });
         }
     }
 
     if (updates.objects !== undefined) {
-        if (updates.objects.length > Number(process.env.BOARD_MAX_OBJECTS)) {
+        if (updates.objects.length > Number(env.BOARD_MAX_OBJECTS)) {
             return err({ reason: "Objects length is too long." });
         }
     }
@@ -580,7 +581,7 @@ export async function upsertWorldObjectsToBoard(
         new ObjectId(userId),
         new ObjectId(boardId),
         objects,
-        Number(process.env.BOARD_MAX_OBJECTS)
+        Number(env.BOARD_MAX_OBJECTS)
     );
 
     if (!result.success) {

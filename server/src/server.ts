@@ -11,14 +11,13 @@ import authRouter from "./routes/auth.routes.js";
 import meBoardRouter from "./routes/me-board.routes.js";
 import meRouter from "./routes/me.routes.js";
 import globalErrorHandler from "./middleware/error.middleware.js";
-
-const PORT = process.env.PORT;
+import { env } from "./env.js";
 
 const app = express();
 
 app.use(
     cors({
-        origin: process.env.ALLOWED_ORIGIN,
+        origin: env.ALLOWED_ORIGIN,
         credentials: true,
     })
 );
@@ -35,6 +34,6 @@ app.use("/me/boards", meBoardRouter);
 app.use(globalErrorHandler); // error handling middleware
 Sentry.setupExpressErrorHandler(app);
 
-app.listen(PORT, () => {
-    console.log(`Server listening on port ${PORT}`);
+app.listen(env.PORT, () => {
+    console.log(`Server listening on port ${env.PORT}`);
 });

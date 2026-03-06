@@ -1,8 +1,8 @@
 import type { Response } from "express";
-
 import * as UserService from "../services/user.service.js";
 import type { AuthenticatedRequest } from "../middleware/auth.middleware.js";
 import { ChalkInternalException } from "../types/result.types.js";
+import { env } from "../env.js";
 
 export async function create(req: AuthenticatedRequest, res: Response) {
     if (!req.authenticatedUser) {
@@ -40,13 +40,13 @@ export async function create(req: AuthenticatedRequest, res: Response) {
 
         res.cookie("refresh-token", tokens.refreshToken, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
+            secure: env.NODE_ENV === "production",
             sameSite: "strict",
         });
 
         res.cookie("access-token", tokens.accessToken, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
+            secure: env.NODE_ENV === "production",
             sameSite: "strict",
         });
 

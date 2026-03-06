@@ -4,6 +4,7 @@ import * as AuthService from "../services/auth.service.js";
 import bcrypt from "bcrypt";
 import crypto from "crypto";
 import { err, ok } from "../types/result.types.js";
+import { env } from "../env.js";
 
 export async function getGuestUserById(id: string) {
     if (!ObjectId.isValid(id)) {
@@ -196,8 +197,7 @@ export async function updateGuestUser(
             return err({ reason: "Update displayName's length is zero." });
         }
         if (
-            updates.displayName.length >
-            Number(process.env.DISPLAY_NAME_MAX_LENGTH) // todo: all process.env parameters should be loaded on app load, because we could crash here if it wasn't provided, we don't check on app load so this could happen.
+            updates.displayName.length > Number(env.DISPLAY_NAME_MAX_LENGTH) // todo: all env parameters should be loaded on app load, because we could crash here if it wasn't provided, we don't check on app load so this could happen.
         ) {
             return err({ reason: "Update displayName is too long." });
         }

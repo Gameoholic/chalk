@@ -1,6 +1,7 @@
 import { MongoClient, ServerApiVersion } from "mongodb";
+import { env } from "../env.js";
 
-const URI = process.env.ATLAS_URI!;
+const URI = env.ATLAS_URI!;
 const client = new MongoClient(URI, {
     serverApi: {
         version: ServerApiVersion.v1,
@@ -19,6 +20,7 @@ try {
     );
 } catch (err) {
     console.error(err);
+    throw new Error("Couldn't connect to MongoDB database.");
 }
 
 const db = client.db("chalk");

@@ -35,6 +35,7 @@ import { ThemeContext } from "../types/ThemeContext";
 import ManageAccountModal from "./modals/ManageAccountModal";
 import { logout } from "../api/auth";
 import { updateUserDisplayName } from "../api/me";
+import { env } from "../env";
 
 interface CanvasEditorProps {
     openMyBoards: () => void;
@@ -124,8 +125,7 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
 
     // COOLDOWN FOR SAVING OBJECTS (CLIENT SIDE RATE LIMITING)
     const saveObjectsRequestOnCooldown = useRef(false);
-    // @ts-expect-error Fix: IntelliJ complains about import.meta.env
-    const SAVE_REQUEST_COOLDOWN = import.meta.env.VITE_SAVE_REQUEST_COOLDOWN;
+    const SAVE_REQUEST_COOLDOWN = env.VITE_SAVE_REQUEST_COOLDOWN;
     if (SAVE_REQUEST_COOLDOWN !== 0) {
         useEffect(() => {
             const interval: number = window.setInterval(() => {
@@ -214,15 +214,8 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
             objectsBeingSavedOnDatabase.current = [];
             setSaveObjectsError((prev) => {
                 const accumulatedCooldown = prev.error ? prev.retryDelay : 0; // Add delay from previous attempts
-                const COOLDOWN = Number(
-                    // @ts-expect-error Fix: IntelliJ complains about import.meta.env
-                    import.meta.env.VITE_SAVE_RETRY_COOLDOWN
-                );
-                const MAX_COOLDOWN = Number(
-                    // @ts-expect-error Fix: IntelliJ complains about import.meta.env
-                    import.meta.env.VITE_SAVE_RETRY_MAX_COOLDOWN
-                );
-
+                const COOLDOWN = env.VITE_SAVE_RETRY_COOLDOWN;
+                const MAX_COOLDOWN = env.VITE_SAVE_RETRY_MAX_COOLDOWN;
                 const newCooldown = accumulatedCooldown + COOLDOWN;
                 return {
                     error: "Failed to save changes. Your work is out of sync.",

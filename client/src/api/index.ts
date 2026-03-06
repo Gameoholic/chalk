@@ -4,6 +4,7 @@ export * as GuestUsersAPI from "./guest-users.ts";
 export * as BoardsAPI from "./boards.ts";
 export * as AuthAPI from "./auth.ts";
 export * as MeAPI from "./me.ts";
+import { env } from "../env";
 
 export async function fetchHelper<T>(
     path: string,
@@ -12,13 +13,9 @@ export async function fetchHelper<T>(
 ): Promise<Result<T>> {
     try {
         const controller = new AbortController();
-        setTimeout(
-            () => controller.abort(),
-            Number(import.meta.env.VITE_FETCH_TIMEOUT)
-        );
+        setTimeout(() => controller.abort(), env.VITE_FETCH_TIMEOUT);
 
-        // @ts-expect-error Fix: IntelliJ complains about import.meta.env
-        const res = await fetch(import.meta.env.VITE_API_URL + path, {
+        const res = await fetch(env.VITE_API_URL + path, {
             method: method,
             headers: {
                 "Content-Type": "application/json",

@@ -8,6 +8,7 @@ import * as AuthService from "../services/auth.service.js";
 import type { StringValue } from "ms";
 import { err, ok } from "../types/result.types.js";
 import * as UserModel from "../models/user.model.js";
+import { env } from "../env.js";
 
 export interface AccessTokenPayload extends JwtPayload {
     id: string;
@@ -28,7 +29,7 @@ export function verifyAccessToken(accessToken: string | undefined) {
     try {
         payload = jwt.verify(
             accessToken!,
-            process.env.JWT_SECRET!
+            env.JWT_SECRET!
         ) as AccessTokenPayload;
     } catch (error) {
         return err({ reason: "Access token invalid." });
@@ -48,7 +49,7 @@ export async function refreshTokens(refreshToken: string) {
     try {
         oldRefreshTokenPayload = jwt.verify(
             refreshToken!,
-            process.env.JWT_SECRET!
+            env.JWT_SECRET!
         ) as RefreshTokenPayload;
     } catch (error) {
         if (error instanceof jwt.TokenExpiredError) {
@@ -151,8 +152,8 @@ export async function refreshTokens(refreshToken: string) {
             id: oldRefreshTokenPayload.userId,
             role: oldRefreshTokenPayload.userRole,
         },
-        process.env.JWT_SECRET!,
-        { expiresIn: process.env.ACCESS_TOKEN_EXPIRY! as StringValue }
+        env.JWT_SECRET!,
+        { expiresIn: env.ACCESS_TOKEN_EXPIRY! as StringValue }
     );
 
     const tokens = {
@@ -202,12 +203,12 @@ export async function issueRefreshToken(userId: string, userRole: string) {
             userId: userId,
             userRole: userRole,
         },
-        process.env.JWT_SECRET!,
+        env.JWT_SECRET!,
         {
             expiresIn:
                 userRole === "guest"
-                    ? (process.env.REFRESH_TOKEN_EXPIRY_GUEST! as StringValue)
-                    : (process.env.REFRESH_TOKEN_EXPIRY! as StringValue),
+                    ? (env.REFRESH_TOKEN_EXPIRY_GUEST! as StringValue)
+                    : (env.REFRESH_TOKEN_EXPIRY! as StringValue),
         }
     );
 
@@ -417,7 +418,7 @@ export async function logout(refreshTokenCookie: string) {
     try {
         refreshTokenPayload = jwt.verify(
             refreshTokenCookie!,
-            process.env.JWT_SECRET!
+            env.JWT_SECRET!
         ) as RefreshTokenPayload;
     } catch (error) {
         if (error instanceof jwt.TokenExpiredError) {

@@ -17,4 +17,5 @@ RUN npm prune --omit=dev
 
 EXPOSE 5050
 
+ENV NODE_ENV=production
 CMD ["node", "dist/server.js"]

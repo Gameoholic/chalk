@@ -3,6 +3,8 @@ import * as AuthService from "../services/auth.service.js";
 import jwt, { type JwtPayload } from "jsonwebtoken";
 import type { AuthenticatedRequest } from "../middleware/auth.middleware.js";
 import * as Sentry from "@sentry/node";
+import { env } from "../env.js";
+
 import {
     ChalkInternalException,
     err,
@@ -23,13 +25,13 @@ export async function login(req: Request, res: Response) {
 
         res.cookie("refresh-token", tokens.refreshToken, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
+            secure: env.NODE_ENV === "production",
             sameSite: "strict",
         });
 
         res.cookie("access-token", tokens.accessToken, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
+            secure: env.NODE_ENV === "production",
             sameSite: "strict",
         });
 

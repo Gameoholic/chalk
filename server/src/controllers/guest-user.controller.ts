@@ -5,6 +5,7 @@ import {
     getCompleteErrorStack,
 } from "../types/result.types.js";
 import type { StringValue } from "ms";
+import { env } from "../env.js";
 
 export async function create(req: Request, res: Response) {
     const result = await GuestUserService.createGuestUser();
@@ -14,13 +15,13 @@ export async function create(req: Request, res: Response) {
 
         res.cookie("refresh-token", tokens.refreshToken, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
+            secure: env.NODE_ENV === "production",
             sameSite: "strict",
         });
 
         res.cookie("access-token", tokens.accessToken, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
+            secure: env.NODE_ENV === "production",
             sameSite: "strict",
         });
 

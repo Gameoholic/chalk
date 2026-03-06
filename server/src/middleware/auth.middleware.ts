@@ -2,6 +2,7 @@ import type { NextFunction, Response, Request } from "express";
 import crypto from "crypto";
 import * as AuthService from "../services/auth.service.js";
 import { err } from "../types/result.types.js";
+import { env } from "../env.js";
 
 export interface AuthenticatedRequest extends Request {
     authenticatedUser?: {
@@ -51,12 +52,12 @@ export default async function cookieJwtAuth(
             const newTokens = refreshTokensResult.data;
             res.cookie("access-token", newTokens.accessToken, {
                 httpOnly: true,
-                secure: process.env.NODE_ENV === "production",
+                secure: env.NODE_ENV === "production",
                 sameSite: "strict",
             });
             res.cookie("refresh-token", newTokens.refreshToken, {
                 httpOnly: true,
-                secure: process.env.NODE_ENV === "production",
+                secure: env.NODE_ENV === "production",
                 sameSite: "strict",
             });
 
