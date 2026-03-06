@@ -5,14 +5,18 @@ import envSchema from "./env-schema";
 import { z } from "zod";
 
 export default defineConfig(({ mode }) => {
-    const env = loadEnv(mode, process.cwd(), "");
-    const parsed = envSchema.safeParse(env);
+    // Tests will run on Github Actions, we don't want to load env variables for that test as they don't exist!
+    if (!process.env.CI && mode !== "test") {
+        const env = loadEnv(mode, process.cwd(), "");
+        const parsed = envSchema.safeParse(env);
 
-    if (!parsed.success) {
-        console.error(
-            "Invalid environment variables: " + z.prettifyError(parsed.error)
-        );
-        throw new Error("Invalid environment variables. Build aborted.");
+        if (!parsed.success) {
+            console.error(
+                "Invalid environment variables: " +
+                    z.prettifyError(parsed.error)
+            );
+            throw new Error("Invalid environment variables. Build aborted.");
+        }
     }
 
     return {
