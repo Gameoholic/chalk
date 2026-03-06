@@ -8,18 +8,6 @@ on:
 jobs:
   build-server:
     runs-on: ubuntu-latest
-    env:
-      JWT_SECRET:                 ${{ secrets.JWT_SECRET }}
-      ATLAS_URI:                  ${{ secrets.ATLAS_URI }}
-      BCRYPT_SALT_ROUNDS:         ${{ secrets.BCRYPT_SALT_ROUNDS }}
-      PORT:                       ${{ vars.PORT }}
-      ALLOWED_ORIGIN:             ${{ vars.ALLOWED_ORIGIN }}
-      ACCESS_TOKEN_EXPIRY:        ${{ vars.ACCESS_TOKEN_EXPIRY }}
-      REFRESH_TOKEN_EXPIRY:       ${{ vars.REFRESH_TOKEN_EXPIRY }}
-      REFRESH_TOKEN_EXPIRY_GUEST: ${{ vars.REFRESH_TOKEN_EXPIRY_GUEST }}
-      BOARD_NAME_MAX_LENGTH:      ${{ vars.BOARD_NAME_MAX_LENGTH }}
-      DISPLAY_NAME_MAX_LENGTH:    ${{ vars.DISPLAY_NAME_MAX_LENGTH }}
-      BOARD_MAX_OBJECTS:          ${{ vars.BOARD_MAX_OBJECTS }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -46,12 +34,6 @@ jobs:
         working-directory: ./server
   build-client:
     runs-on: ubuntu-latest
-    env:
-      VITE_FETCH_TIMEOUT:           ${{ vars.VITE_FETCH_TIMEOUT }}
-      VITE_API_URL:                 ${{ vars.VITE_API_URL }}
-      VITE_SAVE_RETRY_COOLDOWN:     ${{ vars.VITE_SAVE_RETRY_COOLDOWN }}
-      VITE_SAVE_RETRY_MAX_COOLDOWN: ${{ vars.VITE_SAVE_RETRY_MAX_COOLDOWN }}
-      VITE_SAVE_REQUEST_COOLDOWN:   ${{ vars.VITE_SAVE_REQUEST_COOLDOWN }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
