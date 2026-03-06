@@ -80,7 +80,6 @@ chalk.gameoholic.dev
 - [ ] Make ALL components use tailwindcss theme colors instead of arbitrary colors
 - [ ] Use [zod](https://zod.dev/) for type safety
 - [ ] Merge types between server and client, create shared package
-- [ ] Load .env.local on app startup, save in context, crash immediately if some arguments not provided
 - [ ] Rename my PUT methods into PATCH: https://stackoverflow.com/questions/21660791/what-is-the-main-difference-between-patch-and-put-request
 - [ ] Review and get rid of TODO's
 - [ ] Use [React Query](https://www.youtube.com/watch?v=novnyCaa7To)
