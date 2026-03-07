@@ -26,7 +26,6 @@ export async function get(req: AuthenticatedRequest, res: Response) {
                 id: req.authenticatedUser.id,
                 createdOn: userData.createdOn,
                 email: userData.email, // note: is undefined in case of guest user!
-                testIgnore: "hi from ci/cd pipeline",
             },
         });
     }
