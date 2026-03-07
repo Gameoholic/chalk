@@ -58,3 +58,30 @@ jobs:
       - name: Run tests
         run: npm test
         working-directory: ./client
+
+
+  deploy-server:
+    runs-on: ubuntu-latest
+    needs: [build-client, build-server]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Deploy server to VPS
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 #v1.2.5
+        with:
+          host:     ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key:      ${{ secrets.SSH_PRIVATE_KEY }}
+          script:   /opt/chalk/deploy-server.sh
+
+  deploy-client:
+    runs-on: ubuntu-latest
+    needs: [build-client, build-server]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Deploy client to VPS
+        uses: appleboy/ssh-action@0ff4204d59e8e51228ff73bce53f80d53301dee2 #v1.2.5
+        with:
+          host:     ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key:      ${{ secrets.SSH_PRIVATE_KEY }}
+          script:   /opt/chalk/deploy-client.sh
