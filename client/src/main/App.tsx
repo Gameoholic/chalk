@@ -16,6 +16,5 @@ export default function App() {
         localStorage.setItem("theme", themeContext.theme);
     }, [themeContext.theme]);
 
-    console.log("Hello loaded from CI/CD pipeline!");
     return <CanvasLoader />;
 }
