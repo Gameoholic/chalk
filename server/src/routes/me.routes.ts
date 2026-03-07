@@ -1,6 +1,7 @@
 import { Router } from "express";
 import auth from "../middleware/auth.middleware.js";
 import { get, update } from "../controllers/me.controller.js";
+import meBoardRouter from "../routes/me-board.routes.js";
 
 const router = Router();
 
@@ -11,5 +12,7 @@ router.get("", get);
 router.put("", update);
 // router.get("/", getAll);
 // router.route("/:id").get(getById).put(update).delete(remove);
+
+router.use("/boards", meBoardRouter);
 
 export default router;

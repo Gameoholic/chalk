@@ -11,8 +11,7 @@ import auth from "../middleware/auth.middleware.js";
 
 const router = Router();
 
-router.use(auth); // apply auth middleware to all routes below
-
+// all routes in this are authed
 router.delete("/:id", deleteById);
 router.get("/:id", getById);
 router.put("/:id", updateBoard);

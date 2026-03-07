@@ -47,6 +47,7 @@ export async function deleteRefreshToken(id: ObjectId) {
         }
 
         if (result.deletedCount !== 1) {
+            console.log("not sucess!");
             return err({
                 reason: "Couldn't find refresh token.",
             });

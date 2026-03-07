@@ -29,7 +29,6 @@ app.use("/users", userRouter);
 app.use("/guest-users", guestUserRouter);
 
 app.use("/me", meRouter);
-app.use("/me/boards", meBoardRouter);
 
 app.use(globalErrorHandler); // error handling middleware
 Sentry.setupExpressErrorHandler(app);

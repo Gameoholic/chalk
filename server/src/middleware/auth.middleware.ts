@@ -80,7 +80,6 @@ export default async function cookieJwtAuth(
             );
         }
         case "Couldn't find refresh token in the database.": {
-            console.log("a");
             throw new ChalkInternalException(
                 401,
                 "Invalid refresh token.",
@@ -95,7 +94,6 @@ export default async function cookieJwtAuth(
             );
         }
         case "Old refresh token's user ID is invalid.": {
-            console.log("b");
             throw new ChalkInternalException(
                 401,
                 "Invalid refresh token.",
@@ -104,7 +102,6 @@ export default async function cookieJwtAuth(
         }
 
         case "Old refresh token's user role is invalid.": {
-            console.log("c");
             throw new ChalkInternalException(
                 401,
                 "Invalid refresh token.",
@@ -113,7 +110,6 @@ export default async function cookieJwtAuth(
         }
 
         case "Refresh token id is invalid.": {
-            console.log("d");
             throw new ChalkInternalException(
                 401,
                 "Invalid refresh token.",
@@ -122,7 +118,6 @@ export default async function cookieJwtAuth(
         }
 
         case "Refresh token invalid.": {
-            console.log("e");
             throw new ChalkInternalException(
                 401,
                 "Invalid refresh token.",
@@ -131,7 +126,6 @@ export default async function cookieJwtAuth(
         }
 
         case "Refresh token parameters invalid.": {
-            console.log("f");
             throw new ChalkInternalException(
                 401,
                 "Invalid refresh token.",
@@ -140,7 +134,6 @@ export default async function cookieJwtAuth(
         }
 
         case "Refresh token expired.": {
-            console.log("g");
             throw new ChalkInternalException(
                 401,
                 "Refresh token expired.",
