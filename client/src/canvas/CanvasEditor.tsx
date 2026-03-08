@@ -123,20 +123,33 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
         objectsBeingUpdatedButNotReadyForSaving.current.set(object.id, object);
     }
 
-    // COOLDOWN FOR SAVING OBJECTS (CLIENT SIDE RATE LIMITING)
+    // ----- COOLDOWN FOR SAVING BOARD (CLIENT SIDE RATE LIMITING) -----
     const saveObjectsRequestOnCooldown = useRef(false);
     const SAVE_REQUEST_COOLDOWN = env.VITE_SAVE_REQUEST_COOLDOWN;
-    if (SAVE_REQUEST_COOLDOWN !== 0) {
-        useEffect(() => {
-            const interval: number = window.setInterval(() => {
-                saveObjectsRequestOnCooldown.current = false;
-                // In case commit requests were sent during the delay, try to save now
-                // requestSaveObjectsOnDatabase();  todo THIS IS BUGGED
-            }, SAVE_REQUEST_COOLDOWN);
 
-            return () => window.clearInterval(interval);
-        }, []);
-    }
+    // Avoid stale closure in timer effect hooks
+    const requestSaveObjectsOnDatabaseFunction = useRef(
+        requestSaveObjectsOnDatabase
+    );
+    // Keep the ref constantly updated on every single render
+    useEffect(() => {
+        requestSaveObjectsOnDatabaseFunction.current =
+            requestSaveObjectsOnDatabase;
+    });
+
+    useEffect(() => {
+        if (SAVE_REQUEST_COOLDOWN === 0) {
+            return;
+        }
+        const interval: number = window.setInterval(() => {
+            saveObjectsRequestOnCooldown.current = false;
+            // In case commit requests were sent during the delay, try to save now
+            requestSaveObjectsOnDatabaseFunction.current();
+        }, SAVE_REQUEST_COOLDOWN);
+
+        return () => window.clearInterval(interval);
+    }, []);
+    // ----------
 
     // When objects are ready to be saved to database (user released left click, for example).
     // Generally, only one object will be in objectsBeingUpdatedButNotReadyForSaving when this method is called,
@@ -165,9 +178,14 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
 
         // Check for rate limiting
         if (saveObjectsRequestOnCooldown.current) {
+            console.warn(
+                "Request to save objects (length " +
+                    objectsToSaveOnDatabase.current.size +
+                    ") ignored because waiting for cooldown to expire."
+            );
             return;
         }
-        // saveObjectsRequestOnCooldown.current = true; // temporarily disable rate limiting
+        saveObjectsRequestOnCooldown.current = true;
 
         if (objectsBeingSavedOnDatabase.current.length > 0) {
             console.warn(
@@ -241,7 +259,7 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
         if (objectsToSaveOnDatabase.current.size > 0) {
             console.log(
                 objectsToSaveOnDatabase.current.size +
-                    " objects piled up while processing the request. Saving them now."
+                    " objects piled up while processing the request. Attempting to save them now."
             );
             requestSaveObjectsOnDatabase();
         }
@@ -265,7 +283,7 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
                     if (prev.retryStatus <= 1) {
                         clearInterval(interval);
                         console.log("Retrying to save objects.");
-                        requestSaveObjectsOnDatabase(true);
+                        requestSaveObjectsOnDatabaseFunction.current(true);
 
                         return { ...prev, retryStatus: "retrying" };
                     }

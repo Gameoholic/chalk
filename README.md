@@ -41,6 +41,7 @@ chalk.gameoholic.dev
 - [ ] When deleting board, zoom out to My Boards and Thanos-particle destroy the board. All other boards will then "cascade" with an animation.
 
 #### 🔒 Security
+- [ ] Refresh token cycling logic not optimal (stealing vuln + if user sends multiple requests just as token expires they all fail except the first)
 - [ ] Server-side ratelimiting
 - [ ] Hash password on client before sending it to server
 - [ ] Bring back and fix object save client-side ratelimit: requestSaveObjectsOnDatabase()
@@ -64,8 +65,8 @@ chalk.gameoholic.dev
 - [ ] Don't update board's last camera properties every frame. Do it at the same time as object save. (in fact, put their logic in the same function)
 
 #### 🐞 Bugs
+- [ ] ci/cd deployment failing due to "unable to update local ref"
 - [ ] Fix server.ts CORS
-- [ ] Refresh token invalid error when changing board/user name
 - [ ] Sometimes drawn objects disappear on save (look at console warnings when it happens)
 - [ ] Changing opacity in color picker doesn't work
 - [ ] Default color is white and not black..?

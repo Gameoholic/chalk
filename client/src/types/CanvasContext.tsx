@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { BoardData, ChalkData, UserData } from "./data";
 import { Vec2, WorldObject } from "./canvas";
 import { SessionContext } from "./SessionContext";
@@ -54,39 +54,26 @@ export function CanvasContextProvider({
         cameraPosition: Vec2,
         cameraZoom: number
     ) {
-        const currentBoardData = sessionContext.boards.find(
-            (x) => x.id === currentBoardId
-        );
-        if (currentBoardData === undefined) {
-            throw new Error("Current board's data not found.");
-        }
+        const currentBoardData = getCurrentBoard();
 
-        currentBoardData.lastCameraPosition = cameraPosition;
-        currentBoardData.lastCameraZoom = cameraZoom;
-
-        sessionContext.updateBoardById(currentBoardData);
+        sessionContext.updateBoardById({
+            ...currentBoardData,
+            lastCameraPosition: cameraPosition,
+            lastCameraZoom: cameraZoom,
+        });
     }
 
     function updateCurrentBoardObjects(objects: WorldObject[]) {
-        const currentBoardData = sessionContext.boards.find(
-            (x) => x.id === currentBoardId
-        );
-        if (currentBoardData === undefined) {
-            throw new Error("Current board's data not found.");
-        }
+        const currentBoardData = getCurrentBoard();
 
-        currentBoardData.objects = objects;
-
-        sessionContext.updateBoardById(currentBoardData);
+        sessionContext.updateBoardById({
+            ...currentBoardData,
+            objects: objects,
+        });
     }
 
     function onCurrentBoardObjectsSaved(savedObjects: WorldObject[]) {
-        const currentBoardData = sessionContext.boards.find(
-            (x) => x.id === currentBoardId
-        );
-        if (currentBoardData === undefined) {
-            throw new Error("Current board's data not found.");
-        }
+        const currentBoardData = getCurrentBoard();
 
         const newObjectsMap = new Map(
             currentBoardData.objects.map((x) => [x.id, x])
@@ -98,22 +85,6 @@ export function CanvasContextProvider({
             ...currentBoardData,
             objects: newObjects,
         });
-
-        // const savedObjectsMap = new Map(savedObjects.map((x) => [x.id, x]));
-        // const existingIds = new Set(currentBoardData.objects.map((x) => x.id));
-
-        // // Update existing objects in place (preserves order)
-        // const updatedExisting = currentBoardData.objects.map(
-        //     (x) => savedObjectsMap.get(x.id) ?? x
-        // );
-
-        // // Append saved objects that are entirely new
-        // const newObjects = savedObjects.filter((x) => !existingIds.has(x.id));
-
-        // sessionContext.updateBoardById({
-        //     ...currentBoardData,
-        //     objects: [...updatedExisting, ...newObjects],
-        // });
     }
 
     // function updateCurrentBoard_Objects(objects: WorldObject[]) {

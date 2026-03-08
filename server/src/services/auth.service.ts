@@ -79,7 +79,6 @@ export async function refreshTokens(refreshToken: string) {
         const errorReason = error.reason;
         switch (errorReason) {
             case "Couldn't find refresh token.": {
-                console.log("here");
                 return err({
                     reason: "Couldn't find refresh token in the database.",
                     previousError: error,
