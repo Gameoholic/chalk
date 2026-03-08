@@ -125,7 +125,6 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
 
     // ----- COOLDOWN FOR SAVING BOARD (CLIENT SIDE RATE LIMITING) -----
     const saveObjectsRequestOnCooldown = useRef(false);
-    const SAVE_REQUEST_COOLDOWN = env.VITE_SAVE_REQUEST_COOLDOWN;
 
     // Avoid stale closure in timer effect hooks
     const requestSaveObjectsOnDatabaseFunction = useRef(
@@ -138,14 +137,14 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
     });
 
     useEffect(() => {
-        if (SAVE_REQUEST_COOLDOWN === 0) {
+        if (env.VITE_SAVE_REQUEST_COOLDOWN === 0) {
             return;
         }
         const interval: number = window.setInterval(() => {
             saveObjectsRequestOnCooldown.current = false;
             // In case commit requests were sent during the delay, try to save now
             requestSaveObjectsOnDatabaseFunction.current();
-        }, SAVE_REQUEST_COOLDOWN);
+        }, env.VITE_SAVE_REQUEST_COOLDOWN);
 
         return () => window.clearInterval(interval);
     }, []);
@@ -185,7 +184,9 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
             );
             return;
         }
-        saveObjectsRequestOnCooldown.current = true;
+        if (env.VITE_SAVE_REQUEST_COOLDOWN > 0) {
+            saveObjectsRequestOnCooldown.current = true;
+        }
 
         if (objectsBeingSavedOnDatabase.current.length > 0) {
             console.warn(
@@ -257,11 +258,17 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
 
         // Save any objects that were piling up as this request was processed
         if (objectsToSaveOnDatabase.current.size > 0) {
+            console.error("this is causing the issue!!");
+
             console.log(
                 objectsToSaveOnDatabase.current.size +
                     " objects piled up while processing the request. Attempting to save them now."
             );
             requestSaveObjectsOnDatabase();
+            console.error("todo piano the problem is explained here:");
+            // Make canvas context have list of objects that are pending save, that way in canvasinteractive we render both types of objects
+            // dont mishmash the two of them
+            // just re-write it, at the same time implement the README.md todo of changing our systems to use context.
         }
     }
 

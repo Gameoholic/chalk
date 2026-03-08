@@ -84,3 +84,8 @@ chalk.gameoholic.dev
 - [ ] Rename my PUT methods into PATCH: https://stackoverflow.com/questions/21660791/what-is-the-main-difference-between-patch-and-put-request
 - [ ] Review and get rid of TODO's
 - [ ] Use [React Query](https://www.youtube.com/watch?v=novnyCaa7To)
+
+#### 🧩 Other Features
+- [ ] Copy Board
+- [ ] Organize boards into folders
+- [ ] Make board layers (like in photoshop) that can easily be hidden/deleted
