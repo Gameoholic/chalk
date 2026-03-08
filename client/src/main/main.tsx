@@ -2,7 +2,7 @@ import "./index.css";
 import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
-import { ThemeContextProvider } from "../types/ThemeContext";
+import { ThemeContextProvider } from "../types/context/ThemeContext";
 import "../env";
 
 const container = document.getElementById("root");

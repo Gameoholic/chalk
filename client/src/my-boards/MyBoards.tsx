@@ -11,7 +11,7 @@ import {
 } from "react";
 import { motion } from "motion/react";
 import { Vec2 } from "../types/canvas";
-import { SessionContext } from "../types/SessionContext";
+import { SessionContext } from "../types/context/SessionContext";
 import CreateBoardModal from "./CreateBoardModal";
 
 type Rect = {

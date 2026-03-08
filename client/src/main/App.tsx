@@ -1,6 +1,6 @@
 import { useContext, useEffect } from "react";
 import CanvasLoader from "../CanvasLoader.tsx";
-import { ThemeContext } from "../types/ThemeContext";
+import { ThemeContext } from "../types/context/ThemeContext.tsx";
 
 interface AppProps {
     theme: "light" | "dark";

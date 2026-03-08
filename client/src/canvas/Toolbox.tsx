@@ -1,22 +1,21 @@
-import React, { JSX, useState, useRef, useEffect } from "react";
+import React, { JSX, useState, useRef, useEffect, useContext } from "react";
 import { MousePointer, Square, Circle, Slash, Pen } from "lucide-react";
 import { Tool } from "../types/canvas";
 import ColorPicker from "../components/ColorPicker";
+import { CanvasContext } from "../types/context/CanvasContext";
 
-const Toolbox = ({
-    onToolChange,
-    onColorChange,
-    onWidthChange,
-    className,
-}: {
-    onToolChange: (tool: Tool) => void;
-    onColorChange: (color: string) => void;
-    onWidthChange: (width: number) => void;
-    className: string;
-}) => {
-    const [selectedTool, setSelectedTool] = useState<Tool>("none");
-    const [color, setColor] = useState<string>("hsl(0, 0%, 100%)");
-    const [width, setWidth] = useState<number>(1);
+const Toolbox = ({ className }: { className: string }) => {
+    const canvasContext = useContext(CanvasContext);
+
+    const [selectedTool, setSelectedTool] = useState<Tool>(
+        canvasContext.local_selectedTool
+    );
+    const [color, setColor] = useState<string>(
+        canvasContext.local_selectedColor
+    );
+    const [width, setWidth] = useState<number>(
+        canvasContext.local_selectedStroke
+    );
     const [showColorPicker, setShowColorPicker] = useState<boolean>(false);
 
     const pickerRef = useRef<HTMLDivElement>(null);
@@ -46,13 +45,13 @@ const Toolbox = ({
     const handleToolClick = (tool: Tool) => {
         if (selectedTool === tool) tool = "none";
         setSelectedTool(tool);
-        onToolChange(tool);
+        canvasContext.setLocalTool(tool);
     };
 
     // Updated to handle string directly from the new ColorPicker
     const handleColorChange = (newColor: string) => {
         setColor(newColor);
-        onColorChange(newColor);
+        canvasContext.setLocalColor(newColor);
     };
 
     // Checkerboard grid for transparent color preview
@@ -191,7 +190,7 @@ const Toolbox = ({
                     onChange={(e) => {
                         const newWidth = Number(e.target.value);
                         setWidth(newWidth);
-                        onWidthChange(newWidth);
+                        canvasContext.setLocalStroke(newWidth);
                     }}
                     className="w-full"
                     style={{

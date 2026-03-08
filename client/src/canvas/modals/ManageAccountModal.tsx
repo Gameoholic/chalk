@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState } from "react";
 import { X, Check, Loader2, LogOut } from "lucide-react";
 import { UserData } from "../../types/data";
-import { SessionContext } from "../../types/SessionContext";
+import { SessionContext } from "../../types/context/SessionContext";
 
 const MAX_NAME_LENGTH = 50;
 

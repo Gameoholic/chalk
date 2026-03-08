@@ -1,6 +1,7 @@
 import Toolbox from "./Toolbox";
 import { RefObject, useContext, useEffect, useRef, useState } from "react";
 import { Camera, Tool, Vec2, WorldObject } from "../types/canvas";
+import isDeepEqual from "fast-deep-equal";
 import {
     Menu,
     User,
@@ -29,9 +30,9 @@ import LoginModal from "./modals/LoginModal";
 import { createUser } from "../api/users";
 import CanvasInteractive from "./CanvasInteractive";
 import { motion } from "motion/react";
-import { CanvasContext } from "../types/CanvasContext";
-import { SessionContext } from "../types/SessionContext";
-import { ThemeContext } from "../types/ThemeContext";
+import { CanvasContext } from "../types/context/CanvasContext";
+import { SessionContext } from "../types/context/SessionContext";
+import { ThemeContext } from "../types/context/ThemeContext";
 import ManageAccountModal from "./modals/ManageAccountModal";
 import { logout } from "../api/auth";
 import { updateUserDisplayName } from "../api/me";
@@ -45,23 +46,13 @@ interface CanvasEditorProps {
 function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
     const themeContext = useContext(ThemeContext);
     const canvasContext = useContext(CanvasContext);
+    const canvasContextRef = useRef(canvasContext); // Use this whenever after we run code async, otherwise we get stale closure
+    useEffect(() => {
+        canvasContextRef.current = canvasContext;
+    });
     const sessionContext = useContext(SessionContext);
 
-    // Settings & state data
-    const [tool, setTool] = useState<Tool>("none");
-    const [color, setColor] = useState("#000000FF");
-    const [stroke, setStroke] = useState(1);
-
-    // Camera
-    const [cameraPosition, setCameraPosition] = useState<Vec2>(
-        canvasContext.getCurrentBoard().lastCameraPosition
-    );
-    const [cameraZoom, setCameraZoom] = useState<number>(
-        canvasContext.getCurrentBoard().lastCameraZoom
-    );
-
     // Debug data
-    const [objectAmount, setObjectAmount] = useState<number>(0);
     // FPS
     const [fps, setFps] = useState(0);
     const frames = useRef(0);
@@ -77,10 +68,6 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
     >(null);
 
     // Saving objects
-    // Objects that are currently being updated, can be mid draw and not committed yet! So do not save them just yet
-    const objectsBeingUpdatedButNotReadyForSaving: RefObject<
-        Map<string, WorldObject>
-    > = useRef(new Map());
     // Database objects on standby to be saved to db (either entirely new objects or objects that were updated)
     const objectsToSaveOnDatabase: RefObject<Map<string, WorldObject>> = useRef(
         new Map()
@@ -116,13 +103,6 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
         return () => cancelAnimationFrame(rafId);
     }, []);
 
-    // When either a new object was added, or an existing object has updated.
-    // For example: Every time a new point is drawn in a line, or a circle's radius is being changed.
-    // Basically, ANY change to an object calls this method.
-    function onObjectUpdatedOrAdded(object: WorldObject) {
-        objectsBeingUpdatedButNotReadyForSaving.current.set(object.id, object);
-    }
-
     // ----- COOLDOWN FOR SAVING BOARD (CLIENT SIDE RATE LIMITING) -----
     const saveObjectsRequestOnCooldown = useRef(false);
 
@@ -156,15 +136,14 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
     function onObjectsCommit() {
         console.log(
             "Requesting to commit " +
-                objectsBeingUpdatedButNotReadyForSaving.current.size +
+                canvasContext.local_unsavedObjects.length +
                 " objects to database."
         );
 
         // Transfer all objects previously put into objectsbeingupdated into objectstosaveondatabase
-        objectsBeingUpdatedButNotReadyForSaving.current.forEach((object) => {
+        canvasContext.local_unsavedObjects.forEach((object) => {
             objectsToSaveOnDatabase.current.set(object.id, object);
         });
-        objectsBeingUpdatedButNotReadyForSaving.current.clear();
 
         requestSaveObjectsOnDatabase();
     }
@@ -217,7 +196,7 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
 
         try {
             await updateBoardObjects(
-                canvasContext.currentBoardId,
+                canvasContext.local_currentBoardId,
                 objectsBeingSavedOnDatabase.current
             );
         } catch (err) {
@@ -249,26 +228,46 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
         }
 
         console.log("Successfully saved the objects.");
-        canvasContext.onCurrentBoardObjectsSaved(
+
+        canvasContextRef.current.onCurrentBoardObjectsSaved(
             objectsBeingSavedOnDatabase.current
         );
 
         setSaveObjectsError({ error: null });
+        // Iterate over all saved objects, remove them from localUnsavedObjects, UNLESS they were modified since the save started (unlikely but possible)
+        // Since this is all happening after an await asynchrounsly, the context is stale, so we use the ref to read it here
+        const remainingUnsavedObjects =
+            canvasContextRef.current.local_unsavedObjects.filter(
+                (objectLocal) => {
+                    const savedVersion =
+                        objectsBeingSavedOnDatabase.current.find(
+                            (s) => s.id === objectLocal.id
+                        );
+
+                    // If it wasn't in the save batch, keep it.
+                    if (!savedVersion) return true;
+
+                    // If it WAS in the batch, check if it has changed since then.
+                    // If isDeepEqual is true, they are identical -> Return false, removes it.
+                    // If isDeepEqual is false, the user modified it mid-save -> Return true, keeps it.
+                    return !isDeepEqual(objectLocal, savedVersion);
+                }
+            );
+        canvasContextRef.current.setLocalUnsavedObjects(
+            remainingUnsavedObjects
+        );
         objectsBeingSavedOnDatabase.current = [];
+        objectsToSaveOnDatabase.current = new Map(
+            remainingUnsavedObjects.map((x) => [x.id, x])
+        );
 
         // Save any objects that were piling up as this request was processed
         if (objectsToSaveOnDatabase.current.size > 0) {
-            console.error("this is causing the issue!!");
-
             console.log(
                 objectsToSaveOnDatabase.current.size +
                     " objects piled up while processing the request. Attempting to save them now."
             );
             requestSaveObjectsOnDatabase();
-            console.error("todo piano the problem is explained here:");
-            // Make canvas context have list of objects that are pending save, that way in canvasinteractive we render both types of objects
-            // dont mishmash the two of them
-            // just re-write it, at the same time implement the README.md todo of changing our systems to use context.
         }
     }
 
@@ -318,12 +317,8 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
             try {
                 await updateBoardCamera(
                     canvasContext.getCurrentBoard().id,
-                    cameraPosition,
-                    cameraZoom
-                );
-                canvasContext.updateCurrentBoardCamera(
-                    cameraPosition,
-                    cameraZoom
+                    canvasContext.local_camera.position,
+                    canvasContext.local_camera.zoom
                 );
             } catch (err) {
                 console.error("Couldnt update board camera: " + err);
@@ -331,7 +326,7 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
         };
 
         update();
-    }, [cameraPosition, cameraZoom]);
+    }, [canvasContext.local_camera]);
 
     const handleRenameBoard = async (newName: string) => {
         await updateBoardName(canvasContext.getCurrentBoard().id, newName);
@@ -339,35 +334,27 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
     };
 
     const handleResetBoard = async () => {
-        if (
-            objectsBeingSavedOnDatabase.current.length !== 0 ||
-            objectsBeingUpdatedButNotReadyForSaving.current.size !== 0 ||
-            objectsToSaveOnDatabase.current.size !== 0
-        ) {
+        if (hasPendingSaveOperations()) {
             throw new Error(
                 "Can't reset board while objects are pending save."
             );
         }
-        await resetBoard(canvasContext.currentBoardId);
+        await resetBoard(canvasContext.local_currentBoardId);
 
         canvasContext.updateCurrentBoardObjects([]);
         setSaveObjectsError({ error: null });
         objectsBeingSavedOnDatabase.current = [];
-        objectsBeingUpdatedButNotReadyForSaving.current.clear();
+        canvasContext.local_unsavedObjects = [];
         objectsToSaveOnDatabase.current.clear();
     };
 
     const handleDeleteBoard = async () => {
-        if (
-            objectsBeingSavedOnDatabase.current.length !== 0 ||
-            objectsBeingUpdatedButNotReadyForSaving.current.size !== 0 ||
-            objectsToSaveOnDatabase.current.size !== 0
-        ) {
+        if (hasPendingSaveOperations()) {
             throw new Error(
                 "Can't delete board while objects are pending save."
             );
         }
-        await deleteBoard(canvasContext.currentBoardId);
+        await deleteBoard(canvasContext.local_currentBoardId);
         window.location.reload();
     };
 
@@ -401,7 +388,7 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
         return (
             objectsBeingSavedOnDatabase.current.length !== 0 ||
             objectsToSaveOnDatabase.current.size !== 0 ||
-            objectsBeingUpdatedButNotReadyForSaving.current.size !== 0
+            canvasContext.local_unsavedObjects.length !== 0
         );
     }
 
@@ -417,25 +404,7 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
             {/* Canvas */}
             <div className="h-full w-full">
                 <CanvasInteractive
-                    key={canvasContext.currentBoardId}
-                    initialObjects={canvasContext.getCurrentBoard().objects}
-                    initialCameraPosition={
-                        canvasContext.getCurrentBoard().lastCameraPosition
-                    }
-                    initialCameraZoom={
-                        canvasContext.getCurrentBoard().lastCameraZoom
-                    }
-                    selectedTool={tool}
-                    selectedColor={color}
-                    selectedStroke={stroke}
-                    onCameraChange={(camera: Camera) => {
-                        setCameraPosition(camera.position);
-                        setCameraZoom(camera.zoom);
-                    }}
-                    onObjectAmountChange={(objectAmount: number) =>
-                        setObjectAmount(objectAmount)
-                    }
-                    onObjectUpdated={onObjectUpdatedOrAdded}
+                    key={canvasContext.local_currentBoardId}
                     onObjectsCommit={onObjectsCommit}
                 />
             </div>
@@ -600,23 +569,29 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
                     >
                         <p className="font-bold">Debug</p>
                         <p>
-                            Camera Pos: {cameraPosition.x}, {cameraPosition.y}
+                            Camera Pos: {canvasContext.local_camera.position.x},{" "}
+                            {canvasContext.local_camera.position.y}
                         </p>
-                        <p>Camera Zoom: {cameraZoom.toFixed(2)}</p>
+                        <p>
+                            Camera Zoom:{" "}
+                            {canvasContext.local_camera.zoom.toFixed(2)}
+                        </p>
                         <p>FPS: {fps}</p>
-                        <p>Objects: {objectAmount}</p>
+                        <p>
+                            Objects:{" "}
+                            {canvasContext.getCurrentBoard().objects.length +
+                                canvasContext.local_unsavedObjects.length}{" "}
+                            ({canvasContext.getCurrentBoard().objects.length}{" "}
+                            saved on server +{" "}
+                            {canvasContext.local_unsavedObjects.length} unsaved)
+                        </p>
                     </div>
                 )}
             </motion.div>
 
             <motion.div {...fadeInAnimation}>
                 {/* Toolbox */}
-                <Toolbox
-                    className="absolute top-4 right-4 rounded-lg"
-                    onToolChange={setTool}
-                    onColorChange={setColor}
-                    onWidthChange={setStroke}
-                />
+                <Toolbox className="absolute top-4 right-4 rounded-lg" />
             </motion.div>
             {/* Manage Board Modal */}
             {showManageThisBoardModal && (

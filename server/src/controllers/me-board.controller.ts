@@ -337,7 +337,6 @@ export async function updateWorldObjects(
     req: AuthenticatedRequest,
     res: Response
 ) {
-    await new Promise((resolve) => setTimeout(resolve, 3000));
     if (!req.authenticatedUser) {
         return res.sendStatus(401);
     }

@@ -1,6 +1,6 @@
 import { createContext, useState } from "react";
-import { BoardData, ChalkData, UserData } from "./data";
-import { WorldObject } from "./canvas";
+import { BoardData, ChalkData, UserData } from "../data";
+import { WorldObject } from "../canvas";
 
 interface SessionContextType {
     userData: UserData;

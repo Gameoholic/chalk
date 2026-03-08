@@ -25,6 +25,7 @@ interface CanvasWorldProps {
 
 // Only renders passed objects and processes passed camera position and zoom
 // No interaction handling
+// Doesn't reference any context. Randers as is, as the passed parameters say
 function CanvasWorld({
     objects,
     camera,

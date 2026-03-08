@@ -105,7 +105,13 @@ function AfterSuccessfulAuth({
             <div
                 className={`absolute inset-0 z-${showMyBoards === false ? 100 : 1}`}
             >
-                <CanvasContextProvider defaultBoardId={currentBoardId}>
+                <CanvasContextProvider
+                    defaultBoardId={currentBoardId}
+                    defaultBoardCameraSize={{ x: 1000, y: 1000 }}
+                    defaultColor="#000000FF"
+                    defaultStroke={1}
+                    defaultTool="select"
+                >
                     <CanvasEditorDiv
                         canvasEditorKey={canvasEditorKey}
                         currentBoardId={currentBoardId}
@@ -142,7 +148,7 @@ function CanvasEditorDiv({
     setShowMyBoards: React.Dispatch<React.SetStateAction<boolean>>;
 }) {
     const context = useContext(CanvasContext);
-    context.setCurrentBoardId(currentBoardId);
+    context.setLocalCurrentBoardId(currentBoardId);
 
     return (
         <CanvasEditor

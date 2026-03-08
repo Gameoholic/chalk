@@ -1,7 +1,7 @@
 import { useContext, useEffect, useState } from "react";
 import { X, Check, Loader2, Trash2, RotateCcw } from "lucide-react";
-import { SessionContext } from "../../types/SessionContext";
-import { CanvasContext } from "../../types/CanvasContext";
+import { SessionContext } from "../../types/context/SessionContext";
+import { CanvasContext } from "../../types/context/CanvasContext";
 
 const MAX_NAME_LENGTH = 50;
 

@@ -1,4 +1,11 @@
-import React, { useRef, useEffect, useState, useLayoutEffect } from "react";
+import React, {
+    useRef,
+    useEffect,
+    useState,
+    useLayoutEffect,
+    useContext,
+    useMemo,
+} from "react";
 import useDimensions from "react-cool-dimensions";
 import CanvasWorld from "./CanvasWorld";
 import {
@@ -13,66 +20,21 @@ import {
 } from "../types/canvas";
 import { v4 as uuidv4 } from "uuid";
 import { CheckCircle, FileVideoCamera, Loader2, XCircle } from "lucide-react";
+import { CanvasContext } from "../types/context/CanvasContext";
 
 interface CanvasInteractiveProps {
-    initialObjects: WorldObject[];
-    initialCameraPosition: Vec2;
-    initialCameraZoom: number;
-    selectedTool: Tool;
-    selectedColor: string;
-    selectedStroke: number;
-    onObjectUpdated: (object: WorldObject) => void;
-    onObjectAmountChange: (amount: number) => void;
     onObjectsCommit: () => void;
-    onCameraChange: (camera: Camera) => void;
 }
 
 // Handles canvas camera movement and zooming, as well as all mouse interactions including drawing
 // Stores the objects state and camera state
-function CanvasInteractive({
-    initialObjects,
-    initialCameraPosition,
-    initialCameraZoom,
-    selectedTool,
-    selectedColor,
-    selectedStroke,
-    onObjectUpdated,
-    onObjectAmountChange,
-    onObjectsCommit,
-    onCameraChange,
-}: CanvasInteractiveProps) {
-    // CAMERA
-    const [camera, setCamera] = useState<Camera>({
-        position: initialCameraPosition,
-        size: { x: 900, y: 900 }, // the initial size doesn't really matter, it'll automatically resize soon
-        zoom: initialCameraZoom,
-    });
-
-    // OBJECTS
-    const [objects, setObjects] = useState<Map<string, WorldObject>>(
-        new Map(initialObjects.map((object) => [object.id, object]))
-    );
-
-    // Handle when initialObjects change for whatever reason (for example, during a board reset)
-    useEffect(() => {
-        setObjects(
-            new Map(initialObjects.map((object) => [object.id, object]))
-        );
-    }, [initialObjects]);
-
-    // Immediately call onChange functions for initial value
-    useEffect(() => {
-        onObjectAmountChange(objects.size);
-    }, [objects.size]);
-
-    useEffect(() => {
-        onCameraChange(camera);
-    }, [camera]);
+function CanvasInteractive({ onObjectsCommit }: CanvasInteractiveProps) {
+    const canvasContext = useContext(CanvasContext);
 
     // Automatically set camera size to this component's MAX allocated size
     const { observe, unobserve, width, height, entry } = useDimensions({
         onResize: ({ observe, unobserve, width, height, entry }) => {
-            setCamera((prev) => ({
+            canvasContext.setLocalCamera((prev) => ({
                 ...prev,
                 size: { x: width, y: height },
             }));
@@ -83,11 +45,13 @@ function CanvasInteractive({
     });
 
     // Either add an entirely new object or update an existing one (based on its ID)
-    function updateObject(object: WorldObject) {
-        const newObjects = new Map(objects).set(object.id, object);
-        setObjects(newObjects);
-
-        onObjectUpdated(object);
+    // For example: Every time a new point is drawn in a line, or a circle's radius is being changed.
+    // Basically, ANY change to an object calls this method.
+    function updateOrAddObject(object: WorldObject) {
+        canvasContext.setLocalUnsavedObjects((prev) => [
+            ...prev.filter((obj) => obj.id !== object.id),
+            object,
+        ]);
     }
 
     // User released left click so object should be committed to database
@@ -102,21 +66,28 @@ function CanvasInteractive({
         handleMouseUp,
         handleWheel,
         handleContextMenu,
-    } = handleMouseEvents(
-        selectedTool,
-        selectedColor,
-        selectedStroke,
-        updateObject,
-        commitObjects,
-        camera,
-        setCamera
-    );
+    } = handleMouseEvents(updateOrAddObject, commitObjects);
+
+    // Server-synced objects and local unsaved objects, render all
+    const allObjects = useMemo(() => {
+        const map = new Map<string, WorldObject>();
+        canvasContext
+            .getCurrentBoard()
+            .objects.forEach((obj) => map.set(obj.id, obj));
+        canvasContext.local_unsavedObjects.forEach((obj) =>
+            map.set(obj.id, obj)
+        );
+        return map;
+    }, [
+        canvasContext.getCurrentBoard().objects,
+        canvasContext.local_unsavedObjects,
+    ]);
 
     return (
         <div ref={observe} className="h-full w-full">
             <CanvasWorld
-                camera={camera}
-                objects={objects}
+                camera={canvasContext.local_camera}
+                objects={allObjects}
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
@@ -138,14 +109,16 @@ function screenToWorld(
 }
 
 function handleMouseEvents(
-    selectedTool: Tool,
-    selectedColor: string,
-    selectedStroke: number,
     updateObject: (object: WorldObject) => void,
-    commitObjects: () => void,
-    camera: Camera,
-    setCamera: React.Dispatch<React.SetStateAction<Camera>>
+    commitObjects: () => void
 ) {
+    const canvasContext = useContext(CanvasContext);
+
+    const selectedTool: Tool = canvasContext.local_selectedTool;
+    const selectedColor: string = canvasContext.local_selectedColor;
+    const selectedStroke: number = canvasContext.local_selectedStroke;
+    const camera: Camera = canvasContext.local_camera;
+
     const LEFT_MOUSE_BUTTON = 0;
     const MIDDLE_MOUSE_BUTTON = 1;
     const RIGHT_MOUSE_BUTTON = 2;
@@ -334,7 +307,7 @@ function handleMouseEvents(
             (e.clientY - currentInteraction.current.lastMousePos.y) /
             camera.zoom;
 
-        setCamera((prev) => ({
+        canvasContext.setLocalCamera((prev) => ({
             ...prev,
             position: {
                 x: prev.position.x - dx,
@@ -381,7 +354,7 @@ function handleMouseEvents(
         const worldX = camera.position.x + mouseX / camera.zoom;
         const worldY = camera.position.y + mouseY / camera.zoom;
 
-        setCamera({
+        canvasContext.setLocalCamera({
             ...camera,
             zoom: clampedZoom,
             position: {
