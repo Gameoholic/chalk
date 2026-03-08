@@ -6,13 +6,13 @@ import MyBoards from "./my-boards/MyBoards";
 import {
     SessionContext,
     SessionContextProvider,
-} from "./types/SessionContext.tsx";
+} from "./types/context/SessionContext.tsx";
 import {
     CanvasContext,
     CanvasContextProvider,
-} from "./types/CanvasContext.tsx";
+} from "./types/context/CanvasContext.tsx";
 import { WorldObject } from "./types/canvas";
-import { ThemeContext } from "./types/ThemeContext";
+import { ThemeContext } from "./types/context/ThemeContext.tsx";
 import { updateBoardLastOpened } from "./api/boards";
 
 type LoadDataResult =
