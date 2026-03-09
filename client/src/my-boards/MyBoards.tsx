@@ -100,12 +100,13 @@ export default function MyBoards({
                 width: window.innerWidth,
                 height: window.innerHeight,
             });
-            // Reset zoom on resize to prevent alignment issues
+
             setSelectedBoardId(null);
-            setInitialTransform(null);
-            setShouldAnimateOut(false);
-            setHasZoomedOut(true); // Skip animation on resize
+
+            setShouldAnimateOut(true);
+            setHasZoomedOut(true);
         };
+
         window.addEventListener("resize", handleResize);
         return () => window.removeEventListener("resize", handleResize);
     }, []);

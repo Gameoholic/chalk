@@ -67,10 +67,7 @@ chalk.gameoholic.dev
 #### 🐞 Bugs
 - [ ] ci/cd deployment failing due to "unable to update local ref"
 - [ ] Fix server.ts CORS
-- [ ] Sometimes drawn objects disappear on save (look at console warnings when it happens)
 - [ ] Changing opacity in color picker doesn't work
-- [ ] Default color is white and not black..?
-- [ ] Resizing MyBoards page replays animation
 - [ ] Can't click in top left "dead area" of canvas menu
 - [ ] Objects flicker on zoom
 - [ ] Object opacity/stroke changes on zoom
