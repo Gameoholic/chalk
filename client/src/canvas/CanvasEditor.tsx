@@ -46,13 +46,13 @@ interface CanvasEditorProps {
 function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
     const themeContext = useContext(ThemeContext);
     const canvasContext = useContext(CanvasContext);
-    const canvasContextRef = useRef(canvasContext); // Use this whenever after we run code async, otherwise we get stale closure
+    // Use this whenever after we run code async, otherwise we get stale closure
+    const canvasContextRef = useRef(canvasContext);
     useEffect(() => {
         canvasContextRef.current = canvasContext;
     });
     const sessionContext = useContext(SessionContext);
 
-    // Debug data
     // FPS
     const [fps, setFps] = useState(0);
     const frames = useRef(0);

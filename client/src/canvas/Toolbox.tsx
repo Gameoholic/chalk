@@ -7,15 +7,6 @@ import { CanvasContext } from "../types/context/CanvasContext";
 const Toolbox = ({ className }: { className: string }) => {
     const canvasContext = useContext(CanvasContext);
 
-    const [selectedTool, setSelectedTool] = useState<Tool>(
-        canvasContext.local_selectedTool
-    );
-    const [color, setColor] = useState<string>(
-        canvasContext.local_selectedColor
-    );
-    const [width, setWidth] = useState<number>(
-        canvasContext.local_selectedStroke
-    );
     const [showColorPicker, setShowColorPicker] = useState<boolean>(false);
 
     const pickerRef = useRef<HTMLDivElement>(null);
@@ -43,14 +34,12 @@ const Toolbox = ({ className }: { className: string }) => {
     ];
 
     const handleToolClick = (tool: Tool) => {
-        if (selectedTool === tool) tool = "none";
-        setSelectedTool(tool);
+        if (canvasContext.local_selectedTool === tool) tool = "none";
         canvasContext.setLocalTool(tool);
     };
 
     // Updated to handle string directly from the new ColorPicker
     const handleColorChange = (newColor: string) => {
-        setColor(newColor);
         canvasContext.setLocalColor(newColor);
     };
 
@@ -97,11 +86,11 @@ const Toolbox = ({ className }: { className: string }) => {
                         className="rounded p-2 transition"
                         style={{
                             backgroundColor:
-                                selectedTool === tool.name
+                                canvasContext.local_selectedTool === tool.name
                                     ? "var(--accent)"
                                     : "var(--card)",
                             color:
-                                selectedTool === tool.name
+                                canvasContext.local_selectedTool === tool.name
                                     ? "var(--accent-foreground)"
                                     : "var(--card-foreground)",
                             cursor: "pointer",
@@ -120,11 +109,11 @@ const Toolbox = ({ className }: { className: string }) => {
                             (
                                 e.currentTarget as HTMLButtonElement
                             ).style.backgroundColor =
-                                selectedTool === tool.name
+                                canvasContext.local_selectedTool === tool.name
                                     ? "var(--accent)"
                                     : "var(--card)";
                             (e.currentTarget as HTMLButtonElement).style.color =
-                                selectedTool === tool.name
+                                canvasContext.local_selectedTool === tool.name
                                     ? "var(--accent-foreground)"
                                     : "var(--card-foreground)";
                             (
@@ -150,7 +139,9 @@ const Toolbox = ({ className }: { className: string }) => {
                     {renderCheckerboard()}
                     <div
                         className="absolute inset-0"
-                        style={{ backgroundColor: color }}
+                        style={{
+                            backgroundColor: canvasContext.local_selectedColor,
+                        }}
                     />
                 </button>
 
@@ -161,7 +152,7 @@ const Toolbox = ({ className }: { className: string }) => {
                         style={{ backgroundColor: "var(--card)" }}
                     >
                         <ColorPicker
-                            value={color}
+                            value={canvasContext.local_selectedColor}
                             onChange={handleColorChange}
                         />
 
@@ -186,10 +177,9 @@ const Toolbox = ({ className }: { className: string }) => {
                     type="range"
                     min="1"
                     max="20"
-                    value={width}
+                    value={canvasContext.local_selectedStroke}
                     onChange={(e) => {
                         const newWidth = Number(e.target.value);
-                        setWidth(newWidth);
                         canvasContext.setLocalStroke(newWidth);
                     }}
                     className="w-full"
@@ -197,7 +187,9 @@ const Toolbox = ({ className }: { className: string }) => {
                         accentColor: "var(--accent)",
                     }}
                 />
-                <span className="text-center text-xs">{width}px</span>
+                <span className="text-center text-xs">
+                    {canvasContext.local_selectedStroke}px
+                </span>
             </div>
         </div>
     );
