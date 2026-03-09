@@ -57,32 +57,7 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
     const [fps, setFps] = useState(0);
     const frames = useRef(0);
     const lastTime = useRef(performance.now());
-
-    // Menu
-    const [showDebug, setShowDebug] = useState(false);
-    const [menuOpen, setMenuOpen] = useState(false);
-    const [showManageThisBoardModal, setShowManageThisBoardModal] =
-        useState(false);
-    const [authView, setAuthView] = useState<
-        "login" | "forgot-password" | "create-account" | "manage-user" | null
-    >(null);
-
-    // Saving objects
-    // Database objects on standby to be saved to db (either entirely new objects or objects that were updated)
-    const objectsToSaveOnDatabase: RefObject<Map<string, WorldObject>> = useRef(
-        new Map()
-    );
-    // Objects that are CURRENTLY being saved (mid-fetch request)
-    const objectsBeingSavedOnDatabase: RefObject<WorldObject[]> = useRef([]);
-    const [saveObjectsError, setSaveObjectsError] = useState<
-        | { error: null }
-        | {
-              error: string;
-              retryStatus: "retrying" | "start-retry-timer" | number;
-              retryDelay: number;
-          }
-    >({ error: null });
-
+    // Calculate FPS
     useEffect(() => {
         let rafId: number;
 
@@ -103,8 +78,67 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
         return () => cancelAnimationFrame(rafId);
     }, []);
 
-    // ----- COOLDOWN FOR SAVING BOARD (CLIENT SIDE RATE LIMITING) -----
+    // Menu
+    const [showDebug, setShowDebug] = useState(false);
+    const [menuOpen, setMenuOpen] = useState(false);
+    const [showManageThisBoardModal, setShowManageThisBoardModal] =
+        useState(false);
+    const [authView, setAuthView] = useState<
+        "login" | "forgot-password" | "create-account" | "manage-user" | null
+    >(null);
+
+    // Saving objects
+    // Objects that are currently being saved (mid-fetch request)
+    const objectsBeingSavedOnDatabase: RefObject<WorldObject[]> = useRef([]);
+    // Error data if couldn't save objects
+    const [saveObjectsError, setSaveObjectsError] = useState<
+        | { error: null }
+        | {
+              error: string;
+              retryCooldownSecondsOrStatus:
+                  | "retrying"
+                  | "start-retry-timer"
+                  | number;
+              retryDelay: number;
+          }
+    >({ error: null });
+
+    // COOLDOWN FOR SAVING BOARD OBJECTS (CLIENT SIDE RATE LIMITING)
     const saveObjectsRequestOnCooldown = useRef(false);
+    useEffect(() => {
+        if (env.VITE_SAVE_REQUEST_COOLDOWN === 0) {
+            return;
+        }
+        const interval: number = window.setInterval(() => {
+            saveObjectsRequestOnCooldown.current = false;
+            // In case we have objects that are waiting to be saved (previously failed because of our cooldown), try to save now
+            if (
+                objectsToSaveOnDatabase.current.size > 0 &&
+                !saveObjectsError.error
+            ) {
+                // Avoid stale closure
+                requestSaveObjectsOnDatabaseFunction.current();
+            }
+        }, env.VITE_SAVE_REQUEST_COOLDOWN);
+
+        return () => window.clearInterval(interval);
+    }, []);
+
+    // When objects are ready to be saved to database (user released left click, for example).
+    // Generally, only one object will be in objectsBeingUpdatedButNotReadyForSaving when this method is called,
+    // but our code should be able to support cases where there's multiple objects at once.
+    function onObjectsCommit() {
+        console.log(
+            "Requesting to commit " +
+                canvasContext.local_unsavedObjects.length +
+                " objects to database."
+        );
+
+        canvasContext.local_unsavedObjects.forEach((object) => {
+            objectsToSaveOnDatabase.current.set(object.id, object);
+        });
+        requestSaveObjectsOnDatabase();
+    }
 
     // Avoid stale closure in timer effect hooks
     const requestSaveObjectsOnDatabaseFunction = useRef(
@@ -116,55 +150,34 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
             requestSaveObjectsOnDatabase;
     });
 
-    useEffect(() => {
-        if (env.VITE_SAVE_REQUEST_COOLDOWN === 0) {
-            return;
-        }
-        const interval: number = window.setInterval(() => {
-            saveObjectsRequestOnCooldown.current = false;
-            // In case commit requests were sent during the delay, try to save now
-            requestSaveObjectsOnDatabaseFunction.current();
-        }, env.VITE_SAVE_REQUEST_COOLDOWN);
+    // Objects that are ready to be saved on the database
+    const objectsToSaveOnDatabase: RefObject<Map<string, WorldObject>> = useRef(
+        new Map()
+    );
 
-        return () => window.clearInterval(interval);
-    }, []);
-    // ----------
-
-    // When objects are ready to be saved to database (user released left click, for example).
-    // Generally, only one object will be in objectsBeingUpdatedButNotReadyForSaving when this method is called,
-    // but our code should handle a case where there's multiple objects at once.
-    function onObjectsCommit() {
-        console.log(
-            "Requesting to commit " +
-                canvasContext.local_unsavedObjects.length +
-                " objects to database."
-        );
-
-        // Transfer all objects previously put into objectsbeingupdated into objectstosaveondatabase
-        canvasContext.local_unsavedObjects.forEach((object) => {
-            objectsToSaveOnDatabase.current.set(object.id, object);
-        });
-
-        requestSaveObjectsOnDatabase();
-    }
-
+    // Main method to save objects on database
     async function requestSaveObjectsOnDatabase(asErrorRetry: boolean = false) {
         // Sanity check. Do not remove this because if it's equal to 0 and we call this method multiple times, we could have multiple fetch requests running concurrently, which could cause problems if one of them fails and causes us to reload the board.
         if (objectsToSaveOnDatabase.current.size === 0) {
             return;
         }
 
-        // Check for rate limiting
-        if (saveObjectsRequestOnCooldown.current) {
+        if (saveObjectsError.error && !asErrorRetry) {
+            console.warn(
+                "Request to save objects (length " +
+                    objectsToSaveOnDatabase.current.size +
+                    ") ignored because waiting for error retry."
+            );
+            return;
+        }
+
+        if (saveObjectsRequestOnCooldown.current && !asErrorRetry) {
             console.warn(
                 "Request to save objects (length " +
                     objectsToSaveOnDatabase.current.size +
                     ") ignored because waiting for cooldown to expire."
             );
             return;
-        }
-        if (env.VITE_SAVE_REQUEST_COOLDOWN > 0) {
-            saveObjectsRequestOnCooldown.current = true;
         }
 
         if (objectsBeingSavedOnDatabase.current.length > 0) {
@@ -175,24 +188,20 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
             );
             return;
         }
-        if (saveObjectsError.error && !asErrorRetry) {
-            console.warn(
-                "Request to save objects (length " +
-                    objectsToSaveOnDatabase.current.size +
-                    ") ignored because waiting for error retry."
-            );
-            return;
-        }
 
         objectsBeingSavedOnDatabase.current = Array.from(
             objectsToSaveOnDatabase.current.values()
         );
-        objectsToSaveOnDatabase.current.clear();
+
         console.log(
             "Saving " +
                 objectsBeingSavedOnDatabase.current.length +
                 " board objects on database."
         );
+
+        if (env.VITE_SAVE_REQUEST_COOLDOWN > 0) {
+            saveObjectsRequestOnCooldown.current = true;
+        }
 
         try {
             await updateBoardObjects(
@@ -200,28 +209,23 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
                 objectsBeingSavedOnDatabase.current
             );
         } catch (err) {
-            console.error("Failure to save the objects! ");
+            console.error("Failure to save the objects!");
 
-            // Restore objects
-            for (const obj of objectsBeingSavedOnDatabase.current) {
-                // Don't attempt to re-save the object if a newer version of it exists
-                if (!objectsToSaveOnDatabase.current.has(obj.id)) {
-                    objectsToSaveOnDatabase.current.set(obj.id, obj);
-                }
-            }
             objectsBeingSavedOnDatabase.current = [];
             setSaveObjectsError((prev) => {
                 const accumulatedCooldown = prev.error ? prev.retryDelay : 0; // Add delay from previous attempts
-                const COOLDOWN = env.VITE_SAVE_RETRY_COOLDOWN;
-                const MAX_COOLDOWN = env.VITE_SAVE_RETRY_MAX_COOLDOWN;
-                const newCooldown = accumulatedCooldown + COOLDOWN;
+                const newCooldown =
+                    accumulatedCooldown + env.VITE_SAVE_RETRY_COOLDOWN;
                 return {
                     error: "Failed to save changes. Your work is out of sync.",
-                    retryStatus: "start-retry-timer",
+                    retryCooldownSecondsOrStatus: "start-retry-timer",
                     retryDelay:
-                        MAX_COOLDOWN === 0 // If max cooldown is 0, we ignore it
+                        env.VITE_SAVE_RETRY_MAX_COOLDOWN === 0 // If max cooldown is 0, we ignore it
                             ? newCooldown
-                            : Math.min(newCooldown, MAX_COOLDOWN),
+                            : Math.min(
+                                  newCooldown,
+                                  env.VITE_SAVE_RETRY_MAX_COOLDOWN
+                              ),
                 };
             });
             return;
@@ -234,7 +238,7 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
         );
 
         setSaveObjectsError({ error: null });
-        // Iterate over all saved objects, remove them from localUnsavedObjects, UNLESS they were modified since the save started (unlikely but possible)
+        // Iterate over all objects we saved, remove them from localUnsavedObjects, UNLESS they were modified since the save started (unlikely but possible)
         // Since this is all happening after an await asynchrounsly, the context is stale, so we use the ref to read it here
         const remainingUnsavedObjects =
             canvasContextRef.current.local_unsavedObjects.filter(
@@ -256,10 +260,13 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
         canvasContextRef.current.setLocalUnsavedObjects(
             remainingUnsavedObjects
         );
+
         objectsBeingSavedOnDatabase.current = [];
-        objectsToSaveOnDatabase.current = new Map(
-            remainingUnsavedObjects.map((x) => [x.id, x])
-        );
+
+        objectsToSaveOnDatabase.current = new Map();
+        remainingUnsavedObjects.forEach((object) => {
+            objectsToSaveOnDatabase.current.set(object.id, object);
+        });
 
         // Save any objects that were piling up as this request was processed
         if (objectsToSaveOnDatabase.current.size > 0) {
@@ -267,34 +274,47 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
                 objectsToSaveOnDatabase.current.size +
                     " objects piled up while processing the request. Attempting to save them now."
             );
-            requestSaveObjectsOnDatabase();
+            requestSaveObjectsOnDatabaseFunction.current();
         }
     }
 
-    // Handle error retry
+    // Handle object save error retry
     useEffect(() => {
         if (saveObjectsError.error === null) return;
 
         // Start retry timer
-        if (saveObjectsError.retryStatus === "start-retry-timer") {
+        if (
+            saveObjectsError.retryCooldownSecondsOrStatus ===
+            "start-retry-timer"
+        ) {
             // Interval logic
             const interval = setInterval(() => {
                 setSaveObjectsError((prev) => {
-                    if (!prev.error || typeof prev.retryStatus !== "number") {
+                    if (
+                        !prev.error ||
+                        typeof prev.retryCooldownSecondsOrStatus !== "number"
+                    ) {
                         clearInterval(interval);
                         return prev;
                     }
 
                     // Retry saving objects
-                    if (prev.retryStatus <= 1) {
+                    if (prev.retryCooldownSecondsOrStatus <= 1) {
                         clearInterval(interval);
                         console.log("Retrying to save objects.");
                         requestSaveObjectsOnDatabaseFunction.current(true);
 
-                        return { ...prev, retryStatus: "retrying" };
+                        return {
+                            ...prev,
+                            retryCooldownSecondsOrStatus: "retrying",
+                        };
                     }
 
-                    return { ...prev, retryStatus: prev.retryStatus - 1 };
+                    return {
+                        ...prev,
+                        retryCooldownSecondsOrStatus:
+                            prev.retryCooldownSecondsOrStatus - 1,
+                    };
                 });
             }, 1000);
             // Interval logic ^
@@ -302,7 +322,7 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
             // Start retry timer
             setSaveObjectsError({
                 error: saveObjectsError.error,
-                retryStatus: saveObjectsError.retryDelay,
+                retryCooldownSecondsOrStatus: saveObjectsError.retryDelay,
                 retryDelay: saveObjectsError.retryDelay,
             });
         }
@@ -310,23 +330,6 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
         //  clearInterval(interval) todo we don't actually clean it up here. could cause memory leaks? idk
         return () => {};
     }, [saveObjectsError]);
-
-    // Update lastCameraPosition and lastCameraZoom on database
-    useEffect(() => {
-        const update = async () => {
-            try {
-                await updateBoardCamera(
-                    canvasContext.getCurrentBoard().id,
-                    canvasContext.local_camera.position,
-                    canvasContext.local_camera.zoom
-                );
-            } catch (err) {
-                console.error("Couldnt update board camera: " + err);
-            }
-        };
-
-        update();
-    }, [canvasContext.local_camera]);
 
     const handleRenameBoard = async (newName: string) => {
         await updateBoardName(canvasContext.getCurrentBoard().id, newName);
@@ -420,7 +423,8 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
                         }}
                     >
                         <div className="flex items-center gap-3">
-                            {saveObjectsError.retryStatus === "retrying" ? (
+                            {saveObjectsError.retryCooldownSecondsOrStatus ===
+                            "retrying" ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                             ) : (
                                 <XCircle className="h-4 w-4" />
@@ -428,7 +432,7 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
                             <span>{saveObjectsError.error}</span>
                         </div>
 
-                        {saveObjectsError.retryStatus ===
+                        {saveObjectsError.retryCooldownSecondsOrStatus ===
                             "start-retry-timer" && (
                             <span
                                 className="ml-7 text-xs opacity-80"
@@ -438,16 +442,19 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
                             </span>
                         )}
 
-                        {typeof saveObjectsError.retryStatus === "number" && (
+                        {typeof saveObjectsError.retryCooldownSecondsOrStatus ===
+                            "number" && (
                             <span
                                 className="ml-7 text-xs opacity-80"
                                 style={{ color: "var(--error-foreground)" }}
                             >
-                                Retrying in {saveObjectsError.retryStatus}s
+                                Retrying in{" "}
+                                {saveObjectsError.retryCooldownSecondsOrStatus}s
                             </span>
                         )}
 
-                        {saveObjectsError.retryStatus === "retrying" && (
+                        {saveObjectsError.retryCooldownSecondsOrStatus ===
+                            "retrying" && (
                             <span
                                 className="ml-7 text-xs opacity-80"
                                 style={{ color: "var(--error-foreground)" }}
