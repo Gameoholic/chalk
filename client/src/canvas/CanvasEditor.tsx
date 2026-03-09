@@ -95,13 +95,16 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
         | { error: null }
         | {
               error: string;
-              retryCooldownSecondsOrStatus:
-                  | "retrying"
-                  | "start-retry-timer"
-                  | number;
-              retryDelay: number;
+              retryCooldownSecondsOrStatus: "retrying" | number;
+              lastRetryCooldown: number;
           }
     >({ error: null });
+
+    // Fix for state closure
+    const saveObjectsErrorRef = useRef(saveObjectsError);
+    useEffect(() => {
+        saveObjectsErrorRef.current = saveObjectsError;
+    }, [saveObjectsError]);
 
     // COOLDOWN FOR SAVING BOARD OBJECTS (CLIENT SIDE RATE LIMITING)
     const saveObjectsRequestOnCooldown = useRef(false);
@@ -114,7 +117,7 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
             // In case we have objects that are waiting to be saved (previously failed because of our cooldown), try to save now
             if (
                 objectsToSaveOnDatabase.current.size > 0 &&
-                !saveObjectsError.error
+                saveObjectsErrorRef.current.error === null // Use the ref to avoid stale closure
             ) {
                 // Avoid stale closure
                 requestSaveObjectsOnDatabaseFunction.current();
@@ -162,7 +165,7 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
             return;
         }
 
-        if (saveObjectsError.error && !asErrorRetry) {
+        if (saveObjectsErrorRef.current.error && !asErrorRetry) {
             console.warn(
                 "Request to save objects (length " +
                     objectsToSaveOnDatabase.current.size +
@@ -213,19 +216,22 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
 
             objectsBeingSavedOnDatabase.current = [];
             setSaveObjectsError((prev) => {
-                const accumulatedCooldown = prev.error ? prev.retryDelay : 0; // Add delay from previous attempts
-                const newCooldown =
+                const accumulatedCooldown = prev.error
+                    ? prev.lastRetryCooldown
+                    : 0; // Add delay from previous attempts
+                const updatedCooldown =
                     accumulatedCooldown + env.VITE_SAVE_RETRY_COOLDOWN;
+                const finalCooldown =
+                    env.VITE_SAVE_RETRY_MAX_COOLDOWN === 0 // If max cooldown is 0, we ignore it
+                        ? updatedCooldown
+                        : Math.min(
+                              updatedCooldown,
+                              env.VITE_SAVE_RETRY_MAX_COOLDOWN
+                          );
                 return {
                     error: "Failed to save changes. Your work is out of sync.",
-                    retryCooldownSecondsOrStatus: "start-retry-timer",
-                    retryDelay:
-                        env.VITE_SAVE_RETRY_MAX_COOLDOWN === 0 // If max cooldown is 0, we ignore it
-                            ? newCooldown
-                            : Math.min(
-                                  newCooldown,
-                                  env.VITE_SAVE_RETRY_MAX_COOLDOWN
-                              ),
+                    retryCooldownSecondsOrStatus: finalCooldown,
+                    lastRetryCooldown: finalCooldown,
                 };
             });
             return;
@@ -280,55 +286,40 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
 
     // Handle object save error retry
     useEffect(() => {
-        if (saveObjectsError.error === null) return;
+        if (!saveObjectsError.error) return;
 
-        // Start retry timer
-        if (
-            saveObjectsError.retryCooldownSecondsOrStatus ===
-            "start-retry-timer"
-        ) {
-            // Interval logic
-            const interval = setInterval(() => {
-                setSaveObjectsError((prev) => {
-                    if (
-                        !prev.error ||
-                        typeof prev.retryCooldownSecondsOrStatus !== "number"
-                    ) {
-                        clearInterval(interval);
-                        return prev;
-                    }
+        const secondsLeft = saveObjectsError.retryCooldownSecondsOrStatus;
+        if (secondsLeft === "retrying") return;
 
-                    // Retry saving objects
-                    if (prev.retryCooldownSecondsOrStatus <= 1) {
-                        clearInterval(interval);
-                        console.log("Retrying to save objects.");
-                        requestSaveObjectsOnDatabaseFunction.current(true);
-
-                        return {
-                            ...prev,
-                            retryCooldownSecondsOrStatus: "retrying",
-                        };
-                    }
-
-                    return {
-                        ...prev,
-                        retryCooldownSecondsOrStatus:
-                            prev.retryCooldownSecondsOrStatus - 1,
-                    };
-                });
-            }, 1000);
-            // Interval logic ^
-
-            // Start retry timer
-            setSaveObjectsError({
-                error: saveObjectsError.error,
-                retryCooldownSecondsOrStatus: saveObjectsError.retryDelay,
-                retryDelay: saveObjectsError.retryDelay,
-            });
+        // If we've hit 0, trigger the retry
+        if (secondsLeft <= 0) {
+            setSaveObjectsError((prev) => ({
+                ...prev,
+                retryCooldownSecondsOrStatus: "retrying",
+            }));
+            console.log("Retrying to save objects.");
+            requestSaveObjectsOnDatabaseFunction.current(true);
+            return;
         }
 
-        //  clearInterval(interval) todo we don't actually clean it up here. could cause memory leaks? idk
-        return () => {};
+        // If we are actively counting down, tick down by 1 every second
+        const timer = setTimeout(() => {
+            setSaveObjectsError((prev) => {
+                if (
+                    prev.error === null ||
+                    prev.retryCooldownSecondsOrStatus === "retrying"
+                )
+                    return prev;
+
+                return {
+                    ...prev,
+                    retryCooldownSecondsOrStatus:
+                        prev.retryCooldownSecondsOrStatus - 1,
+                };
+            });
+        }, 1000);
+
+        return () => clearTimeout(timer);
     }, [saveObjectsError]);
 
     const handleRenameBoard = async (newName: string) => {
@@ -431,16 +422,6 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
                             )}
                             <span>{saveObjectsError.error}</span>
                         </div>
-
-                        {saveObjectsError.retryCooldownSecondsOrStatus ===
-                            "start-retry-timer" && (
-                            <span
-                                className="ml-7 text-xs opacity-80"
-                                style={{ color: "var(--error-foreground)" }}
-                            >
-                                Retrying in {}s
-                            </span>
-                        )}
 
                         {typeof saveObjectsError.retryCooldownSecondsOrStatus ===
                             "number" && (
