@@ -88,11 +88,30 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
     >(null);
 
     // Used if a save operation is currently undergoing and user asked to go my boards
-    const [isNavigatingToBoards, setIsNavigatingToBoards] = useState(false);
+    const [queued_navigateToMyBoards, setQueued_navigateToMyBoards] =
+        useState(false);
     useEffect(() => {
-        if (isNavigatingToBoards && !hasPendingSaveOperations()) {
+        if (queued_navigateToMyBoards && !hasPendingSaveOperations()) {
             openMyBoards();
-            setIsNavigatingToBoards(false);
+            setQueued_navigateToMyBoards(false);
+        }
+    }, [canvasContext.local_unsavedObjects]);
+
+    // Used if a save operation is currently undergoing and user requested to reset board
+    const [queued_resetBoard, setQueued_ResetBoard] = useState(false);
+    useEffect(() => {
+        if (queued_resetBoard && !hasPendingSaveOperations()) {
+            handleResetBoard();
+            setQueued_ResetBoard(false);
+        }
+    }, [canvasContext.local_unsavedObjects]);
+
+    // Used if a save operation is currently undergoing and user requested to reset board
+    const [queued_deleteBoard, setQueued_deleteBoard] = useState(false);
+    useEffect(() => {
+        if (queued_deleteBoard && !hasPendingSaveOperations()) {
+            handleDeleteBoard();
+            setQueued_deleteBoard(false);
         }
     }, [canvasContext.local_unsavedObjects]);
 
@@ -119,7 +138,14 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
     const saveCooldownTimeoutRef = useRef<number | null>(null);
     const saveObjectsRequestOnCooldown = useRef(false);
 
-    const startCooldownRetryTimeout = () => {
+    const startCooldownTimeout = (forceTimeoutNow = false) => {
+        // If we need to force the timeout to happen now (such as when going to my boards or reseting/deleting board)
+        if (forceTimeoutNow) {
+            saveObjectsRequestOnCooldown.current = false;
+            requestSaveObjectsOnDatabaseFunction.current(); // Use the ref to avoid stale closure
+            saveObjectsRequestOnCooldown.current = true;
+            return;
+        }
         if (env.VITE_SAVE_REQUEST_COOLDOWN === 0) {
             // If we don't want a cooldown timer, immediately execute the save
             if (
@@ -251,7 +277,7 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
 
         if (env.VITE_SAVE_REQUEST_COOLDOWN > 0) {
             saveObjectsRequestOnCooldown.current = true;
-            startCooldownRetryTimeout();
+            startCooldownTimeout();
         }
 
         try {
@@ -330,7 +356,7 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
                 objectsToSaveOnDatabase.current.size +
                     " objects accumulated while processing the request. Attempting to save them once cooldown expires."
             );
-            startCooldownRetryTimeout();
+            startCooldownTimeout();
         }
     }
 
@@ -379,9 +405,10 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
 
     const handleResetBoard = async () => {
         if (hasPendingSaveOperations()) {
-            throw new Error(
-                "Can't reset board while objects are pending save."
-            );
+            // Will quicken the ongoing save processes and reset the board as soon as save is done
+            setQueued_ResetBoard(true);
+            startCooldownTimeout(true);
+            return;
         }
         await resetBoard(canvasContext.local_currentBoardId);
 
@@ -394,9 +421,10 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
 
     const handleDeleteBoard = async () => {
         if (hasPendingSaveOperations()) {
-            throw new Error(
-                "Can't delete board while objects are pending save."
-            );
+            // Will quicken the ongoing save processes and reset the board as soon as save is done
+            setQueued_deleteBoard(true);
+            startCooldownTimeout(true);
+            return;
         }
         await deleteBoard(canvasContext.local_currentBoardId);
         window.location.reload();
@@ -551,8 +579,9 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
                                 if (!hasPendingSaveOperations()) {
                                     openMyBoards();
                                 } else {
-                                    // queue it until save finishes
-                                    setIsNavigatingToBoards(true);
+                                    // quicken the save process and queue the navigate to my boards until save finishes
+                                    setQueued_navigateToMyBoards(true);
+                                    startCooldownTimeout(true);
                                 }
                             }}
                         />
