@@ -87,6 +87,15 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
         "login" | "forgot-password" | "create-account" | "manage-user" | null
     >(null);
 
+    // Used if a save operation is currently undergoing and user asked to go my boards
+    const [isNavigatingToBoards, setIsNavigatingToBoards] = useState(false);
+    useEffect(() => {
+        if (isNavigatingToBoards && !hasPendingSaveOperations()) {
+            openMyBoards();
+            setIsNavigatingToBoards(false);
+        }
+    }, [canvasContext.local_unsavedObjects]);
+
     // Saving objects
     // Objects that are currently being saved (mid-fetch request)
     const objectsBeingSavedOnDatabase: RefObject<WorldObject[]> = useRef([]);
@@ -539,7 +548,12 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
                             disabled={sessionContext.userData.role === "guest"}
                             disabledTooltip="You must be logged in to access additional boards."
                             onClick={() => {
-                                if (!hasPendingSaveOperations()) openMyBoards();
+                                if (!hasPendingSaveOperations()) {
+                                    openMyBoards();
+                                } else {
+                                    // queue it until save finishes
+                                    setIsNavigatingToBoards(true);
+                                }
                             }}
                         />
 
