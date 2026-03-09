@@ -106,25 +106,57 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
         saveObjectsErrorRef.current = saveObjectsError;
     }, [saveObjectsError]);
 
-    // COOLDOWN FOR SAVING BOARD OBJECTS (CLIENT SIDE RATE LIMITING)
+    // COOLDOWN FOR SAVING BOARD OBJECTS (CLIENT SIDE "RATE LIMITING")
+    const saveCooldownTimeoutRef = useRef<number | null>(null);
     const saveObjectsRequestOnCooldown = useRef(false);
-    useEffect(() => {
+
+    const startCooldownRetryTimeout = () => {
         if (env.VITE_SAVE_REQUEST_COOLDOWN === 0) {
+            // If we don't want a cooldown timer, immediately execute the save
+            if (
+                objectsToSaveOnDatabase.current.size > 0 &&
+                saveObjectsErrorRef.current.error === null && // Use the ref to avoid stale closure
+                objectsBeingSavedOnDatabase.current.length === 0
+            ) {
+                console.log(
+                    "Requesting to save " +
+                        objectsToSaveOnDatabase.current.size +
+                        " objects on database (request likely originated because objects accumulated during a prior save)."
+                );
+                requestSaveObjectsOnDatabaseFunction.current(); // Use the ref to avoid stale closure
+            }
             return;
         }
-        const interval: number = window.setInterval(() => {
+
+        if (saveCooldownTimeoutRef.current !== null) {
+            return;
+        }
+
+        saveCooldownTimeoutRef.current = window.setTimeout(() => {
+            saveCooldownTimeoutRef.current = null;
             saveObjectsRequestOnCooldown.current = false;
+
             // In case we have objects that are waiting to be saved (previously failed because of our cooldown), try to save now
             if (
                 objectsToSaveOnDatabase.current.size > 0 &&
-                saveObjectsErrorRef.current.error === null // Use the ref to avoid stale closure
+                saveObjectsErrorRef.current.error === null && // Use the ref to avoid stale closure
+                objectsBeingSavedOnDatabase.current.length === 0
             ) {
-                // Avoid stale closure
-                requestSaveObjectsOnDatabaseFunction.current();
+                console.log(
+                    "Cooldown expired! Requesting to save " +
+                        objectsToSaveOnDatabase.current.size +
+                        " objects on database."
+                );
+                requestSaveObjectsOnDatabaseFunction.current(); // Use the ref to avoid stale closure
             }
         }, env.VITE_SAVE_REQUEST_COOLDOWN);
-
-        return () => window.clearInterval(interval);
+    };
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            if (saveCooldownTimeoutRef.current)
+                clearTimeout(saveCooldownTimeoutRef.current);
+        };
     }, []);
 
     // When objects are ready to be saved to database (user released left click, for example).
@@ -133,10 +165,12 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
     function onObjectsCommit() {
         console.log(
             "Requesting to commit " +
-                canvasContext.local_unsavedObjects.length +
+                (canvasContext.local_unsavedObjects.length -
+                    objectsBeingSavedOnDatabase.current.length) +
                 " objects to database."
         );
 
+        // As soon as objects start saving - objectsToSaveOnDatabase becomes irrelevant, it'll get overwritten when it finished saving. So this is ok even if this line executes mid-save.
         canvasContext.local_unsavedObjects.forEach((object) => {
             objectsToSaveOnDatabase.current.set(object.id, object);
         });
@@ -162,6 +196,9 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
     async function requestSaveObjectsOnDatabase(asErrorRetry: boolean = false) {
         // Sanity check. Do not remove this because if it's equal to 0 and we call this method multiple times, we could have multiple fetch requests running concurrently, which could cause problems if one of them fails and causes us to reload the board.
         if (objectsToSaveOnDatabase.current.size === 0) {
+            console.warn(
+                "Request to save objects ignored because object length is 0."
+            );
             return;
         }
 
@@ -174,20 +211,21 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
             return;
         }
 
+        if (objectsBeingSavedOnDatabase.current.length > 0) {
+            console.warn(
+                "Request to save objects (length " +
+                    (canvasContext.local_unsavedObjects.length -
+                        objectsBeingSavedOnDatabase.current.length) +
+                    ") ignored because waiting on existing request."
+            );
+            return;
+        }
+
         if (saveObjectsRequestOnCooldown.current && !asErrorRetry) {
             console.warn(
                 "Request to save objects (length " +
                     objectsToSaveOnDatabase.current.size +
                     ") ignored because waiting for cooldown to expire."
-            );
-            return;
-        }
-
-        if (objectsBeingSavedOnDatabase.current.length > 0) {
-            console.warn(
-                "Request to save objects (length " +
-                    objectsToSaveOnDatabase.current.size +
-                    ") ignored because waiting on existing request."
             );
             return;
         }
@@ -204,6 +242,7 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
 
         if (env.VITE_SAVE_REQUEST_COOLDOWN > 0) {
             saveObjectsRequestOnCooldown.current = true;
+            startCooldownRetryTimeout();
         }
 
         try {
@@ -239,10 +278,6 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
 
         console.log("Successfully saved the objects.");
 
-        canvasContextRef.current.onCurrentBoardObjectsSaved(
-            objectsBeingSavedOnDatabase.current
-        );
-
         setSaveObjectsError({ error: null });
         // Iterate over all objects we saved, remove them from localUnsavedObjects, UNLESS they were modified since the save started (unlikely but possible)
         // Since this is all happening after an await asynchrounsly, the context is stale, so we use the ref to read it here
@@ -263,6 +298,12 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
                     return !isDeepEqual(objectLocal, savedVersion);
                 }
             );
+        canvasContextRef.current.onCurrentBoardObjectsSaved(
+            // we do this so if the object was saved but modified stays then, it stays only in localunsavedobjects and not in both buffers
+            objectsBeingSavedOnDatabase.current.filter(
+                (x) => !remainingUnsavedObjects.includes(x)
+            )
+        );
         canvasContextRef.current.setLocalUnsavedObjects(
             remainingUnsavedObjects
         );
@@ -278,9 +319,9 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
         if (objectsToSaveOnDatabase.current.size > 0) {
             console.log(
                 objectsToSaveOnDatabase.current.size +
-                    " objects piled up while processing the request. Attempting to save them now."
+                    " objects accumulated while processing the request. Attempting to save them once cooldown expires."
             );
-            requestSaveObjectsOnDatabaseFunction.current();
+            startCooldownRetryTimeout();
         }
     }
 
