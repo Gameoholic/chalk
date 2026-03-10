@@ -110,7 +110,7 @@ function AfterSuccessfulAuth({
                     defaultBoardCameraSize={{ x: 1000, y: 1000 }}
                     defaultColor="#000000FF"
                     defaultStroke={1}
-                    defaultTool="select"
+                    defaultTool="pencil"
                 >
                     <CanvasEditorDiv
                         canvasEditorKey={canvasEditorKey}
