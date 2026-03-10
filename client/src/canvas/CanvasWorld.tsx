@@ -26,35 +26,44 @@ interface CanvasWorldProps {
 // Only renders passed objects and processes passed camera position and zoom
 // No interaction handling
 // Doesn't reference any context. Randers as is, as the passed parameters say
-function CanvasWorld({
-    objects,
-    camera,
-    onMouseDown,
-    onMouseMove,
-    onMouseUp,
-    onWheel,
-    onContextMenu,
-}: CanvasWorldProps) {
-    // DRAWING
-    const draw = (ctx: CanvasRenderingContext2D) => {
+function CanvasWorld({ objects, camera, ...handlers }: CanvasWorldProps) {
+    const drawGrid_ = (ctx: CanvasRenderingContext2D) => {
         ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-
         drawGrid(ctx, camera);
+    };
+
+    const drawObjects_ = (ctx: CanvasRenderingContext2D) => {
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         drawObjects(ctx, objects, camera);
     };
 
     return (
-        <CanvasBase
-            draw={draw}
-            width={camera.size.x}
-            height={camera.size.y}
-            zoom={camera.zoom}
-            onMouseDown={onMouseDown}
-            onMouseMove={onMouseMove}
-            onMouseUp={onMouseUp}
-            onWheel={onWheel}
-            onContextMenu={onContextMenu}
-        />
+        <div
+            style={{
+                position: "relative",
+                width: camera.size.x,
+                height: camera.size.y,
+            }}
+        >
+            {/* Grid layer — never affected by eraser */}
+            <CanvasBase
+                draw={drawGrid_}
+                width={camera.size.x}
+                height={camera.size.y}
+                zoom={camera.zoom}
+                className="bg-white"
+                style={{ position: "absolute", top: 0, left: 0 }}
+            />
+            {/* Object layer — eraser creates transparent holes */}
+            <CanvasBase
+                draw={drawObjects_}
+                width={camera.size.x}
+                height={camera.size.y}
+                zoom={camera.zoom}
+                style={{ position: "absolute", top: 0, left: 0 }}
+                {...handlers}
+            />
+        </div>
     );
 }
 
@@ -234,7 +243,10 @@ function drawLine(
 ) {
     if (!object.point1 || !object.point2) return; // nothing to draw
 
+    const isEraser = object.id.charCodeAt(0) % 2 === 0; // test todo
+
     ctx.beginPath();
+    ctx.globalCompositeOperation = isEraser ? "destination-out" : "source-over"; // test todo
     ctx.strokeStyle = object.color;
     ctx.lineWidth = object.stroke;
 
@@ -245,6 +257,8 @@ function drawLine(
 
     ctx.stroke();
     ctx.closePath();
+
+    ctx.globalCompositeOperation = "source-over"; // test todo
 }
 
 export default CanvasWorld;

@@ -54,7 +54,7 @@ function CanvasBase({
         };
     }, [draw, height, width]);
 
-    return <canvas className="bg-white" ref={canvasRef} {...rest} />;
+    return <canvas ref={canvasRef} {...rest} />;
 }
 
 export default CanvasBase;
