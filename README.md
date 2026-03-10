@@ -26,7 +26,6 @@ chalk.gameoholic.dev
 - [ ] Eraser tool
 - [ ] Edit specific objects (color, stroke, move..)
 - [ ] Delete specific objects
-- [ ] Snap camera zoom
 
 #### 🎨 Visual & Polish & QOL
 - [ ] Responsive design for mobile and all window sizes

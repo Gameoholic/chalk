@@ -440,6 +440,44 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
         sessionContext.updateUserDisplayName(displayName);
     };
 
+    // Animation for smoothly zooming out
+    const handleResetCameraZoom = () => {
+        const DURATION = 500;
+        const startTime = performance.now();
+        const {
+            zoom: startZoom,
+            position: startPos,
+            size,
+        } = canvasContext.local_camera;
+
+        // The world-space point at the center of the viewport — kept locked throughout the animation
+        const centerX = size.x / 2;
+        const centerY = size.y / 2;
+        const worldAnchorX = startPos.x + centerX / startZoom;
+        const worldAnchorY = startPos.y + centerY / startZoom;
+
+        const animate = (currentTime: number) => {
+            const progress = Math.min((currentTime - startTime) / DURATION, 1);
+            const ease = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+
+            const zoom = startZoom + (1.0 - startZoom) * ease;
+
+            // Derive position from zoom directly — interpolating them separately causes drift
+            canvasContext.setLocalCamera((prev) => ({
+                ...prev,
+                zoom,
+                position: {
+                    x: worldAnchorX - centerX / zoom,
+                    y: worldAnchorY - centerY / zoom,
+                },
+            }));
+
+            if (progress < 1) requestAnimationFrame(animate);
+        };
+
+        requestAnimationFrame(animate);
+    };
+
     // Prevent refreshing or leaving page if objects are currently being saved / awaiting save
     useEffect(() => {
         const preventLeaving = (e: any) => {
@@ -662,6 +700,21 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
                         </p>
                     </div>
                 )}
+            </motion.div>
+
+            <motion.div {...fadeInAnimation}>
+                <div className="absolute right-6 bottom-6 flex items-center justify-center">
+                    <button
+                        onClick={handleResetCameraZoom}
+                        className="border-border text-card-foreground bg-card rounded-full border px-3 py-1.5 text-xs font-bold shadow-lg backdrop-blur-md transition-all select-none hover:brightness-110 active:scale-95"
+                        title="Reset Zoom"
+                    >
+                        {Math.round(
+                            canvasContext.local_camera.zoom * 100
+                        ).toLocaleString("en-US")}
+                        {/* display commas instead of periods */}%
+                    </button>
+                </div>
             </motion.div>
 
             <motion.div {...fadeInAnimation}>
