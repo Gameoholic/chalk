@@ -37,6 +37,7 @@ import ManageAccountModal from "./modals/ManageAccountModal";
 import { logout } from "../api/auth";
 import { updateUserDisplayName } from "../api/me";
 import { env } from "../env";
+import { ShowDebugInfoContext } from "../types/context/ShowDebugInfoContext";
 
 interface CanvasEditorProps {
     openMyBoards: () => void;
@@ -45,6 +46,7 @@ interface CanvasEditorProps {
 // Handles saving and uploading data, as well as tool selection and all overlays
 function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
     const themeContext = useContext(ThemeContext);
+    const showDebugInfoContext = useContext(ShowDebugInfoContext);
     const canvasContext = useContext(CanvasContext);
     // Use this whenever after we run code async, otherwise we get stale closure
     const canvasContextRef = useRef(canvasContext);
@@ -79,7 +81,6 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
     }, []);
 
     // Menu
-    const [showDebug, setShowDebug] = useState(false);
     const [menuOpen, setMenuOpen] = useState(false);
     const [showManageThisBoardModal, setShowManageThisBoardModal] =
         useState(false);
@@ -619,11 +620,13 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
                         <MenuItem
                             icon={<Info size={18} />}
                             label={
-                                showDebug
+                                showDebugInfoContext.value
                                     ? "Hide Debug Info"
                                     : "Show Debug Info"
                             }
-                            onClick={() => setShowDebug((v) => !v)}
+                            onClick={() =>
+                                showDebugInfoContext.setValue((prev) => !prev)
+                            }
                         />
                     </div>
                 </div>
@@ -631,7 +634,7 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
 
             <motion.div {...fadeInAnimation}>
                 {/* Debug */}
-                {showDebug && (
+                {showDebugInfoContext.value && (
                     <div
                         className="absolute bottom-4 left-4 w-110 rounded-lg p-3 font-mono text-sm shadow-md"
                         style={{
