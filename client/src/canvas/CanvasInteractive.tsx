@@ -1,4 +1,11 @@
-import React, { useRef, useEffect, useContext, useMemo } from "react";
+import React, {
+    useRef,
+    useEffect,
+    useState,
+    useLayoutEffect,
+    useContext,
+    useMemo,
+} from "react";
 import useDimensions from "react-cool-dimensions";
 import CanvasWorld from "./CanvasWorld";
 import {
@@ -12,26 +19,34 @@ import {
     WorldObject,
 } from "../types/canvas";
 import { v4 as uuidv4 } from "uuid";
+import { CheckCircle, FileVideoCamera, Loader2, XCircle } from "lucide-react";
 import { CanvasContext } from "../types/context/CanvasContext";
 
 interface CanvasInteractiveProps {
     onObjectsCommit: () => void;
 }
 
+// Handles canvas camera movement and zooming, as well as all mouse interactions including drawing
+// Stores the objects state and camera state
 function CanvasInteractive({ onObjectsCommit }: CanvasInteractiveProps) {
     const canvasContext = useContext(CanvasContext);
 
-    const { observe, unobserve, width, height } = useDimensions({
-        onResize: ({ observe, unobserve, width, height }) => {
+    // Automatically set camera size to this component's MAX allocated size
+    const { observe, unobserve, width, height, entry } = useDimensions({
+        onResize: ({ observe, unobserve, width, height, entry }) => {
             canvasContext.setLocalCamera((prev) => ({
                 ...prev,
                 size: { x: width, y: height },
             }));
-            unobserve();
-            observe();
+
+            unobserve(); // To stop observing the current target element
+            observe(); // To re-start observing the current target element
         },
     });
 
+    // Either add an entirely new object or update an existing one (based on its ID)
+    // For example: Every time a new point is drawn in a line, or a circle's radius is being changed.
+    // Basically, ANY change to an object calls this method.
     function updateOrAddObject(object: WorldObject) {
         canvasContext.setLocalUnsavedObjects((prev) => [
             ...prev.filter((obj) => obj.id !== object.id),
@@ -39,19 +54,21 @@ function CanvasInteractive({ onObjectsCommit }: CanvasInteractiveProps) {
         ]);
     }
 
+    // User released left click so object should be committed to database
     function commitObjects() {
         onObjectsCommit();
     }
 
+    // MOUSE EVENTS
     const {
         handleMouseDown,
         handleMouseMove,
         handleMouseUp,
         handleWheel,
         handleContextMenu,
-        resetCamera, // Extracted from mouse events logic
     } = handleMouseEvents(updateOrAddObject, commitObjects);
 
+    // Server-synced objects and local unsaved objects, render all
     const allObjects = useMemo(() => {
         const map = new Map<string, WorldObject>();
         canvasContext
@@ -67,7 +84,7 @@ function CanvasInteractive({ onObjectsCommit }: CanvasInteractiveProps) {
     ]);
 
     return (
-        <div ref={observe} className="relative h-full w-full overflow-hidden">
+        <div ref={observe} className="h-full w-full">
             <CanvasWorld
                 camera={canvasContext.local_camera}
                 objects={allObjects}
@@ -77,17 +94,6 @@ function CanvasInteractive({ onObjectsCommit }: CanvasInteractiveProps) {
                 onWheel={handleWheel}
                 onContextMenu={handleContextMenu}
             />
-
-            {/* UI Zoom Indicator / Reset Button */}
-            <div className="absolute right-6 bottom-6 flex items-center justify-center">
-                <button
-                    onClick={resetCamera}
-                    className="rounded-full border border-slate-200 bg-white/90 px-3 py-1.5 text-xs font-bold text-slate-700 shadow-lg backdrop-blur-md transition-all select-none hover:bg-white active:scale-95"
-                    title="Reset Zoom (Ctrl+0)"
-                >
-                    {Math.round(canvasContext.local_camera.zoom * 100)}%
-                </button>
-            </div>
         </div>
     );
 }
@@ -115,7 +121,9 @@ function handleMouseEvents(
 
     const LEFT_MOUSE_BUTTON = 0;
     const MIDDLE_MOUSE_BUTTON = 1;
+    const RIGHT_MOUSE_BUTTON = 2;
 
+    // Interaction starts with mouse down and ends with (usually) mouse up (or other special cases)
     const currentInteraction = useRef<
         DrawingInteraction | CameraDragInteraction | null
     >(null);
@@ -136,45 +144,37 @@ function handleMouseEvents(
 
     type DrawingTool = Exclude<Tool, "none" | "select">;
 
-    const resetCamera = () => {
-        canvasContext.setLocalCamera((prev) => ({
-            ...prev,
-            zoom: 1,
-            position: { x: 0, y: 0 },
-        }));
+    const toolHandleMouseMove: Record<
+        DrawingTool,
+        (e: React.MouseEvent<HTMLCanvasElement>) => void
+    > = {
+        pencil: handleMouseMovePencilDraw,
+        line: handleMouseMoveLineDraw,
+        rect: handleMouseMoveRectDraw,
+        ellipse: handleMouseMoveEllipseDraw,
     };
 
-    // GLOBAL Listeners (Window Mouse Up + Shortcuts)
+    // GLOBAL mouseup to fix mouse up outside of canvas
     useEffect(() => {
         const handleWindowMouseUp = () => {
             currentInteraction.current = null;
         };
-
-        const handleKeyDown = (e: KeyboardEvent) => {
-            // Check for Ctrl+0 or Meta(Cmd)+0
-            if ((e.ctrlKey || e.metaKey) && e.key === "0") {
-                e.preventDefault();
-                resetCamera();
-            }
-        };
-
         window.addEventListener("mouseup", handleWindowMouseUp);
-        window.addEventListener("keydown", handleKeyDown);
-        return () => {
-            window.removeEventListener("mouseup", handleWindowMouseUp);
-            window.removeEventListener("keydown", handleKeyDown);
-        };
-    }, [camera]); // Re-bind if camera context changes to ensure reset uses latest refs
+        return () => window.removeEventListener("mouseup", handleWindowMouseUp);
+    }, []);
 
     const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
         if (
             e.button === LEFT_MOUSE_BUTTON &&
-            ["pencil", "line", "rect", "ellipse"].includes(selectedTool)
+            (selectedTool === "pencil" ||
+                selectedTool === "line" ||
+                selectedTool === "rect" ||
+                selectedTool === "ellipse")
         ) {
             currentInteraction.current = {
                 type: "drawing",
                 objectId: uuidv4(),
-                tool: selectedTool as DrawingTool,
+                tool: selectedTool,
                 path: [],
             };
             return;
@@ -193,48 +193,59 @@ function handleMouseEvents(
     };
 
     function handleMouseMovePencilDraw(e: React.MouseEvent<HTMLCanvasElement>) {
-        if (currentInteraction.current?.type !== "drawing") return;
+        if (currentInteraction.current?.type !== "drawing") {
+            return;
+        }
         const mouseWorldCoords: Vec2 = screenToWorld(e, camera);
         currentInteraction.current.path.push(mouseWorldCoords);
 
-        updateObject({
+        const newPath: PathObject = {
             id: currentInteraction.current.objectId,
             type: "path",
             color: selectedColor,
             stroke: selectedStroke,
-            points: [...currentInteraction.current.path],
-        } as PathObject);
+            points: currentInteraction.current.path,
+        };
+        updateObject(newPath);
     }
 
     function handleMouseMoveLineDraw(e: React.MouseEvent<HTMLCanvasElement>) {
-        if (currentInteraction.current?.type !== "drawing") return;
+        if (currentInteraction.current?.type !== "drawing") {
+            return;
+        }
+
         const mouseWorldCoords: Vec2 = screenToWorld(e, camera);
         if (currentInteraction.current.path.length === 0) {
             currentInteraction.current.path[0] = mouseWorldCoords;
             return;
         }
+
         currentInteraction.current.path[1] = mouseWorldCoords;
 
-        updateObject({
+        const newLine: LineObject = {
             id: currentInteraction.current.objectId,
             type: "line",
             color: selectedColor,
             stroke: selectedStroke,
             point1: currentInteraction.current.path[0],
             point2: currentInteraction.current.path[1],
-        } as LineObject);
+        };
+        updateObject(newLine);
     }
 
     function handleMouseMoveRectDraw(e: React.MouseEvent<HTMLCanvasElement>) {
-        if (currentInteraction.current?.type !== "drawing") return;
+        if (currentInteraction.current?.type !== "drawing") {
+            return;
+        }
+
         const mouseWorldCoords: Vec2 = screenToWorld(e, camera);
         if (currentInteraction.current.path.length === 0) {
             currentInteraction.current.path[0] = mouseWorldCoords;
             return;
         }
-        currentInteraction.current.path[1] = mouseWorldCoords;
 
-        updateObject({
+        currentInteraction.current.path[1] = mouseWorldCoords;
+        const newRect: RectObject = {
             id: currentInteraction.current.objectId,
             type: "rect",
             color: selectedColor,
@@ -248,21 +259,25 @@ function handleMouseEvents(
                     currentInteraction.current.path[1].y -
                     currentInteraction.current.path[0].y,
             },
-        } as RectObject);
+        };
+        updateObject(newRect);
     }
 
     function handleMouseMoveEllipseDraw(
         e: React.MouseEvent<HTMLCanvasElement>
     ) {
-        if (currentInteraction.current?.type !== "drawing") return;
+        if (currentInteraction.current?.type !== "drawing") {
+            return;
+        }
+
         const mouseWorldCoords: Vec2 = screenToWorld(e, camera);
         if (currentInteraction.current.path.length === 0) {
             currentInteraction.current.path[0] = mouseWorldCoords;
             return;
         }
-        currentInteraction.current.path[1] = mouseWorldCoords;
 
-        updateObject({
+        currentInteraction.current.path[1] = mouseWorldCoords;
+        const newEllipse: EllipseObject = {
             id: currentInteraction.current.objectId,
             type: "ellipse",
             color: selectedColor,
@@ -276,11 +291,14 @@ function handleMouseEvents(
                     currentInteraction.current.path[1].y -
                     currentInteraction.current.path[0].y,
             },
-        } as EllipseObject);
+        };
+        updateObject(newEllipse);
     }
 
     function handleMouseMoveDragCamera(e: React.MouseEvent<HTMLCanvasElement>) {
-        if (currentInteraction.current?.type !== "camera-drag") return;
+        if (currentInteraction.current?.type !== "camera-drag") {
+            return;
+        }
 
         const dx =
             (e.clientX - currentInteraction.current.lastMousePos.x) /
@@ -302,29 +320,28 @@ function handleMouseEvents(
             y: e.clientY,
         };
     }
-
     const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
         if (currentInteraction.current?.type === "drawing") {
-            const tool = currentInteraction.current.tool;
-            if (tool === "pencil") handleMouseMovePencilDraw(e);
-            if (tool === "line") handleMouseMoveLineDraw(e);
-            if (tool === "rect") handleMouseMoveRectDraw(e);
-            if (tool === "ellipse") handleMouseMoveEllipseDraw(e);
+            toolHandleMouseMove[currentInteraction.current.tool](e);
             return;
         }
+
         if (currentInteraction.current?.type === "camera-drag") {
             handleMouseMoveDragCamera(e);
+            return;
         }
     };
 
-    const handleMouseUp = () => {
+    const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
         if (currentInteraction.current?.type === "drawing") {
             commitObjects();
         }
         currentInteraction.current = null;
     };
 
+    // // Camera zoom
     const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
+        e.preventDefault();
         const zoomFactor = 1.1;
         const rect = (e.target as HTMLCanvasElement).getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
@@ -332,7 +349,7 @@ function handleMouseEvents(
 
         const newZoom =
             e.deltaY < 0 ? camera.zoom * zoomFactor : camera.zoom / zoomFactor;
-        const clampedZoom = Math.max(0.01, Math.min(100, newZoom));
+        const clampedZoom = Math.max(0.05, Math.min(100, newZoom));
 
         const worldX = camera.position.x + mouseX / camera.zoom;
         const worldY = camera.position.y + mouseY / camera.zoom;
@@ -347,6 +364,7 @@ function handleMouseEvents(
         });
     };
 
+    // Right click on canvas
     function handleContextMenu(e: React.MouseEvent<HTMLCanvasElement>) {
         e.preventDefault();
     }
@@ -357,7 +375,6 @@ function handleMouseEvents(
         handleMouseUp,
         handleWheel,
         handleContextMenu,
-        resetCamera,
     };
 }
 
