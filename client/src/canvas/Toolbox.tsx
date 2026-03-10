@@ -25,12 +25,24 @@ const Toolbox = ({ className }: { className: string }) => {
             document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    const tools: { name: Tool; icon: JSX.Element }[] = [
-        { name: "select", icon: <MousePointer size={20} /> },
-        { name: "pencil", icon: <Pen size={20} /> },
-        { name: "ellipse", icon: <Circle size={20} /> },
-        { name: "line", icon: <Slash size={20} /> },
-        { name: "rect", icon: <Square size={20} /> },
+    const tools: { name: Tool; displayName: string; icon: JSX.Element }[] = [
+        {
+            name: "select",
+            displayName: "Select Objects",
+            icon: <MousePointer size={20} />,
+        },
+        { name: "pencil", displayName: "Pencil", icon: <Pen size={20} /> },
+        {
+            name: "ellipse",
+            displayName: "Draw Ellipse",
+            icon: <Circle size={20} />,
+        },
+        { name: "line", displayName: "Draw Line", icon: <Slash size={20} /> },
+        {
+            name: "rect",
+            displayName: "Draw Rectangle",
+            icon: <Square size={20} />,
+        },
     ];
 
     const handleToolClick = (tool: Tool) => {
@@ -84,6 +96,7 @@ const Toolbox = ({ className }: { className: string }) => {
                         key={tool.name}
                         onClick={() => handleToolClick(tool.name)}
                         className="rounded p-2 transition"
+                        title={tool.displayName}
                         style={{
                             backgroundColor:
                                 canvasContext.local_selectedTool === tool.name
