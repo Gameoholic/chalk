@@ -478,6 +478,27 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
         requestAnimationFrame(animate);
     };
 
+    // temporarily:
+    // Update lastCameraPosition and lastCameraZoom on database
+    useEffect(() => {
+        const update = async () => {
+            try {
+                const cameraPos = canvasContext.local_camera.position;
+                const cameraZoom = canvasContext.local_camera.zoom;
+                await updateBoardCamera(
+                    canvasContext.getCurrentBoard().id,
+                    cameraPos,
+                    cameraZoom
+                );
+                canvasContext.updateCurrentBoardCamera(cameraPos, cameraZoom);
+            } catch (err) {
+                console.error("Couldnt update board camera: " + err);
+            }
+        };
+
+        update();
+    }, [canvasContext.local_camera]);
+
     // Prevent refreshing or leaving page if objects are currently being saved / awaiting save
     useEffect(() => {
         const preventLeaving = (e: any) => {
