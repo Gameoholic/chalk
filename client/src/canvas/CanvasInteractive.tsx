@@ -25,11 +25,15 @@ import { CanvasContext } from "../types/context/CanvasContext";
 
 interface CanvasInteractiveProps {
     onObjectsCommit: () => void;
+    onCameraCommit: () => void;
 }
 
 // Handles canvas camera movement and zooming, as well as all mouse interactions including drawing
 // Stores the objects state and camera state
-function CanvasInteractive({ onObjectsCommit }: CanvasInteractiveProps) {
+function CanvasInteractive({
+    onObjectsCommit,
+    onCameraCommit,
+}: CanvasInteractiveProps) {
     const canvasContext = useContext(CanvasContext);
 
     // Automatically set camera size to this component's MAX allocated size
@@ -60,6 +64,11 @@ function CanvasInteractive({ onObjectsCommit }: CanvasInteractiveProps) {
         onObjectsCommit();
     }
 
+    // Camera ended drag or zoom changed
+    function commitCamera() {
+        onCameraCommit();
+    }
+
     // MOUSE EVENTS
     const {
         handleMouseDown,
@@ -67,7 +76,7 @@ function CanvasInteractive({ onObjectsCommit }: CanvasInteractiveProps) {
         handleMouseUp,
         handleWheel,
         handleContextMenu,
-    } = handleMouseEvents(updateOrAddObject, commitObjects);
+    } = handleMouseEvents(updateOrAddObject, commitObjects, commitCamera);
 
     // Server-synced objects and local unsaved objects, render all
     const allObjects = useMemo(() => {
@@ -111,7 +120,8 @@ function screenToWorld(
 
 function handleMouseEvents(
     updateObject: (object: WorldObject) => void,
-    commitObjects: () => void
+    commitObjects: () => void,
+    commitCamera: () => void
 ) {
     const canvasContext = useContext(CanvasContext);
 
@@ -351,6 +361,9 @@ function handleMouseEvents(
         if (currentInteraction.current?.type === "drawing") {
             commitObjects();
         }
+        if (currentInteraction.current?.type === "camera-drag") {
+            commitCamera();
+        }
         currentInteraction.current = null;
     };
 
@@ -377,6 +390,7 @@ function handleMouseEvents(
                 y: worldY - mouseY / clampedZoom,
             },
         });
+        commitCamera();
     };
 
     // Right click on canvas

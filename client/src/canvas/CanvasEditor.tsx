@@ -150,9 +150,10 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
         if (env.VITE_SAVE_REQUEST_COOLDOWN === 0) {
             // If we don't want a cooldown timer, immediately execute the save
             if (
-                objectsToSaveOnDatabase.current.size > 0 &&
                 saveObjectsErrorRef.current.error === null && // Use the ref to avoid stale closure
-                objectsBeingSavedOnDatabase.current.length === 0
+                objectsBeingSavedOnDatabase.current.length === 0 &&
+                (objectsToSaveOnDatabase.current.size > 0 ||
+                    wasCameraUpdatedSinceLastSave())
             ) {
                 console.log(
                     "Requesting to save " +
@@ -174,9 +175,10 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
 
             // In case we have objects that are waiting to be saved (previously failed because of our cooldown), try to save now
             if (
-                objectsToSaveOnDatabase.current.size > 0 &&
                 saveObjectsErrorRef.current.error === null && // Use the ref to avoid stale closure
-                objectsBeingSavedOnDatabase.current.length === 0
+                objectsBeingSavedOnDatabase.current.length === 0 &&
+                (objectsToSaveOnDatabase.current.size > 0 ||
+                    wasCameraUpdatedSinceLastSave())
             ) {
                 console.log(
                     "Cooldown expired! Requesting to save " +
@@ -213,6 +215,13 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
         requestSaveObjectsOnDatabase();
     }
 
+    // When camera is ready to be saved to database (camera finished dragging or zoom changed).
+    function onCameraCommit() {
+        console.log("Requesting to commit camera state to database.");
+
+        requestSaveObjectsOnDatabase();
+    }
+
     // Avoid stale closure in timer effect hooks
     const requestSaveObjectsOnDatabaseFunction = useRef(
         requestSaveObjectsOnDatabase
@@ -228,19 +237,37 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
         new Map()
     );
 
+    function wasCameraUpdatedSinceLastSave() {
+        const cameraPosOnClient =
+            canvasContextRef.current.local_camera.position;
+        const cameraZoomOnClient = canvasContextRef.current.local_camera.zoom;
+        return (
+            cameraPosOnClient.x !==
+                canvasContextRef.current.getCurrentBoard().lastCameraPosition
+                    .x ||
+            cameraPosOnClient.y !==
+                canvasContextRef.current.getCurrentBoard().lastCameraPosition
+                    .y ||
+            cameraZoomOnClient !==
+                canvasContextRef.current.getCurrentBoard().lastCameraZoom
+        );
+    }
+
     // Main method to save objects on database
     async function requestSaveObjectsOnDatabase(asErrorRetry: boolean = false) {
-        // Sanity check. Do not remove this because if it's equal to 0 and we call this method multiple times, we could have multiple fetch requests running concurrently, which could cause problems if one of them fails and causes us to reload the board.
-        if (objectsToSaveOnDatabase.current.size === 0) {
+        // Sanity check.
+        const saveObjects = objectsToSaveOnDatabase.current.size > 0;
+        const saveCamera = wasCameraUpdatedSinceLastSave();
+        if (!saveObjects && !saveCamera) {
             console.warn(
-                "Request to save objects ignored because object length is 0."
+                "Request to save objects+camera ignored because object length is 0 and camera hasn't updated since last save."
             );
             return;
         }
 
         if (saveObjectsErrorRef.current.error && !asErrorRetry) {
             console.warn(
-                "Request to save objects (length " +
+                "Request to save objects+camera (length " +
                     objectsToSaveOnDatabase.current.size +
                     ") ignored because waiting for error retry."
             );
@@ -249,7 +276,7 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
 
         if (objectsBeingSavedOnDatabase.current.length > 0) {
             console.warn(
-                "Request to save objects (length " +
+                "Request to save objects+camera (length " +
                     (canvasContext.local_unsavedObjects.length -
                         objectsBeingSavedOnDatabase.current.length) +
                     ") ignored because waiting on existing request."
@@ -259,7 +286,7 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
 
         if (saveObjectsRequestOnCooldown.current && !asErrorRetry) {
             console.warn(
-                "Request to save objects (length " +
+                "Request to save objects+camera (length " +
                     objectsToSaveOnDatabase.current.size +
                     ") ignored because waiting for cooldown to expire."
             );
@@ -270,24 +297,50 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
             objectsToSaveOnDatabase.current.values()
         );
 
-        console.log(
-            "Saving " +
-                objectsBeingSavedOnDatabase.current.length +
-                " board objects on database."
-        );
+        if (saveObjects) {
+            console.log(
+                "Saving " +
+                    objectsBeingSavedOnDatabase.current.length +
+                    " board objects on database."
+            );
+        }
+        if (saveCamera) {
+            console.log("Saving camera properties on database.");
+        }
 
         if (env.VITE_SAVE_REQUEST_COOLDOWN > 0) {
             saveObjectsRequestOnCooldown.current = true;
             startCooldownTimeout();
         }
 
+        const cameraPosOnClient =
+            canvasContextRef.current.local_camera.position;
+        const cameraZoomOnClient = canvasContextRef.current.local_camera.zoom;
         try {
-            await updateBoardObjects(
-                canvasContext.local_currentBoardId,
-                objectsBeingSavedOnDatabase.current
-            );
+            const savesToExecute: Promise<void>[] = [];
+
+            if (saveCamera) {
+                savesToExecute.push(
+                    updateBoardCamera(
+                        canvasContext.getCurrentBoard().id,
+                        cameraPosOnClient,
+                        cameraZoomOnClient
+                    )
+                );
+            }
+
+            if (saveObjects) {
+                savesToExecute.push(
+                    updateBoardObjects(
+                        canvasContext.local_currentBoardId,
+                        objectsBeingSavedOnDatabase.current
+                    )
+                );
+            }
+
+            await Promise.all(savesToExecute);
         } catch (err) {
-            console.error("Failure to save the objects!");
+            console.error("Failure to save the objects+camera!");
 
             objectsBeingSavedOnDatabase.current = [];
             setSaveObjectsError((prev) => {
@@ -312,7 +365,7 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
             return;
         }
 
-        console.log("Successfully saved the objects.");
+        console.log("Successfully saved the objects+camera.");
 
         setSaveObjectsError({ error: null });
         // Iterate over all objects we saved, remove them from localUnsavedObjects, UNLESS they were modified since the save started (unlikely but possible)
@@ -334,12 +387,16 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
                     return !isDeepEqual(objectLocal, savedVersion);
                 }
             );
-        canvasContextRef.current.onCurrentBoardObjectsSaved(
+        // Update the server-synced context properties
+        canvasContextRef.current.onCurrentBoardSaved(
             // we do this so if the object was saved but modified stays then, it stays only in localunsavedobjects and not in both buffers
             objectsBeingSavedOnDatabase.current.filter(
                 (x) => !remainingUnsavedObjects.includes(x)
-            )
+            ),
+            cameraPosOnClient,
+            cameraZoomOnClient
         );
+
         canvasContextRef.current.setLocalUnsavedObjects(
             remainingUnsavedObjects
         );
@@ -356,6 +413,20 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
             console.log(
                 objectsToSaveOnDatabase.current.size +
                     " objects accumulated while processing the request. Attempting to save them once cooldown expires."
+            );
+            startCooldownTimeout();
+        }
+
+        // Save camera again if it changed while this request was being processed
+        if (
+            canvasContextRef.current.local_camera.position.x !==
+                cameraPosOnClient.x ||
+            canvasContextRef.current.local_camera.position.y !==
+                cameraPosOnClient.y ||
+            canvasContextRef.current.local_camera.zoom !== cameraZoomOnClient
+        ) {
+            console.log(
+                "Camera properties updated while processing the request. Attempting to save once cooldown expires."
             );
             startCooldownTimeout();
         }
@@ -478,27 +549,6 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
         requestAnimationFrame(animate);
     };
 
-    // temporarily:
-    // Update lastCameraPosition and lastCameraZoom on database
-    useEffect(() => {
-        const update = async () => {
-            try {
-                const cameraPos = canvasContext.local_camera.position;
-                const cameraZoom = canvasContext.local_camera.zoom;
-                await updateBoardCamera(
-                    canvasContext.getCurrentBoard().id,
-                    cameraPos,
-                    cameraZoom
-                );
-                canvasContext.updateCurrentBoardCamera(cameraPos, cameraZoom);
-            } catch (err) {
-                console.error("Couldnt update board camera: " + err);
-            }
-        };
-
-        update();
-    }, [canvasContext.local_camera]);
-
     // Prevent refreshing or leaving page if objects are currently being saved / awaiting save
     useEffect(() => {
         const preventLeaving = (e: any) => {
@@ -521,7 +571,8 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
         return (
             objectsBeingSavedOnDatabase.current.length !== 0 ||
             objectsToSaveOnDatabase.current.size !== 0 ||
-            canvasContext.local_unsavedObjects.length !== 0
+            canvasContext.local_unsavedObjects.length !== 0 ||
+            wasCameraUpdatedSinceLastSave()
         );
     }
 
@@ -539,6 +590,7 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
                 <CanvasInteractive
                     key={canvasContext.local_currentBoardId}
                     onObjectsCommit={onObjectsCommit}
+                    onCameraCommit={onCameraCommit}
                 />
             </div>
 
@@ -719,6 +771,19 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
                             ({canvasContext.getCurrentBoard().objects.length}{" "}
                             saved on server +{" "}
                             {canvasContext.local_unsavedObjects.length} unsaved)
+                        </p>
+                        <p>
+                            Camera:{" "}
+                            {canvasContext.local_camera.position.x !==
+                                canvasContext.getCurrentBoard()
+                                    .lastCameraPosition.x ||
+                            canvasContext.local_camera.position.y !==
+                                canvasContext.getCurrentBoard()
+                                    .lastCameraPosition.y ||
+                            canvasContext.local_camera.zoom !==
+                                canvasContext.getCurrentBoard().lastCameraZoom
+                                ? "Unsaved."
+                                : "Saved."}
                         </p>
                     </div>
                 )}

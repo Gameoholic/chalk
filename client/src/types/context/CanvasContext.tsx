@@ -29,7 +29,11 @@ interface CanvasContextType {
         cameraZoom: number
     ) => void;
     updateCurrentBoardObjects: (objects: WorldObject[]) => void;
-    onCurrentBoardObjectsSaved: (savedObjects: WorldObject[]) => void;
+    onCurrentBoardSaved: (
+        savedObjects: WorldObject[],
+        cameraPosition: Vec2,
+        cameraZoom: number
+    ) => void;
     getCurrentBoard: () => BoardData;
     updateCurrentBoard: (boardData: BoardData) => void;
 }
@@ -111,17 +115,22 @@ export function CanvasContextProvider({
         });
     }
 
-    function onCurrentBoardObjectsSaved(savedObjects: WorldObject[]) {
+    function onCurrentBoardSaved(
+        savedObjects: WorldObject[],
+        cameraPosition: Vec2,
+        cameraZoom: number
+    ) {
         const currentBoardData = getCurrentBoard();
         const newObjectsMap = new Map(
             currentBoardData.objects.map((x) => [x.id, x])
         );
         savedObjects.forEach((x) => newObjectsMap.set(x.id, x));
 
-        const newObjects = Array.from(newObjectsMap.values());
         sessionContext.updateBoardById({
             ...currentBoardData,
-            objects: newObjects,
+            objects: Array.from(newObjectsMap.values()),
+            lastCameraPosition: cameraPosition,
+            lastCameraZoom: cameraZoom,
         });
     }
 
@@ -142,7 +151,7 @@ export function CanvasContextProvider({
                 setLocalUnsavedObjects,
                 updateCurrentBoardCamera,
                 updateCurrentBoardObjects,
-                onCurrentBoardObjectsSaved,
+                onCurrentBoardSaved,
                 getCurrentBoard,
                 updateCurrentBoard,
             }}

@@ -39,10 +39,10 @@ chalk.gameoholic.dev
 - [ ] When deleting board, zoom out to My Boards and Thanos-particle destroy the board. All other boards will then "cascade" with an animation.
 
 #### 🔒 Security
+- [ ] Sentry URL shouldn't be exposed!!!
 - [ ] Refresh token cycling logic not optimal (stealing vuln + if user sends multiple requests just as token expires they all fail except the first)
 - [ ] Server-side ratelimiting
 - [ ] Hash password on client before sending it to server
-- [ ] Bring back and fix object save client-side ratelimit: requestSaveObjectsOnDatabase()
 - [ ] Ensure users' emails are unique
 - [ ] Refresh tokens database should contain user id, so upon changing password / logging out we will log all users out
 - [ ] IP log and send email when logging in from different IP
