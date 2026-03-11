@@ -23,7 +23,6 @@ chalk.gameoholic.dev
 - [ ] Manage board's collaborators (kick, see last access timestamp)
 
 #### 🖌️ Canvas
-- [ ] Eraser tool
 - [ ] Edit specific objects (color, stroke, move..)
 - [ ] Delete specific objects
 

@@ -270,7 +270,6 @@ function drawEraserPath(
 
     ctx.beginPath();
     ctx.globalCompositeOperation = "destination-out"; // Erase mode
-    ctx.strokeStyle = object.color;
     ctx.lineWidth = object.stroke;
 
     const first = object.points[0];
