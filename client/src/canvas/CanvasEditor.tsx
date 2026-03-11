@@ -486,6 +486,7 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
             }
             e.preventDefault();
             e.returnValue = "";
+            startCooldownTimeout(true); // Force a save right now because user wanted to leave.
         };
         window.addEventListener("beforeunload", preventLeaving);
 
