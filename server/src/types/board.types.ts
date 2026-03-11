@@ -1,4 +1,11 @@
-export type Tool = "pencil" | "select" | "line" | "rect" | "ellipse" | "none";
+// export type Tool =
+//     | "pencil"
+//     | "eraser"
+//     | "select"
+//     | "line"
+//     | "rect"
+//     | "ellipse"
+//     | "none";
 
 export interface Vec2 {
     x: number;
@@ -7,6 +14,7 @@ export interface Vec2 {
 
 export type ObjectType =
     | "path"
+    | "eraser-path"
     | "line"
     | "rect"
     | "ellipse"
@@ -16,37 +24,47 @@ export type ObjectType =
 export interface BaseObject {
     id: string;
     type: ObjectType;
-}
-
-export interface ShapeObject extends BaseObject {
-    color: string;
     stroke: number;
 }
 
-export interface PathObject extends ShapeObject {
+export interface ColorableObject extends BaseObject {
+    color: string;
+}
+
+export interface PathObject extends ColorableObject {
     type: "path";
     points: Vec2[];
 }
 
-export interface LineObject extends ShapeObject {
+export interface EraserPathObject extends BaseObject {
+    type: "eraser-path";
+    points: Vec2[];
+}
+
+export interface LineObject extends ColorableObject {
     type: "line";
     point1: Vec2;
     point2: Vec2;
 }
 
-export interface RectObject extends ShapeObject {
+export interface RectObject extends ColorableObject {
     type: "rect";
     position: Vec2; // top left coordinate (unless size is negative)
     size: Vec2; // Can be negative (for reverse)
 }
 
-export interface EllipseObject extends ShapeObject {
+export interface EllipseObject extends ColorableObject {
     type: "ellipse";
     position: Vec2; // top left coordinate
     size: Vec2; // Can be negative (for reverse)
 }
 
-export type WorldObject = PathObject | LineObject | RectObject | EllipseObject;
+export type WorldObject =
+    | PathObject
+    | EraserPathObject
+    | LineObject
+    | RectObject
+    | EllipseObject;
 
 export interface Camera {
     position: Vec2; // top-left world coordinate

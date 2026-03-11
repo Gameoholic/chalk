@@ -11,6 +11,7 @@ import CanvasWorld from "./CanvasWorld";
 import {
     Camera,
     EllipseObject,
+    EraserPathObject,
     LineObject,
     PathObject,
     RectObject,
@@ -143,12 +144,16 @@ function handleMouseEvents(
     }
 
     type DrawingTool = Exclude<Tool, "none" | "select">;
+    function isDrawingTool(tool: string): tool is DrawingTool {
+        return ["pencil", "eraser", "line", "rect", "ellipse"].includes(tool);
+    }
 
     const toolHandleMouseMove: Record<
         DrawingTool,
         (e: React.MouseEvent<HTMLCanvasElement>) => void
     > = {
         pencil: handleMouseMovePencilDraw,
+        eraser: handleMouseMoveEraserDraw,
         line: handleMouseMoveLineDraw,
         rect: handleMouseMoveRectDraw,
         ellipse: handleMouseMoveEllipseDraw,
@@ -164,13 +169,7 @@ function handleMouseEvents(
     }, []);
 
     const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-        if (
-            e.button === LEFT_MOUSE_BUTTON &&
-            (selectedTool === "pencil" ||
-                selectedTool === "line" ||
-                selectedTool === "rect" ||
-                selectedTool === "ellipse")
-        ) {
+        if (e.button === LEFT_MOUSE_BUTTON && isDrawingTool(selectedTool)) {
             currentInteraction.current = {
                 type: "drawing",
                 objectId: uuidv4(),
@@ -203,6 +202,22 @@ function handleMouseEvents(
             id: currentInteraction.current.objectId,
             type: "path",
             color: selectedColor,
+            stroke: selectedStroke,
+            points: currentInteraction.current.path,
+        };
+        updateObject(newPath);
+    }
+
+    function handleMouseMoveEraserDraw(e: React.MouseEvent<HTMLCanvasElement>) {
+        if (currentInteraction.current?.type !== "drawing") {
+            return;
+        }
+        const mouseWorldCoords: Vec2 = screenToWorld(e, camera);
+        currentInteraction.current.path.push(mouseWorldCoords);
+
+        const newPath: EraserPathObject = {
+            id: currentInteraction.current.objectId,
+            type: "eraser-path",
             stroke: selectedStroke,
             points: currentInteraction.current.path,
         };

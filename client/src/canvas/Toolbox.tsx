@@ -1,5 +1,5 @@
 import React, { JSX, useState, useRef, useEffect, useContext } from "react";
-import { MousePointer, Square, Circle, Slash, Pen } from "lucide-react";
+import { MousePointer, Square, Circle, Slash, Pen, Eraser } from "lucide-react";
 import { Tool } from "../types/canvas";
 import ColorPicker from "../components/ColorPicker";
 import { CanvasContext } from "../types/context/CanvasContext";
@@ -32,6 +32,8 @@ const Toolbox = ({ className }: { className: string }) => {
             icon: <MousePointer size={20} />,
         },
         { name: "pencil", displayName: "Pencil", icon: <Pen size={20} /> },
+        { name: "eraser", displayName: "Eraser", icon: <Eraser size={20} /> },
+
         {
             name: "ellipse",
             displayName: "Draw Ellipse",

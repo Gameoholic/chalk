@@ -4,6 +4,7 @@ import CanvasBase from "./CanvasBase";
 import {
     Camera,
     EllipseObject,
+    EraserPathObject,
     LineObject,
     PathObject,
     RectObject,
@@ -45,6 +46,7 @@ function CanvasWorld({ objects, camera, ...handlers }: CanvasWorldProps) {
                 height: camera.size.y,
             }}
         >
+            {/* We separate into two layers so eraser will work on the object layer */}
             {/* Grid layer — never affected by eraser */}
             <CanvasBase
                 draw={drawGrid_}
@@ -54,7 +56,7 @@ function CanvasWorld({ objects, camera, ...handlers }: CanvasWorldProps) {
                 className="bg-white"
                 style={{ position: "absolute", top: 0, left: 0 }}
             />
-            {/* Object layer — eraser creates transparent holes */}
+            {/* Object layer */}
             <CanvasBase
                 draw={drawObjects_}
                 width={camera.size.x}
@@ -156,6 +158,9 @@ function drawObject(
         case "path":
             drawPath(ctx, object, camera);
             break;
+        case "eraser-path":
+            drawEraserPath(ctx, object, camera);
+            break;
         case "ellipse":
             drawEllipse(ctx, object, camera);
             break;
@@ -243,10 +248,7 @@ function drawLine(
 ) {
     if (!object.point1 || !object.point2) return; // nothing to draw
 
-    const isEraser = object.id.charCodeAt(0) % 2 === 0; // test todo
-
     ctx.beginPath();
-    ctx.globalCompositeOperation = isEraser ? "destination-out" : "source-over"; // test todo
     ctx.strokeStyle = object.color;
     ctx.lineWidth = object.stroke;
 
@@ -257,8 +259,32 @@ function drawLine(
 
     ctx.stroke();
     ctx.closePath();
+}
 
-    ctx.globalCompositeOperation = "source-over"; // test todo
+function drawEraserPath(
+    ctx: CanvasRenderingContext2D,
+    object: EraserPathObject,
+    camera: Camera
+) {
+    if (!object.points || object.points.length < 2) return; // nothing to draw
+
+    ctx.beginPath();
+    ctx.globalCompositeOperation = "destination-out"; // Erase mode
+    ctx.strokeStyle = object.color;
+    ctx.lineWidth = object.stroke;
+
+    const first = object.points[0];
+    ctx.moveTo(first.x - camera.position.x, first.y - camera.position.y);
+
+    // draw lines to the rest of the points
+    for (let i = 1; i < object.points.length; i++) {
+        const p = object.points[i];
+        ctx.lineTo(p.x - camera.position.x, p.y - camera.position.y);
+    }
+    ctx.stroke();
+    ctx.closePath();
+
+    ctx.globalCompositeOperation = "source-over"; // Erase mode
 }
 
 export default CanvasWorld;
