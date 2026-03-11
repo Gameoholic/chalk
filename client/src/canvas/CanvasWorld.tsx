@@ -1,5 +1,4 @@
-import React, { useRef, useEffect, useState, useLayoutEffect } from "react";
-import useDimensions from "react-cool-dimensions";
+import React from "react";
 import CanvasBase from "./CanvasBase";
 import {
     Camera,
@@ -8,11 +7,8 @@ import {
     LineObject,
     PathObject,
     RectObject,
-    Tool,
-    Vec2,
     WorldObject,
 } from "../types/canvas";
-import { v4 as uuidv4 } from "uuid";
 
 interface CanvasWorldProps {
     objects: Map<string, WorldObject>;
@@ -24,17 +20,22 @@ interface CanvasWorldProps {
     onContextMenu?: React.MouseEventHandler<HTMLCanvasElement>;
 }
 
-// Only renders passed objects and processes passed camera position and zoom
-// No interaction handling
-// Doesn't reference any context. Randers as is, as the passed parameters say
+/**
+ * Ensures a stroke is always visible on screen.
+ * If (stroke * zoom) is less than 1, it returns (1 / zoom)
+ * so the result on-screen is exactly 1px.
+ */
+const getVisibleStroke = (stroke: number, zoom: number) => {
+    const minVisible = 1 / zoom;
+    return Math.max(stroke, minVisible);
+};
+
 function CanvasWorld({ objects, camera, ...handlers }: CanvasWorldProps) {
     const drawGrid_ = (ctx: CanvasRenderingContext2D) => {
-        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         drawGrid(ctx, camera);
     };
 
     const drawObjects_ = (ctx: CanvasRenderingContext2D) => {
-        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
         drawObjects(ctx, objects, camera);
     };
 
@@ -44,10 +45,10 @@ function CanvasWorld({ objects, camera, ...handlers }: CanvasWorldProps) {
                 position: "relative",
                 width: camera.size.x,
                 height: camera.size.y,
+                overflow: "hidden",
             }}
         >
-            {/* We separate into two layers so eraser will work on the object layer */}
-            {/* Grid layer — never affected by eraser */}
+            {/* Grid Layer */}
             <CanvasBase
                 draw={drawGrid_}
                 width={camera.size.x}
@@ -56,7 +57,7 @@ function CanvasWorld({ objects, camera, ...handlers }: CanvasWorldProps) {
                 className="bg-white"
                 style={{ position: "absolute", top: 0, left: 0 }}
             />
-            {/* Object layer */}
+            {/* Object Layer */}
             <CanvasBase
                 draw={drawObjects_}
                 width={camera.size.x}
@@ -69,15 +70,9 @@ function CanvasWorld({ objects, camera, ...handlers }: CanvasWorldProps) {
     );
 }
 
-/**
- * Draws a grid that scales with the world, but adjusts its density
- * so cells always appear roughly the same size on screen.
- */
 function drawGrid(ctx: CanvasRenderingContext2D, camera: Camera) {
-    // These thresholds control the "Screen Size" of the tiles.
-    // If you want giant tiles, increase these numbers.
-    const MIN_TILE_SIZE = 50; // Tiles won't get smaller than this value on screen
-    const MAX_TILE_SIZE = 200; // Tiles won't get bigger than this value on screen
+    const MIN_TILE_SIZE = 50;
+    const MAX_TILE_SIZE = 200;
     let adaptiveGridSize = MAX_TILE_SIZE;
 
     while (adaptiveGridSize * camera.zoom < MIN_TILE_SIZE) {
@@ -88,51 +83,36 @@ function drawGrid(ctx: CanvasRenderingContext2D, camera: Camera) {
     }
 
     ctx.beginPath();
-    ctx.strokeStyle = "#dddddd"; // Light gray
+    ctx.strokeStyle = "#e2e8f0"; // Slate-200
+    ctx.lineWidth = 1 / camera.zoom; // Always 1px on screen
 
-    // Important: divide lineWidth by zoom so lines stay 1px sharp on screen
-    ctx.lineWidth = 1 / camera.zoom;
-
-    // Calculate visible world bounds
     const left = camera.position.x;
     const top = camera.position.y;
     const width = camera.size.x / camera.zoom;
     const height = camera.size.y / camera.zoom;
 
-    // Snap start positions to the grid to prevent "drifting"
     const startX = Math.floor(left / adaptiveGridSize) * adaptiveGridSize;
     const startY = Math.floor(top / adaptiveGridSize) * adaptiveGridSize;
 
-    // Draw Vertical Lines
     for (
         let x = startX;
         x < left + width + adaptiveGridSize;
         x += adaptiveGridSize
     ) {
-        // We draw in World Coordinates because BaseCanvas applies the zoom
-        // Subtract camera.position because BaseCanvas does NOT handle translation, only scale
-        // (Assuming BaseCanvas is just context.scale(zoom,zoom))
-
-        // Actually, looking at your previous code, you handle Translation manually in drawRect
-        // by doing (obj.x - cam.x). We must do the same here.
-        const drawX = x - camera.position.x;
-        ctx.moveTo(drawX, 0);
-        ctx.lineTo(drawX, height);
+        ctx.moveTo(x - camera.position.x, 0);
+        ctx.lineTo(x - camera.position.x, height);
     }
 
-    // Draw Horizontal Lines
     for (
         let y = startY;
         y < top + height + adaptiveGridSize;
         y += adaptiveGridSize
     ) {
-        const drawY = y - camera.position.y;
-        ctx.moveTo(0, drawY);
-        ctx.lineTo(width, drawY);
+        ctx.moveTo(0, y - camera.position.y);
+        ctx.lineTo(width, y - camera.position.y);
     }
 
     ctx.stroke();
-    ctx.closePath();
 }
 
 function drawObjects(
@@ -140,31 +120,25 @@ function drawObjects(
     objects: Map<string, WorldObject>,
     camera: Camera
 ) {
-    objects.forEach((object) => drawObject(ctx, object, camera));
-}
-
-function drawObject(
-    ctx: CanvasRenderingContext2D,
-    object: WorldObject,
-    camera: Camera
-) {
-    switch (object.type) {
-        case "line":
-            drawLine(ctx, object, camera);
-            break;
-        case "rect":
-            drawRect(ctx, object, camera);
-            break;
-        case "path":
-            drawPath(ctx, object, camera);
-            break;
-        case "eraser-path":
-            drawEraserPath(ctx, object, camera);
-            break;
-        case "ellipse":
-            drawEllipse(ctx, object, camera);
-            break;
-    }
+    objects.forEach((object) => {
+        switch (object.type) {
+            case "line":
+                drawLine(ctx, object, camera);
+                break;
+            case "rect":
+                drawRect(ctx, object, camera);
+                break;
+            case "path":
+                drawPath(ctx, object, camera);
+                break;
+            case "eraser-path":
+                drawEraserPath(ctx, object, camera);
+                break;
+            case "ellipse":
+                drawEllipse(ctx, object, camera);
+                break;
+        }
+    });
 }
 
 function drawRect(
@@ -174,21 +148,17 @@ function drawRect(
 ) {
     ctx.beginPath();
     ctx.fillStyle = object.color;
-
     ctx.rect(
         object.position.x - camera.position.x,
         object.position.y - camera.position.y,
         object.size.x,
         object.size.y
     );
-    ctx.fillStyle = object.color;
     ctx.fill();
 
-    // Draw stroke
-    ctx.lineWidth = object.stroke;
+    ctx.lineWidth = getVisibleStroke(object.stroke, camera.zoom);
     ctx.strokeStyle = object.color;
     ctx.stroke();
-    ctx.closePath();
 }
 
 function drawEllipse(
@@ -197,25 +167,21 @@ function drawEllipse(
     camera: Camera
 ) {
     ctx.beginPath();
-
     ctx.ellipse(
-        object.position.x - camera.position.x + object.size.x / 2, // centerX
-        object.position.y - camera.position.y + object.size.y / 2, // centerY
-        Math.abs(object.size.x / 2), // radiusX
-        Math.abs(object.size.y / 2), // radiusY
-        0, //rotation
-        0, //startangle
-        2 * Math.PI // end angle
+        object.position.x - camera.position.x + object.size.x / 2,
+        object.position.y - camera.position.y + object.size.y / 2,
+        Math.abs(object.size.x / 2),
+        Math.abs(object.size.y / 2),
+        0,
+        0,
+        2 * Math.PI
     );
     ctx.fillStyle = object.color;
     ctx.fill();
 
-    // Draw stroke
-    ctx.lineWidth = object.stroke;
+    ctx.lineWidth = getVisibleStroke(object.stroke, camera.zoom);
     ctx.strokeStyle = object.color;
     ctx.stroke();
-
-    ctx.closePath();
 }
 
 function drawPath(
@@ -223,22 +189,24 @@ function drawPath(
     object: PathObject,
     camera: Camera
 ) {
-    if (!object.points || object.points.length < 2) return; // nothing to draw
-
+    if (!object.points || object.points.length < 2) return;
     ctx.beginPath();
     ctx.strokeStyle = object.color;
-    ctx.lineWidth = object.stroke;
+    ctx.lineWidth = getVisibleStroke(object.stroke, camera.zoom);
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
 
-    const first = object.points[0];
-    ctx.moveTo(first.x - camera.position.x, first.y - camera.position.y);
-
-    // draw lines to the rest of the points
+    ctx.moveTo(
+        object.points[0].x - camera.position.x,
+        object.points[0].y - camera.position.y
+    );
     for (let i = 1; i < object.points.length; i++) {
-        const p = object.points[i];
-        ctx.lineTo(p.x - camera.position.x, p.y - camera.position.y);
+        ctx.lineTo(
+            object.points[i].x - camera.position.x,
+            object.points[i].y - camera.position.y
+        );
     }
     ctx.stroke();
-    ctx.closePath();
 }
 
 function drawLine(
@@ -246,19 +214,19 @@ function drawLine(
     object: LineObject,
     camera: Camera
 ) {
-    if (!object.point1 || !object.point2) return; // nothing to draw
-
     ctx.beginPath();
     ctx.strokeStyle = object.color;
-    ctx.lineWidth = object.stroke;
-
-    const point1 = object.point1;
-    const point2 = object.point2;
-    ctx.moveTo(point1.x - camera.position.x, point1.y - camera.position.y);
-    ctx.lineTo(point2.x - camera.position.x, point2.y - camera.position.y);
-
+    ctx.lineWidth = getVisibleStroke(object.stroke, camera.zoom);
+    ctx.lineCap = "round";
+    ctx.moveTo(
+        object.point1.x - camera.position.x,
+        object.point1.y - camera.position.y
+    );
+    ctx.lineTo(
+        object.point2.x - camera.position.x,
+        object.point2.y - camera.position.y
+    );
     ctx.stroke();
-    ctx.closePath();
 }
 
 function drawEraserPath(
@@ -266,24 +234,26 @@ function drawEraserPath(
     object: EraserPathObject,
     camera: Camera
 ) {
-    if (!object.points || object.points.length < 2) return; // nothing to draw
-
+    if (!object.points || object.points.length < 2) return;
+    ctx.save();
+    ctx.globalCompositeOperation = "destination-out";
     ctx.beginPath();
-    ctx.globalCompositeOperation = "destination-out"; // Erase mode
-    ctx.lineWidth = object.stroke;
+    ctx.lineWidth = getVisibleStroke(object.stroke, camera.zoom);
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
 
-    const first = object.points[0];
-    ctx.moveTo(first.x - camera.position.x, first.y - camera.position.y);
-
-    // draw lines to the rest of the points
+    ctx.moveTo(
+        object.points[0].x - camera.position.x,
+        object.points[0].y - camera.position.y
+    );
     for (let i = 1; i < object.points.length; i++) {
-        const p = object.points[i];
-        ctx.lineTo(p.x - camera.position.x, p.y - camera.position.y);
+        ctx.lineTo(
+            object.points[i].x - camera.position.x,
+            object.points[i].y - camera.position.y
+        );
     }
     ctx.stroke();
-    ctx.closePath();
-
-    ctx.globalCompositeOperation = "source-over"; // Erase mode
+    ctx.restore();
 }
 
 export default CanvasWorld;

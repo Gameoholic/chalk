@@ -1,58 +1,64 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useLayoutEffect } from "react";
 
-// Most basic canvas. No logic besides basic DOM canvas setup and drawing loop
-function CanvasBase({
-    draw,
-    width,
-    height,
-    zoom,
-    ...rest
-}: {
+interface CanvasBaseProps {
     draw: (ctx: CanvasRenderingContext2D) => void;
     width: number;
     height: number;
     zoom: number;
     [key: string]: any;
-}) {
+}
+
+function CanvasBase({ draw, width, height, zoom, ...rest }: CanvasBaseProps) {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+    // 1. Create Refs for values that change frequently
+    const drawRef = useRef(draw);
+    const zoomRef = useRef(zoom);
+
+    // 2. Update refs immediately when props change without restarting the loop
+    useLayoutEffect(() => {
+        drawRef.current = draw;
+        zoomRef.current = zoom;
+    }, [draw, zoom]);
 
     useEffect(() => {
         const canvas = canvasRef.current;
         if (!canvas) return;
+
         const context = canvas.getContext("2d");
         if (!context) return;
 
-        let frameCount = 0;
         let animationFrameId: number;
 
-        // const dpr = window.devicePixelRatio || 1
-        // canvas.width = props.width * dpr
-        // canvas.height = props.height * dpr
-        // context.scale(dpr, dpr)
+        // Physical resize happens here
         canvas.width = width;
         canvas.height = height;
         canvas.style.width = `${width}px`;
         canvas.style.height = `${height}px`;
-        context.scale(zoom, zoom);
-
-        // if (window.devicePixelRatio !== 1) {
-        //     console.log(
-        //         'There might be a problem since deivce pixel ratio is ' +
-        //             window.devicePixelRatio
-        //     )
-        // }
 
         const render = () => {
-            frameCount++;
-            draw(context);
+            // Use the Ref values inside the loop
+            const currentZoom = zoomRef.current;
+
+            // Wipe the canvas
+            context.setTransform(1, 0, 0, 1, 0, 0);
+            context.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Apply zoom from Ref
+            context.scale(currentZoom, currentZoom);
+
+            // Draw
+            drawRef.current(context);
+
             animationFrameId = window.requestAnimationFrame(render);
         };
+
         render();
 
         return () => {
             window.cancelAnimationFrame(animationFrameId);
         };
-    }, [draw, height, width]);
+    }, [width, height]); // <--- REMOVED zoom and draw from here. Loop stays alive!
 
     return <canvas ref={canvasRef} {...rest} />;
 }
