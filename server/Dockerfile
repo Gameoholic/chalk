@@ -4,7 +4,8 @@ WORKDIR /app
 
 COPY package*.json .
 # Install deps (INCLUDING dev for compiling ts)
-RUN npm install
+# Clean install (doesn't modify package-lock, downloads exact same packages as on repository)
+RUN npm ci
 
 # Copy source files
 COPY . .
