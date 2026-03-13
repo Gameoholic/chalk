@@ -30,6 +30,9 @@ const getVisibleStroke = (stroke: number, ctx: CanvasRenderingContext2D) => {
     return Math.max(stroke, 1 / zoom);
 };
 
+// Only renders passed objects and processes passed camera position and zoom
+// No interaction handling
+// Doesn't reference any context. Randers as is, as the passed parameters say
 function CanvasWorld({ objects, camera, ...handlers }: CanvasWorldProps) {
     const drawGrid_ = (ctx: CanvasRenderingContext2D) => {
         drawGrid(ctx, camera);
@@ -48,7 +51,9 @@ function CanvasWorld({ objects, camera, ...handlers }: CanvasWorldProps) {
                 overflow: "hidden",
             }}
         >
-            {/* Grid Layer */}
+            {/* We separate into two layers so eraser will work on the object layer */}
+
+            {/* Grid layer — never affected by eraser */}
             <CanvasBase
                 draw={drawGrid_}
                 width={camera.size.x}
@@ -70,9 +75,14 @@ function CanvasWorld({ objects, camera, ...handlers }: CanvasWorldProps) {
     );
 }
 
+/**
+ * Draws a grid that scales with the world, but adjusts its density
+ * so cells always appear roughly the same size on screen.
+ */
 function drawGrid(ctx: CanvasRenderingContext2D, camera: Camera) {
-    const MIN_TILE_SIZE = 50;
-    const MAX_TILE_SIZE = 200;
+    // These thresholds control the "Screen Size" of the tiles.
+    const MIN_TILE_SIZE = 50; // Tiles won't get smaller than this value on screen
+    const MAX_TILE_SIZE = 200; // Tiles won't get bigger than this value on screen
     let adaptiveGridSize = MAX_TILE_SIZE;
 
     while (adaptiveGridSize * camera.zoom < MIN_TILE_SIZE) {
@@ -83,7 +93,7 @@ function drawGrid(ctx: CanvasRenderingContext2D, camera: Camera) {
     }
 
     ctx.beginPath();
-    ctx.strokeStyle = "#e2e8f0"; // Slate-200
+    ctx.strokeStyle = "#e2e8f0"; // Light gray
     ctx.lineWidth = 1 / camera.zoom; // Always 1px on screen
 
     const left = camera.position.x;
@@ -91,6 +101,7 @@ function drawGrid(ctx: CanvasRenderingContext2D, camera: Camera) {
     const width = camera.size.x / camera.zoom;
     const height = camera.size.y / camera.zoom;
 
+    // Snap start positions to the grid to prevent "drifting"
     const startX = Math.floor(left / adaptiveGridSize) * adaptiveGridSize;
     const startY = Math.floor(top / adaptiveGridSize) * adaptiveGridSize;
 
@@ -168,13 +179,13 @@ function drawEllipse(
 ) {
     ctx.beginPath();
     ctx.ellipse(
-        object.position.x - camera.position.x + object.size.x / 2,
-        object.position.y - camera.position.y + object.size.y / 2,
-        Math.abs(object.size.x / 2),
-        Math.abs(object.size.y / 2),
-        0,
-        0,
-        2 * Math.PI
+        object.position.x - camera.position.x + object.size.x / 2, // centerX
+        object.position.y - camera.position.y + object.size.y / 2, // centerY
+        Math.abs(object.size.x / 2), // radiusX
+        Math.abs(object.size.y / 2), // radiusY
+        0, //rotation
+        0, //startangle
+        2 * Math.PI // end angle
     );
     ctx.fillStyle = object.color;
     ctx.fill();
@@ -189,7 +200,7 @@ function drawPath(
     object: PathObject,
     camera: Camera
 ) {
-    if (!object.points || object.points.length < 2) return;
+    if (!object.points || object.points.length < 2) return; // sanity check
     ctx.beginPath();
     ctx.strokeStyle = object.color;
     ctx.lineWidth = getVisibleStroke(object.stroke, ctx);

@@ -8,14 +8,15 @@ interface CanvasBaseProps {
     [key: string]: any;
 }
 
+// Most basic canvas. No logic besides basic DOM canvas setup and drawing loop
 function CanvasBase({ draw, width, height, zoom, ...rest }: CanvasBaseProps) {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-    // 1. Create Refs for values that change frequently
+    // Create Refs for values that change frequently
     const drawRef = useRef(draw);
     const zoomRef = useRef(zoom);
 
-    // 2. Update refs immediately when props change without restarting the loop
+    // Update refs immediately when props change without restarting the loop
     useLayoutEffect(() => {
         drawRef.current = draw;
         zoomRef.current = zoom;
@@ -30,17 +31,15 @@ function CanvasBase({ draw, width, height, zoom, ...rest }: CanvasBaseProps) {
 
         let animationFrameId: number;
 
-        // Physical resize happens here
         canvas.width = width;
         canvas.height = height;
         canvas.style.width = `${width}px`;
         canvas.style.height = `${height}px`;
 
         const render = () => {
-            // Use the Ref values inside the loop
             const currentZoom = zoomRef.current;
 
-            // Wipe the canvas
+            // Clear the canvas
             context.setTransform(1, 0, 0, 1, 0, 0);
             context.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -58,7 +57,7 @@ function CanvasBase({ draw, width, height, zoom, ...rest }: CanvasBaseProps) {
         return () => {
             window.cancelAnimationFrame(animationFrameId);
         };
-    }, [width, height]); // <--- REMOVED zoom and draw from here. Loop stays alive!
+    }, [width, height]);
 
     return <canvas ref={canvasRef} {...rest} />;
 }
