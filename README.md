@@ -64,15 +64,11 @@ chalk.gameoholic.dev
 - [ ] Don't update board's last camera properties every frame. Do it at the same time as object save. (in fact, put their logic in the same function)
 
 #### 🐞 Bugs
-- [ ] ci/cd deployment failing due to "unable to update local ref"
 - [ ] Fix server.ts CORS
 - [ ] Changing opacity in color picker doesn't work
 - [ ] Can't click in top left "dead area" of canvas menu
-- [ ] Objects flicker on zoom
-- [ ] Object opacity/stroke changes on zoom
 
 #### 🔒 Dev Experience
-- [ ] Move as many props in canvas types to the new context stores
 - [ ] Make all models fetch requests behave the same way (right now login and create account behave differently than modify account/board modals)
 - [ ] Make ALL components use tailwindcss theme colors instead of arbitrary colors
 - [ ] Use [zod](https://zod.dev/) for type safety
