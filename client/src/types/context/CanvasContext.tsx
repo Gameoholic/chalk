@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { BoardData } from "../data";
 import { Camera, Tool, Vec2, WorldObject } from "../canvas";
 import { SessionContext } from "./SessionContext";

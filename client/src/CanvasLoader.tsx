@@ -25,8 +25,6 @@ type LoadDataResult =
     | { success: false };
 
 export default function CanvasLoader() {
-    const themeContext = useContext(ThemeContext);
-
     const [data, setData] = useState<LoadDataResult | null>(null);
     const [loading, setLoading] = useState(true);
 
@@ -106,6 +104,7 @@ function AfterSuccessfulAuth({
                 className={`absolute inset-0 z-${showMyBoards === false ? 100 : 1}`}
             >
                 <CanvasContextProvider
+                    key={currentBoardId} // Remount canvas context when the current board changes - so all local variables are synced from server variables
                     defaultBoardId={currentBoardId}
                     defaultBoardCameraSize={{ x: 1000, y: 1000 }}
                     defaultColor="#000000FF"
