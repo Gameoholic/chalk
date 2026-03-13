@@ -2,10 +2,13 @@ import { useContext, useEffect } from "react";
 import CanvasLoader from "../CanvasLoader.tsx";
 import { ThemeContext } from "../types/context/ThemeContext.tsx";
 import { ShowDebugInfoContext } from "../types/context/ShowDebugInfoContext";
+import { AntiAliasingContext } from "../types/context/AntiAliasingContext";
 
 export default function App() {
     const themeContext = useContext(ThemeContext);
     const showDebugInfoContext = useContext(ShowDebugInfoContext);
+    const antiAliasingContext = useContext(AntiAliasingContext);
+
     useEffect(() => {
         // Apply theme to <body> whenever it changes
         document.body.classList.remove("light", "dark");
@@ -19,6 +22,10 @@ export default function App() {
             showDebugInfoContext.value + ""
         );
     }, [showDebugInfoContext.value]);
+
+    useEffect(() => {
+        localStorage.setItem("anti-aliasing", antiAliasingContext.value + "");
+    }, [antiAliasingContext.value]);
 
     return <CanvasLoader />;
 }

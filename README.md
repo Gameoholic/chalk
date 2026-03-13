@@ -27,6 +27,7 @@ chalk.gameoholic.dev
 - [ ] Delete specific objects
 
 #### 🎨 Visual & Polish & QOL
+- [ ] Disable certain properties from certain drawing modes (like width for shapes!)
 - [ ] Responsive design for mobile and all window sizes
 - [ ] Better error messages (like in our modify board/account modals!) when fail to create account / log in
 - [ ] Make creation of board update MyBoards instead of reloading (animation to add the board instead of just updating it plainly)
@@ -37,6 +38,7 @@ chalk.gameoholic.dev
 - [ ] Make lastOpen property of board nullable, so when we create the board it doesn't automatically set its lastOpened to now
 - [ ] Unify style app-wide (colors, behavior, animation of modals (I particularly like the style of create board modal)...)
 - [ ] When deleting board, zoom out to My Boards and Thanos-particle destroy the board. All other boards will then "cascade" with an animation.
+- [ ] Add anti aliasing as a togglable option
 
 #### 🔒 Security
 - [ ] Sentry URL shouldn't be exposed!!!

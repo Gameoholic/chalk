@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useContext } from "react";
 import CanvasBase from "./CanvasBase";
 import {
     Camera,
@@ -9,6 +9,7 @@ import {
     RectObject,
     WorldObject,
 } from "../types/canvas";
+import { AntiAliasingContext } from "../types/context/AntiAliasingContext";
 
 interface CanvasWorldProps {
     objects: Map<string, WorldObject>;
@@ -25,7 +26,17 @@ interface CanvasWorldProps {
  * Reads the actual applied scale from the context transform so it's
  * always in sync with whatever zoom CanvasBase just called ctx.scale() with.
  */
-const getVisibleStroke = (stroke: number, ctx: CanvasRenderingContext2D) => {
+const getVisibleStroke = (
+    stroke: number,
+    ctx: CanvasRenderingContext2D,
+    antiAliasing: boolean
+) => {
+    // Besides anti aliasing and disabling it, there's no other solution to zoomed out drwaings looking better, besides using OpenGL or other rendering frameworks
+    // Anti aliasing = true -> Return stroke with the alpha automatically lowering when zoomed out (DOM canvas feature) to simulate sub-pixel sizes
+    if (antiAliasing) {
+        return stroke;
+    }
+    // Otherwise, always render so it's at least stroke = 1px
     const zoom = ctx.getTransform().a;
     return Math.max(stroke, 1 / zoom);
 };
@@ -34,12 +45,14 @@ const getVisibleStroke = (stroke: number, ctx: CanvasRenderingContext2D) => {
 // No interaction handling
 // Doesn't reference any context. Randers as is, as the passed parameters say
 function CanvasWorld({ objects, camera, ...handlers }: CanvasWorldProps) {
+    const antiAliasing = useContext(AntiAliasingContext).value;
+
     const drawGrid_ = (ctx: CanvasRenderingContext2D) => {
         drawGrid(ctx, camera);
     };
 
     const drawObjects_ = (ctx: CanvasRenderingContext2D) => {
-        drawObjects(ctx, objects, camera);
+        drawObjects(ctx, objects, camera, antiAliasing);
     };
 
     return (
@@ -129,24 +142,25 @@ function drawGrid(ctx: CanvasRenderingContext2D, camera: Camera) {
 function drawObjects(
     ctx: CanvasRenderingContext2D,
     objects: Map<string, WorldObject>,
-    camera: Camera
+    camera: Camera,
+    antiAliasing: boolean
 ) {
     objects.forEach((object) => {
         switch (object.type) {
             case "line":
-                drawLine(ctx, object, camera);
+                drawLine(ctx, object, camera, antiAliasing);
                 break;
             case "rect":
-                drawRect(ctx, object, camera);
+                drawRect(ctx, object, camera, antiAliasing);
                 break;
             case "path":
-                drawPath(ctx, object, camera);
+                drawPath(ctx, object, camera, antiAliasing);
                 break;
             case "eraser-path":
-                drawEraserPath(ctx, object, camera);
+                drawEraserPath(ctx, object, camera, antiAliasing);
                 break;
             case "ellipse":
-                drawEllipse(ctx, object, camera);
+                drawEllipse(ctx, object, camera, antiAliasing);
                 break;
         }
     });
@@ -155,7 +169,8 @@ function drawObjects(
 function drawRect(
     ctx: CanvasRenderingContext2D,
     object: RectObject,
-    camera: Camera
+    camera: Camera,
+    antiAliasing: boolean
 ) {
     ctx.beginPath();
     ctx.fillStyle = object.color;
@@ -167,7 +182,7 @@ function drawRect(
     );
     ctx.fill();
 
-    ctx.lineWidth = getVisibleStroke(object.stroke, ctx);
+    ctx.lineWidth = getVisibleStroke(object.stroke, ctx, antiAliasing);
     ctx.strokeStyle = object.color;
     ctx.stroke();
 }
@@ -175,7 +190,8 @@ function drawRect(
 function drawEllipse(
     ctx: CanvasRenderingContext2D,
     object: EllipseObject,
-    camera: Camera
+    camera: Camera,
+    antiAliasing: boolean
 ) {
     ctx.beginPath();
     ctx.ellipse(
@@ -190,7 +206,7 @@ function drawEllipse(
     ctx.fillStyle = object.color;
     ctx.fill();
 
-    ctx.lineWidth = getVisibleStroke(object.stroke, ctx);
+    ctx.lineWidth = getVisibleStroke(object.stroke, ctx, antiAliasing);
     ctx.strokeStyle = object.color;
     ctx.stroke();
 }
@@ -198,12 +214,13 @@ function drawEllipse(
 function drawPath(
     ctx: CanvasRenderingContext2D,
     object: PathObject,
-    camera: Camera
+    camera: Camera,
+    antiAliasing: boolean
 ) {
     if (!object.points || object.points.length < 2) return; // sanity check
     ctx.beginPath();
     ctx.strokeStyle = object.color;
-    ctx.lineWidth = getVisibleStroke(object.stroke, ctx);
+    ctx.lineWidth = getVisibleStroke(object.stroke, ctx, antiAliasing);
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
 
@@ -223,11 +240,12 @@ function drawPath(
 function drawLine(
     ctx: CanvasRenderingContext2D,
     object: LineObject,
-    camera: Camera
+    camera: Camera,
+    antiAliasing: boolean
 ) {
     ctx.beginPath();
     ctx.strokeStyle = object.color;
-    ctx.lineWidth = getVisibleStroke(object.stroke, ctx);
+    ctx.lineWidth = getVisibleStroke(object.stroke, ctx, antiAliasing);
     ctx.lineCap = "round";
     ctx.moveTo(
         object.point1.x - camera.position.x,
@@ -243,13 +261,14 @@ function drawLine(
 function drawEraserPath(
     ctx: CanvasRenderingContext2D,
     object: EraserPathObject,
-    camera: Camera
+    camera: Camera,
+    antiAliasing: boolean
 ) {
     if (!object.points || object.points.length < 2) return;
     ctx.save();
     ctx.globalCompositeOperation = "destination-out";
     ctx.beginPath();
-    ctx.lineWidth = getVisibleStroke(object.stroke, ctx);
+    ctx.lineWidth = getVisibleStroke(object.stroke, ctx, antiAliasing);
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
 
