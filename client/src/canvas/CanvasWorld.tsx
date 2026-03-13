@@ -22,12 +22,12 @@ interface CanvasWorldProps {
 
 /**
  * Ensures a stroke is always visible on screen.
- * If (stroke * zoom) is less than 1, it returns (1 / zoom)
- * so the result on-screen is exactly 1px.
+ * Reads the actual applied scale from the context transform so it's
+ * always in sync with whatever zoom CanvasBase just called ctx.scale() with.
  */
-const getVisibleStroke = (stroke: number, zoom: number) => {
-    const minVisible = 1 / zoom;
-    return Math.max(stroke, minVisible);
+const getVisibleStroke = (stroke: number, ctx: CanvasRenderingContext2D) => {
+    const zoom = ctx.getTransform().a;
+    return Math.max(stroke, 1 / zoom);
 };
 
 function CanvasWorld({ objects, camera, ...handlers }: CanvasWorldProps) {
@@ -156,7 +156,7 @@ function drawRect(
     );
     ctx.fill();
 
-    ctx.lineWidth = getVisibleStroke(object.stroke, camera.zoom);
+    ctx.lineWidth = getVisibleStroke(object.stroke, ctx);
     ctx.strokeStyle = object.color;
     ctx.stroke();
 }
@@ -179,7 +179,7 @@ function drawEllipse(
     ctx.fillStyle = object.color;
     ctx.fill();
 
-    ctx.lineWidth = getVisibleStroke(object.stroke, camera.zoom);
+    ctx.lineWidth = getVisibleStroke(object.stroke, ctx);
     ctx.strokeStyle = object.color;
     ctx.stroke();
 }
@@ -192,7 +192,7 @@ function drawPath(
     if (!object.points || object.points.length < 2) return;
     ctx.beginPath();
     ctx.strokeStyle = object.color;
-    ctx.lineWidth = getVisibleStroke(object.stroke, camera.zoom);
+    ctx.lineWidth = getVisibleStroke(object.stroke, ctx);
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
 
@@ -216,7 +216,7 @@ function drawLine(
 ) {
     ctx.beginPath();
     ctx.strokeStyle = object.color;
-    ctx.lineWidth = getVisibleStroke(object.stroke, camera.zoom);
+    ctx.lineWidth = getVisibleStroke(object.stroke, ctx);
     ctx.lineCap = "round";
     ctx.moveTo(
         object.point1.x - camera.position.x,
@@ -238,7 +238,7 @@ function drawEraserPath(
     ctx.save();
     ctx.globalCompositeOperation = "destination-out";
     ctx.beginPath();
-    ctx.lineWidth = getVisibleStroke(object.stroke, camera.zoom);
+    ctx.lineWidth = getVisibleStroke(object.stroke, ctx);
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
 
