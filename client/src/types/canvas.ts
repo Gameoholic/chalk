@@ -24,28 +24,27 @@ export type ObjectType =
 export interface BaseObject {
     id: string;
     type: ObjectType;
+}
+
+export interface ColorableObject extends BaseObject {
+    color: string;
+}
+
+export interface StrokableObject {
     stroke: number;
 }
 
-export interface ColorableObject extends BaseObject {
-    color: string;
-}
-
-export interface ColorableObject extends BaseObject {
-    color: string;
-}
-
-export interface PathObject extends ColorableObject {
+export interface PathObject extends ColorableObject, StrokableObject {
     type: "path";
     points: Vec2[];
 }
 
-export interface EraserPathObject extends BaseObject {
+export interface EraserPathObject extends BaseObject, StrokableObject {
     type: "eraser-path";
     points: Vec2[];
 }
 
-export interface LineObject extends ColorableObject {
+export interface LineObject extends ColorableObject, StrokableObject {
     type: "line";
     point1: Vec2;
     point2: Vec2;

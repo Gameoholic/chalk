@@ -274,7 +274,6 @@ function handleMouseEvents(
             id: currentInteraction.current.objectId,
             type: "rect",
             color: selectedColor,
-            stroke: selectedStroke,
             position: currentInteraction.current.path[0],
             size: {
                 x:
@@ -306,7 +305,6 @@ function handleMouseEvents(
             id: currentInteraction.current.objectId,
             type: "ellipse",
             color: selectedColor,
-            stroke: selectedStroke,
             position: currentInteraction.current.path[0],
             size: {
                 x:

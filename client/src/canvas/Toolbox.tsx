@@ -57,6 +57,16 @@ const Toolbox = ({ className }: { className: string }) => {
         canvasContext.setLocalColor(newColor);
     };
 
+    const toolsWithoutStroke: Tool[] = ["rect", "ellipse"];
+    const isStrokeSettingEnabled = !toolsWithoutStroke.includes(
+        canvasContext.local_selectedTool
+    );
+
+    const toolsWithoutColor: Tool[] = ["eraser"];
+    const isColorSettingEnabled = !toolsWithoutColor.includes(
+        canvasContext.local_selectedTool
+    );
+
     // Checkerboard grid for transparent color preview
     const renderCheckerboard = () => {
         const squares: JSX.Element[] = [];
@@ -145,10 +155,23 @@ const Toolbox = ({ className }: { className: string }) => {
             <div className="relative mt-4 flex w-full flex-col items-center">
                 <label className="mb-1 text-sm">Color</label>
                 <button
-                    onClick={() => setShowColorPicker(!showColorPicker)}
+                    onClick={() => {
+                        if (!isColorSettingEnabled) return;
+                        setShowColorPicker(!showColorPicker);
+                    }}
+                    disabled={!isColorSettingEnabled}
+                    title={
+                        isColorSettingEnabled
+                            ? "Select drawing color"
+                            : "Color not available for this tool"
+                    }
                     className="relative h-8 w-full overflow-hidden rounded border transition"
                     style={{
                         borderColor: "var(--card-foreground)",
+                        opacity: isColorSettingEnabled ? 1 : 0.5,
+                        cursor: isColorSettingEnabled
+                            ? "pointer"
+                            : "not-allowed",
                     }}
                 >
                     {renderCheckerboard()}
@@ -185,7 +208,7 @@ const Toolbox = ({ className }: { className: string }) => {
                 )}
             </div>
 
-            {/* Width selector */}
+            {/* Stroke selector */}
             <div className="mt-4 flex w-full flex-col space-y-1">
                 <label className="text-sm">Width</label>
                 <input
@@ -193,6 +216,12 @@ const Toolbox = ({ className }: { className: string }) => {
                     min="1"
                     max="20"
                     value={canvasContext.local_selectedStroke}
+                    disabled={!isStrokeSettingEnabled}
+                    title={
+                        isStrokeSettingEnabled
+                            ? "Adjust stroke width"
+                            : "Stroke not available for this tool"
+                    }
                     onChange={(e) => {
                         const newWidth = Number(e.target.value);
                         canvasContext.setLocalStroke(newWidth);
@@ -200,6 +229,10 @@ const Toolbox = ({ className }: { className: string }) => {
                     className="w-full"
                     style={{
                         accentColor: "var(--accent)",
+                        opacity: isStrokeSettingEnabled ? 1 : 0.5,
+                        cursor: isStrokeSettingEnabled
+                            ? "pointer"
+                            : "not-allowed",
                     }}
                 />
                 <span className="text-center text-xs">

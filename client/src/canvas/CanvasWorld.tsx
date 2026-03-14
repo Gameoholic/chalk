@@ -181,10 +181,6 @@ function drawRect(
         object.size.y
     );
     ctx.fill();
-
-    ctx.lineWidth = getVisibleStroke(object.stroke, ctx, antiAliasing);
-    ctx.strokeStyle = object.color;
-    ctx.stroke();
 }
 
 function drawEllipse(
@@ -205,10 +201,6 @@ function drawEllipse(
     );
     ctx.fillStyle = object.color;
     ctx.fill();
-
-    ctx.lineWidth = getVisibleStroke(object.stroke, ctx, antiAliasing);
-    ctx.strokeStyle = object.color;
-    ctx.stroke();
 }
 
 function drawPath(
