@@ -86,13 +86,13 @@ function ColorDot({
     const angle = calculateAngle(index, totalInRing);
     const { x: baseX, y: baseY } = calculateBasePosition(angle, baseRadius);
 
-    let color = "hsl(0, 0%, 100%)";
+    let color = "hsl(0, 0%, 0%)";
     let normalizedHue = 0;
     if (ring !== 0) {
         normalizedHue = calculateHue(angle);
         color =
             ring === 1
-                ? `hsl(${normalizedHue}, 60%, 85%)`
+                ? `hsl(${normalizedHue}, 60%, 50%)`
                 : `hsl(${normalizedHue}, 90%, 60%)`;
     }
 
@@ -563,17 +563,60 @@ export default function ColorPicker({
     const selectedColor = value !== undefined ? value : internalColor;
     const opacity = opacityProp !== undefined ? opacityProp : internalOpacity;
 
+    // Parse color and opacity from value
+    const parseColor = (colorStr: string | null) => {
+        if (!colorStr) return { color: null, opacity: 100 };
+        const hslaMatch = colorStr.match(
+            /hsla?\((\d+),\s*(\d+)%,\s*(\d+)%(?:,\s*([\d.]+))?\)/
+        );
+        if (hslaMatch) {
+            const h = parseInt(hslaMatch[1]);
+            const s = parseInt(hslaMatch[2]);
+            const l = parseInt(hslaMatch[3]);
+            const a = hslaMatch[4] ? parseFloat(hslaMatch[4]) * 100 : 100;
+            return { color: `hsl(${h}, ${s}%, ${l}%)`, opacity: a };
+        }
+        return { color: colorStr, opacity: 100 };
+    };
+
+    const { color: parsedColor, opacity: parsedOpacity } =
+        parseColor(selectedColor);
+
+    useEffect(() => {
+        if (value !== undefined) {
+            const { color, opacity: parsedOp } = parseColor(value);
+            setInternalColor(color);
+            setInternalOpacity(parsedOp);
+        }
+    }, [value]);
+
     const handleColorSelect = (newColor: string | null) => {
         setInternalColor(newColor);
         if (onChange && newColor) {
-            onChange(newColor);
+            const outputOpacity =
+                opacityProp !== undefined ? opacityProp : internalOpacity;
+            const outputColor =
+                outputOpacity < 100
+                    ? `hsla(${newColor.slice(4, -1)}, ${outputOpacity / 100})`
+                    : newColor;
+            onChange(outputColor);
         }
     };
 
     const handleOpacityChange = (newOpacity: number) => {
         setInternalOpacity(newOpacity);
         if (onChange) {
-            // onChange(internalColor!);
+            const currentColor = parsedColor || internalColor;
+            if (currentColor) {
+                const outputColor =
+                    newOpacity < 100
+                        ? `hsla(${currentColor.slice(4, -1)}, ${newOpacity / 100})`
+                        : currentColor;
+                onChange(outputColor);
+            }
+        }
+        if (onOpacityChange) {
+            onOpacityChange(newOpacity);
         }
     };
 

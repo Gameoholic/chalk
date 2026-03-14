@@ -52,7 +52,6 @@ const Toolbox = ({ className }: { className: string }) => {
         canvasContext.setLocalTool(tool);
     };
 
-    // Updated to handle string directly from the new ColorPicker
     const handleColorChange = (newColor: string) => {
         canvasContext.setLocalColor(newColor);
     };
