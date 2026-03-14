@@ -27,7 +27,6 @@ chalk.gameoholic.dev
 - [ ] Delete specific objects
 
 #### 🎨 Visual & Polish & QOL
-- [ ] Disable certain properties from certain drawing modes (like width for shapes!)
 - [ ] Responsive design for mobile and all window sizes
 - [ ] Better error messages (like in our modify board/account modals!) when fail to create account / log in
 - [ ] Make creation of board update MyBoards instead of reloading (animation to add the board instead of just updating it plainly)

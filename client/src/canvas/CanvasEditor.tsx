@@ -658,12 +658,14 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
 
                     {/* Dropdown */}
                     <div
-                        className={`mt-2 w-56 origin-top-left rounded-xl p-2 shadow-xl transition-all duration-300 ease-out ${
+                        className={`absolute top-full left-0 mt-2 w-56 origin-top-left rounded-xl p-2 shadow-xl transition-all duration-300 ease-out ${
                             menuOpen
                                 ? "translate-y-0 scale-100 opacity-100"
                                 : "pointer-events-none -translate-y-2 scale-95 opacity-0"
                         }`}
-                        style={{ backgroundColor: "var(--card)" }}
+                        style={{
+                            backgroundColor: "var(--card)",
+                        }}
                     >
                         {sessionContext.userData.role === "guest" && (
                             <MenuItem
