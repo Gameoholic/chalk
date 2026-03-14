@@ -41,10 +41,16 @@ import { ShowDebugInfoContext } from "../types/context/ShowDebugInfoContext";
 
 interface CanvasEditorProps {
     openMyBoards: () => void;
+    openLoginOnMount: boolean;
+    onLoginOpened: () => void;
 }
 
 // Handles saving and uploading data, as well as tool selection and all overlays
-function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
+function CanvasEditor({
+    openMyBoards,
+    openLoginOnMount,
+    onLoginOpened,
+}: CanvasEditorProps) {
     const themeContext = useContext(ThemeContext);
     const showDebugInfoContext = useContext(ShowDebugInfoContext);
     const canvasContext = useContext(CanvasContext);
@@ -115,6 +121,14 @@ function CanvasEditor({ openMyBoards }: CanvasEditorProps) {
             setQueued_deleteBoard(false);
         }
     }, [canvasContext.local_unsavedObjects]);
+
+    // Open login modal when requested from welcome screen
+    useEffect(() => {
+        if (openLoginOnMount) {
+            setAuthView("login");
+            onLoginOpened();
+        }
+    }, [openLoginOnMount, onLoginOpened]);
 
     // Saving objects
     // Objects that are currently being saved (mid-fetch request)

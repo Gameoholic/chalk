@@ -14,6 +14,8 @@ import {
 import { WorldObject } from "./types/canvas";
 import { ThemeContext } from "./types/context/ThemeContext.tsx";
 import { updateBoardLastOpened } from "./api/boards";
+import { FirstTimeVisitorContext } from "./types/context/FirstTimeVisitorContext";
+import WelcomeScreen from "./canvas/WelcomeScreen";
 
 type LoadDataResult =
     | {
@@ -81,12 +83,19 @@ function AfterSuccessfulAuth({
     initialBoardObjects: WorldObject[];
 }) {
     const sessionContext = useContext(SessionContext);
+    const firstTimeVisitorContext = useContext(FirstTimeVisitorContext);
 
     // My boards <--> Canvas transition
     const [showMyBoards, setShowMyBoards] = useState(false);
     const [myBoardsKey, setMyBoardsKey] = useState(0);
     const [canvasEditorKey, setCanvasEditorKey] = useState(0);
     const [currentBoardId, setCurrentBoardId] = useState(initialBoardId); // Used to transfer board id from MyBoards to CanvasEditor (as MyBoard doesn't have access to CanvasContext)
+    const [openLoginOnWelcomeDismiss, setOpenLoginOnWelcomeDismiss] =
+        useState(false);
+
+    const handleWelcomeDismiss = () => {
+        firstTimeVisitorContext.setValue(false);
+    };
 
     async function updateNewBoardLastOpened(newBoardId: string) {
         // this entire method is hopeful api call - no need to display error to user if failed
@@ -116,6 +125,10 @@ function AfterSuccessfulAuth({
                         currentBoardId={currentBoardId}
                         setMyBoardsKey={setMyBoardsKey}
                         setShowMyBoards={setShowMyBoards}
+                        openLoginOnMount={openLoginOnWelcomeDismiss}
+                        onLoginOpened={() =>
+                            setOpenLoginOnWelcomeDismiss(false)
+                        }
                     />
                 </CanvasContextProvider>
             </div>
@@ -131,6 +144,14 @@ function AfterSuccessfulAuth({
                     }}
                 />
             </div>
+
+            {/* Welcome screen, only for first-time visitors — rendered on top of everything */}
+            {firstTimeVisitorContext.value && (
+                <WelcomeScreen
+                    onDismiss={handleWelcomeDismiss}
+                    onLoginSignUp={() => setOpenLoginOnWelcomeDismiss(true)}
+                />
+            )}
         </div>
     );
 }
@@ -140,11 +161,15 @@ function CanvasEditorDiv({
     currentBoardId,
     setMyBoardsKey,
     setShowMyBoards,
+    openLoginOnMount,
+    onLoginOpened,
 }: {
     canvasEditorKey: number;
     currentBoardId: string;
     setMyBoardsKey: React.Dispatch<React.SetStateAction<number>>;
     setShowMyBoards: React.Dispatch<React.SetStateAction<boolean>>;
+    openLoginOnMount: boolean;
+    onLoginOpened: () => void;
 }) {
     const context = useContext(CanvasContext);
     context.setLocalCurrentBoardId(currentBoardId);
@@ -156,6 +181,8 @@ function CanvasEditorDiv({
                 setMyBoardsKey((k) => k + 1); // force my boards remount
                 setShowMyBoards(true);
             }}
+            openLoginOnMount={openLoginOnMount}
+            onLoginOpened={onLoginOpened}
         />
     );
 }

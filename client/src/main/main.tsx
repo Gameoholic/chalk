@@ -7,6 +7,7 @@ import { ShowDebugInfoContextProvider } from "../types/context/ShowDebugInfoCont
 
 import "../env";
 import { AntiAliasingContextProvider } from "../types/context/AntiAliasingContext";
+import { FirstTimeVisitorContextProvider } from "../types/context/FirstTimeVisitorContext";
 
 const container = document.getElementById("root");
 if (!container) throw new Error("Root container not found");
@@ -23,14 +24,21 @@ function Root() {
     const savedAntiAliasing = localStorage.getItem("anti-aliasing");
     const showAntiAliasing = savedAntiAliasing === "true"; // Default to false
 
+    // If the key has never been set, this is a first-time visitor
+    const savedFirstTimeVisitor = localStorage.getItem("first-time-visitor");
+    const isFirstTimeVisitor =
+        savedFirstTimeVisitor === null || savedFirstTimeVisitor === "true";
+
     return (
-        <AntiAliasingContextProvider defaultValue={showAntiAliasing}>
-            <ShowDebugInfoContextProvider defaultValue={showDebugInfo}>
-                <ThemeContextProvider defaultTheme={theme}>
-                    <App />
-                </ThemeContextProvider>
-            </ShowDebugInfoContextProvider>
-        </AntiAliasingContextProvider>
+        <FirstTimeVisitorContextProvider defaultValue={isFirstTimeVisitor}>
+            <AntiAliasingContextProvider defaultValue={showAntiAliasing}>
+                <ShowDebugInfoContextProvider defaultValue={showDebugInfo}>
+                    <ThemeContextProvider defaultTheme={theme}>
+                        <App />
+                    </ThemeContextProvider>
+                </ShowDebugInfoContextProvider>
+            </AntiAliasingContextProvider>
+        </FirstTimeVisitorContextProvider>
     );
 }
 
