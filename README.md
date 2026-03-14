@@ -65,7 +65,6 @@ chalk.gameoholic.dev
 #### 🐞 Bugs
 - [ ] Fix server.ts CORS
 - [ ] Changing opacity in color picker doesn't work
-- [ ] Can't click in top left "dead area" of canvas menu
 
 #### 🔒 Dev Experience
 - [ ] Make all models fetch requests behave the same way (right now login and create account behave differently than modify account/board modals)
