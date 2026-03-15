@@ -265,7 +265,7 @@ export default function TourOverlay({
                 <div className="flex items-center justify-between">
                     <button
                         onClick={skipTour}
-                        className="text-xs text-[#666] transition-colors hover:text-[#a0a0a0]"
+                        className="text-xs text-[#ff8ca5] transition-colors hover:text-[#a0a0a0]"
                     >
                         Skip tour
                     </button>

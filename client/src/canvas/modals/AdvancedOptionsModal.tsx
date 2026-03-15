@@ -1,8 +1,9 @@
 import { useContext } from "react";
-import { X, Moon, Sun, Blend, RotateCcw } from "lucide-react";
+import { X, Moon, Sun, Blend, RotateCcw, Bug } from "lucide-react";
 import { ThemeContext } from "../../types/context/ThemeContext";
 import { AntiAliasingContext } from "../../types/context/AntiAliasingContext";
 import { FirstTimeVisitorContext } from "../../types/context/FirstTimeVisitorContext";
+import { ShowDebugInfoContext } from "../../types/context/ShowDebugInfoContext";
 
 interface AdvancedOptionsModalProps {
     onClose: () => void;
@@ -14,6 +15,7 @@ export default function AdvancedOptionsModal({
     const themeContext = useContext(ThemeContext);
     const antiAliasingContext = useContext(AntiAliasingContext);
     const firstTimeVisitorContext = useContext(FirstTimeVisitorContext);
+    const showDebugInfoContext = useContext(ShowDebugInfoContext);
 
     const handleRestartTour = () => {
         firstTimeVisitorContext.setValue("welcome");
@@ -61,9 +63,7 @@ export default function AdvancedOptionsModal({
                             )
                         }
                         label="Theme"
-                        description={
-                            "Currently unstable, recommended to use dark mode for best results"
-                        }
+                        description="Currently unstable, recommended to use dark mode for best results"
                     >
                         <Toggle
                             checked={themeContext.theme === "dark"}
@@ -85,6 +85,22 @@ export default function AdvancedOptionsModal({
                             checked={antiAliasingContext.value}
                             onChange={(val) =>
                                 antiAliasingContext.setValue(val)
+                            }
+                            labelOff="Off"
+                            labelOn="On"
+                        />
+                    </OptionRow>
+
+                    {/* Debug info */}
+                    <OptionRow
+                        icon={<Bug size={18} />}
+                        label="Debug Info"
+                        description="Show camera, FPS, and object stats on the canvas"
+                    >
+                        <Toggle
+                            checked={showDebugInfoContext.value}
+                            onChange={(val) =>
+                                showDebugInfoContext.setValue(() => val)
                             }
                             labelOff="Off"
                             labelOn="On"
