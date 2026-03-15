@@ -86,20 +86,9 @@ export async function logout(req: AuthenticatedRequest, res: Response) {
     res.clearCookie("refresh-token");
     res.clearCookie("access-token");
 
-    if (!req.authenticatedUser) {
-        return res.sendStatus(401);
-    }
-
-    if (req.authenticatedUser.role === "guest") {
-        return res.status(400).json({ error: "Cannot log out as guest user." });
-    }
-
-    const refreshTokenCookie: string | undefined = (req as any).cookies[
-        "refresh-token"
-    ];
-    // In case refresh token was not provided:
+    const refreshTokenCookie: string | undefined = req.cookies["refresh-token"];
     if (refreshTokenCookie === undefined) {
-        return res.sendStatus(401);
+        return res.sendStatus(204); // nothing to invalidate, already logged out
     }
 
     // Deletes refresh token id

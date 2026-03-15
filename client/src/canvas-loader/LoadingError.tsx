@@ -101,7 +101,7 @@ export default function LoadingError({ title, message }: LoadingErrorProps) {
                             {/* Secondary Action: Logout */}
                             <button
                                 onClick={handleLogout}
-                                className="w-full rounded-2xl border py-3 text-base font-medium transition active:scale-95"
+                                className="w-full cursor-pointer rounded-2xl border py-3 text-base font-medium transition active:scale-95"
                                 style={{
                                     borderColor: "#ff8ca5",
                                     backgroundColor: "transparent",
