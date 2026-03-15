@@ -1,7 +1,7 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import CanvasEditor from "../canvas/CanvasEditor.tsx";
-import { BoardData, UserData, ObjectlessBoardData } from "../types/data.ts";
-import { BoardsAPI, AuthAPI, GuestUsersAPI, MeAPI } from "../api/index.ts";
+import { BoardData, UserData } from "../types/data.ts";
+import { BoardsAPI, GuestUsersAPI, MeAPI } from "../api/index.ts";
 import MyBoards from "../my-boards/MyBoards.tsx";
 import {
     SessionContext,
@@ -11,7 +11,6 @@ import {
     CanvasContext,
     CanvasContextProvider,
 } from "../types/context/CanvasContext.tsx";
-import { WorldObject } from "../types/canvas.ts";
 import { updateBoardLastOpened } from "../api/boards.ts";
 import { FirstTimeVisitorContext } from "../types/context/FirstTimeVisitorContext.tsx";
 import WelcomeScreen from "../canvas/WelcomeScreen.tsx";
@@ -30,6 +29,7 @@ type LoadDataResult =
 export default function CanvasLoader() {
     const [data, setData] = useState<LoadDataResult | null>(null);
     const [loading, setLoading] = useState(true);
+    const [loadingScreenDone, setLoadingScreenDone] = useState(false);
 
     // Fetch data only once despite react double mounting
     const dataFetchPromise = useRef<Promise<LoadDataResult> | null>(null);
@@ -44,7 +44,6 @@ export default function CanvasLoader() {
             const result = await dataFetchPromise.current;
             if (!cancelled) {
                 setData(result);
-                await new Promise((res) => setTimeout(res, 500)); // Artifical delay so it doesn't flash too quickly on fast connections
                 setLoading(false);
             }
         }
@@ -56,21 +55,32 @@ export default function CanvasLoader() {
         };
     }, []);
 
-    if (loading) {
-        return <LoadingScreen isReady={!loading} />;
-    }
-
-    if (!data || !data.success) {
-        return <AuthError />;
-    }
-
     return (
-        <SessionContextProvider
-            defaultUserData={data.userData}
-            defaultBoards={data.boards}
-        >
-            <AfterSuccessfulAuth initialBoardId={data.currentBoard.id} />
-        </SessionContextProvider>
+        <>
+            {/* The loading screen stays mounted even after data has been fetched, until its internal exit 
+                animation signals 'onAnimationDone' which means the animation completely faded out.
+            */}
+            {!loadingScreenDone && (
+                <LoadingScreen
+                    isReady={!loading}
+                    onAnimationDone={() => setLoadingScreenDone(true)}
+                />
+            )}
+
+            {!loading &&
+                (data?.success ? (
+                    <SessionContextProvider
+                        defaultUserData={data.userData}
+                        defaultBoards={data.boards}
+                    >
+                        <AfterSuccessfulAuth
+                            initialBoardId={data.currentBoard.id}
+                        />
+                    </SessionContextProvider>
+                ) : (
+                    <AuthError />
+                ))}
+        </>
     );
 }
 
@@ -78,11 +88,15 @@ function AfterSuccessfulAuth({ initialBoardId }: { initialBoardId: string }) {
     const sessionContext = useContext(SessionContext);
     const firstTimeVisitorContext = useContext(FirstTimeVisitorContext);
 
-    // My boards <--> Canvas transition
+    // My boards <--> Canvas transition state
     const [showMyBoards, setShowMyBoards] = useState(false);
     const [myBoardsKey, setMyBoardsKey] = useState(0);
     const [canvasEditorKey, setCanvasEditorKey] = useState(0);
-    const [currentBoardId, setCurrentBoardId] = useState(initialBoardId); // Used to transfer board id from MyBoards to CanvasEditor (as MyBoard doesn't have access to CanvasContext)
+
+    // Used to transfer board id from MyBoards to CanvasEditor
+    // (as MyBoard doesn't have access to CanvasContext)
+    const [currentBoardId, setCurrentBoardId] = useState(initialBoardId);
+
     const [tourMenuOpen, setTourMenuOpen] = useState(false);
     const [tourCameraMoveCount, setTourCameraMoveCount] = useState(0);
     const [tourKeepMenuOpen, setTourKeepMenuOpen] = useState(false);
@@ -95,9 +109,10 @@ function AfterSuccessfulAuth({ initialBoardId }: { initialBoardId: string }) {
     async function updateNewBoardLastOpened(newBoardId: string) {
         // this entire method is hopeful api call - no need to display error to user if failed
         await updateBoardLastOpened(newBoardId);
-        // At this point the newly opened board's lastOpened property was opened
-        // The API sorts boards by last opened before returning it to us
-        // Meaning if we get all boards, it'll be sorted so that this new board is at the top.
+
+        // At this point the newly opened board's lastOpened property was updated.
+        // The API sorts boards by last opened before returning it to us,
+        // meaning if we get all boards, it'll be sorted so that this new board is at the top.
         const newSortedBoards = await BoardsAPI.getAllBoards();
         sessionContext.updateBoards(newSortedBoards);
     }
@@ -108,7 +123,9 @@ function AfterSuccessfulAuth({ initialBoardId }: { initialBoardId: string }) {
                 className={`absolute inset-0 z-${showMyBoards === false ? 100 : 1}`}
             >
                 <CanvasContextProvider
-                    key={currentBoardId} // Remount canvas context when the current board changes - so all local variables are synced from server variables
+                    // Remount canvas context when the current board changes
+                    // - so all local variables are synced from server variables
+                    key={currentBoardId}
                     defaultBoardId={currentBoardId}
                     defaultBoardCameraSize={{ x: 1000, y: 1000 }}
                     defaultColor="#000000FF"
@@ -131,12 +148,13 @@ function AfterSuccessfulAuth({ initialBoardId }: { initialBoardId: string }) {
                     />
                 </CanvasContextProvider>
             </div>
+
             <div className="absolute inset-0 z-5">
                 <MyBoards
                     initialBoardId={currentBoardId}
                     key={myBoardsKey}
                     onBoardFinishZoomIn={(boardIdToShow: string) => {
-                        setCanvasEditorKey((k) => k + 1); // force my boards remount
+                        setCanvasEditorKey((k) => k + 1);
                         setCurrentBoardId(boardIdToShow);
                         setShowMyBoards(false);
                         updateNewBoardLastOpened(boardIdToShow);
@@ -199,7 +217,8 @@ function CanvasEditorDiv({
         <CanvasEditor
             key={canvasEditorKey}
             openMyBoards={() => {
-                setMyBoardsKey((k) => k + 1); // force my boards remount
+                // force my boards remount
+                setMyBoardsKey((k: number) => k + 1);
                 setShowMyBoards(true);
             }}
             tourMenuOpen={tourMenuOpen}
@@ -230,21 +249,13 @@ function AuthError() {
     );
 }
 
-async function loadData(): Promise<
-    | {
-          success: true;
-          userData: UserData;
-          boards: BoardData[];
-          currentBoard: BoardData;
-      }
-    | { success: false }
-> {
+async function loadData(): Promise<LoadDataResult> {
     let userData: UserData;
     try {
         userData = await loadUserDataOrCreateGuestUser();
     } catch (err) {
         console.error("Couldn't authenticate user at all!" + err);
-        return { success: false }; // todo: just throw here.
+        return { success: false };
     }
 
     console.log(
@@ -296,6 +307,7 @@ async function loadData(): Promise<
             boards[0].id +
             ")"
     );
+
     return {
         success: true,
         boards: boards,
@@ -309,8 +321,7 @@ async function loadUserDataOrCreateGuestUser(): Promise<UserData> {
     let getUserDataErrorMessage;
     try {
         console.log("Attempting to retrieve current user data.");
-        const getUserDataResult = await MeAPI.getUserData();
-        return getUserDataResult;
+        return await MeAPI.getUserData();
     } catch (err) {
         if (err instanceof Error) {
             getUserDataErrorMessage = err.message;
@@ -318,6 +329,7 @@ async function loadUserDataOrCreateGuestUser(): Promise<UserData> {
         console.warn("Couldn't fetch user data. " + err);
     }
 
+    // Logic to handle potential server-side errors vs auth errors
     if (
         getUserDataErrorMessage !== "Unauthorized (401)" &&
         getUserDataErrorMessage !== "Invalid refresh token." &&
@@ -327,30 +339,20 @@ async function loadUserDataOrCreateGuestUser(): Promise<UserData> {
             "Error does not have to do with refresh token being invalid. Could be a server-side error. Not logging out this user yet."
         );
         throw new Error("Couldn't authenticate user.");
-        // todo: if refresh token expired error, tell user to re-log back in
     }
 
     if (getUserDataErrorMessage === "Refresh token expired.") {
-        console.log(
-            "Refresh token has expired. TODO: Replace this log message with a useful message for the client and prompt user to re-log in."
-        );
+        console.log("Refresh token has expired. Prompt user to re-log in.");
         throw new Error("Couldn't authenticate user.");
     }
 
-    // Reaching this line pretty much guarantees we don't have a guest user because the refresh token is invalid.
-    // On guest users, refresh tokens never expire, and shouldn't be invalid. Theoretically, this could happen if we change the
-    // refresh token format but that's beyond the scope of this flow.
-    // Therefore, it's ok to create a new user, locking the client out of the previously logged-into guest user and preventing its use forever
-    // (because there isn't one.)
-    console.log(
-        "Failed to fetch data because refresh token is invalid/nonexistent. Proceeding to create guest user."
-    );
-    // If doesn't exist, attempt to create guest user
+    // Reaching this line indicates we need to create a guest user
+    // because the refresh token is invalid or non-existent.
+    console.log("Failed to fetch data. Proceeding to create guest user.");
     try {
         console.log("Attempting to create guest user.");
         await GuestUsersAPI.createGuestUser();
-        const getUserDataResult = await MeAPI.getUserData();
-        return getUserDataResult;
+        return await MeAPI.getUserData();
     } catch (err) {
         console.error("Couldn't create guest user. " + err);
     }
