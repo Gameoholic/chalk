@@ -1,22 +1,22 @@
 import { useContext, useEffect, useRef, useState } from "react";
-import CanvasEditor from "./canvas/CanvasEditor.tsx";
-import { BoardData, UserData, ObjectlessBoardData } from "./types/data.ts";
-import { BoardsAPI, AuthAPI, GuestUsersAPI, MeAPI } from "./api";
-import MyBoards from "./my-boards/MyBoards";
+import CanvasEditor from "../canvas/CanvasEditor.tsx";
+import { BoardData, UserData, ObjectlessBoardData } from "../types/data.ts";
+import { BoardsAPI, AuthAPI, GuestUsersAPI, MeAPI } from "../api/index.ts";
+import MyBoards from "../my-boards/MyBoards.tsx";
 import {
     SessionContext,
     SessionContextProvider,
-} from "./types/context/SessionContext.tsx";
+} from "../types/context/SessionContext.tsx";
 import {
     CanvasContext,
     CanvasContextProvider,
-} from "./types/context/CanvasContext.tsx";
-import { WorldObject } from "./types/canvas";
-import { ThemeContext } from "./types/context/ThemeContext.tsx";
-import { updateBoardLastOpened } from "./api/boards";
-import { FirstTimeVisitorContext } from "./types/context/FirstTimeVisitorContext";
-import WelcomeScreen from "./canvas/WelcomeScreen";
-import TourOverlay from "./canvas/TourOverlay";
+} from "../types/context/CanvasContext.tsx";
+import { WorldObject } from "../types/canvas.ts";
+import { updateBoardLastOpened } from "../api/boards.ts";
+import { FirstTimeVisitorContext } from "../types/context/FirstTimeVisitorContext.tsx";
+import WelcomeScreen from "../canvas/WelcomeScreen.tsx";
+import TourOverlay from "../canvas/TourOverlay.tsx";
+import LoadingScreen from "./LoadingScreen";
 
 type LoadDataResult =
     | {
@@ -44,6 +44,7 @@ export default function CanvasLoader() {
             const result = await dataFetchPromise.current;
             if (!cancelled) {
                 setData(result);
+                await new Promise((res) => setTimeout(res, 500)); // Artifical delay so it doesn't flash too quickly on fast connections
                 setLoading(false);
             }
         }
@@ -56,7 +57,7 @@ export default function CanvasLoader() {
     }, []);
 
     if (loading) {
-        return <LoadingScreen />;
+        return <LoadingScreen isReady={!loading} />;
     }
 
     if (!data || !data.success) {
@@ -68,21 +69,12 @@ export default function CanvasLoader() {
             defaultUserData={data.userData}
             defaultBoards={data.boards}
         >
-            <AfterSuccessfulAuth
-                initialBoardId={data.currentBoard.id}
-                initialBoardObjects={data.currentBoard.objects}
-            />
+            <AfterSuccessfulAuth initialBoardId={data.currentBoard.id} />
         </SessionContextProvider>
     );
 }
 
-function AfterSuccessfulAuth({
-    initialBoardId,
-    initialBoardObjects,
-}: {
-    initialBoardId: string;
-    initialBoardObjects: WorldObject[];
-}) {
+function AfterSuccessfulAuth({ initialBoardId }: { initialBoardId: string }) {
     const sessionContext = useContext(SessionContext);
     const firstTimeVisitorContext = useContext(FirstTimeVisitorContext);
 
@@ -232,25 +224,6 @@ function AuthError() {
                         We couldn't authenticate you. Please refresh the page or
                         try again later.
                     </p>
-                </div>
-            </div>
-        </div>
-    );
-}
-
-function LoadingScreen() {
-    return (
-        <div className="flex min-h-screen items-center justify-center bg-white">
-            <div className="flex flex-col items-center gap-6">
-                {/* Animated blob */}
-                <div className="relative h-16 w-16">
-                    <span className="absolute inset-0 animate-ping rounded-full bg-zinc-900/20" />
-                    <span className="absolute inset-0 rounded-full bg-zinc-900" />
-                </div>
-
-                {/* Loading text */}
-                <div className="text-sm font-medium tracking-wide text-black">
-                    Loading canvas…
                 </div>
             </div>
         </div>

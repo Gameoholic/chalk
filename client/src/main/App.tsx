@@ -1,5 +1,5 @@
 import { useContext, useEffect } from "react";
-import CanvasLoader from "../CanvasLoader.tsx";
+import CanvasLoader from "../canvas-loader/CanvasLoader.tsx";
 import { ThemeContext } from "../types/context/ThemeContext.tsx";
 import { ShowDebugInfoContext } from "../types/context/ShowDebugInfoContext";
 import { AntiAliasingContext } from "../types/context/AntiAliasingContext";
