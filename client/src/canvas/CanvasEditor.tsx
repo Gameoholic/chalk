@@ -43,9 +43,6 @@ interface CanvasEditorProps {
     openMyBoards: () => void;
     tourMenuOpen?: boolean;
     setTourMenuOpen?: (open: boolean) => void;
-    setManageBoardModalOpenForTour?: React.Dispatch<
-        React.SetStateAction<boolean>
-    >;
     onTourCameraMoved?: () => void;
     isTourActive?: boolean;
 }
@@ -55,7 +52,6 @@ function CanvasEditor({
     openMyBoards,
     tourMenuOpen,
     setTourMenuOpen,
-    setManageBoardModalOpenForTour,
     onTourCameraMoved,
     isTourActive,
 }: CanvasEditorProps) {
@@ -741,9 +737,6 @@ function CanvasEditor({
                                 label="Manage This Board"
                                 onClick={() => {
                                     setShowManageThisBoardModal(true);
-                                    if (setManageBoardModalOpenForTour) {
-                                        setManageBoardModalOpenForTour(true);
-                                    }
                                 }}
                             />
                         </div>
@@ -865,9 +858,6 @@ function CanvasEditor({
                     onDelete={handleDeleteBoard}
                     onClose={() => {
                         setShowManageThisBoardModal(false);
-                        if (setManageBoardModalOpenForTour) {
-                            setManageBoardModalOpenForTour(false);
-                        }
                     }}
                 />
             )}

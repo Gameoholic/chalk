@@ -92,8 +92,6 @@ function AfterSuccessfulAuth({
     const [canvasEditorKey, setCanvasEditorKey] = useState(0);
     const [currentBoardId, setCurrentBoardId] = useState(initialBoardId); // Used to transfer board id from MyBoards to CanvasEditor (as MyBoard doesn't have access to CanvasContext)
     const [tourMenuOpen, setTourMenuOpen] = useState(false);
-    const [manageBoardModalOpenForTour, setManageBoardModalOpenForTour] =
-        useState(false);
     const [tourCameraMoveCount, setTourCameraMoveCount] = useState(0);
     const handleWelcomeDismiss = () => {
         firstTimeVisitorContext.setValue("tour");
@@ -129,9 +127,6 @@ function AfterSuccessfulAuth({
                         setShowMyBoards={setShowMyBoards}
                         tourMenuOpen={tourMenuOpen}
                         setTourMenuOpen={setTourMenuOpen}
-                        setManageBoardModalOpenForTour={
-                            setManageBoardModalOpenForTour
-                        }
                         onTourCameraMoved={() =>
                             setTourCameraMoveCount((prev) => prev + 1)
                         }
@@ -168,7 +163,6 @@ function AfterSuccessfulAuth({
                     onDone={() => firstTimeVisitorContext.setValue("false")}
                     menuOpen={tourMenuOpen}
                     setMenuOpen={setTourMenuOpen}
-                    manageBoardModalOpen={manageBoardModalOpenForTour}
                     cameraMoveCount={tourCameraMoveCount}
                 />
             )}
@@ -183,7 +177,6 @@ function CanvasEditorDiv({
     setShowMyBoards,
     tourMenuOpen,
     setTourMenuOpen,
-    setManageBoardModalOpenForTour,
     onTourCameraMoved,
     isTourActive,
 }: {
@@ -193,9 +186,6 @@ function CanvasEditorDiv({
     setShowMyBoards: React.Dispatch<React.SetStateAction<boolean>>;
     tourMenuOpen: boolean;
     setTourMenuOpen: (open: boolean) => void;
-    setManageBoardModalOpenForTour: React.Dispatch<
-        React.SetStateAction<boolean>
-    >;
     onTourCameraMoved: () => void;
     isTourActive: boolean;
 }) {
@@ -211,7 +201,6 @@ function CanvasEditorDiv({
             }}
             tourMenuOpen={tourMenuOpen}
             setTourMenuOpen={setTourMenuOpen}
-            setManageBoardModalOpenForTour={setManageBoardModalOpenForTour}
             onTourCameraMoved={onTourCameraMoved}
             isTourActive={isTourActive}
         />

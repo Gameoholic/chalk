@@ -79,7 +79,6 @@ interface TourOverlayProps {
     onDone: () => void;
     menuOpen: boolean;
     setMenuOpen: (open: boolean) => void;
-    manageBoardModalOpen: boolean;
     cameraMoveCount: number;
 }
 
@@ -87,7 +86,6 @@ export default function TourOverlay({
     onDone,
     menuOpen,
     setMenuOpen,
-    manageBoardModalOpen,
     cameraMoveCount,
 }: TourOverlayProps) {
     const firstTimeVisitorContext = useContext(FirstTimeVisitorContext);
@@ -134,12 +132,6 @@ export default function TourOverlay({
             setCurrentStep(1);
         }
     }, [menuOpen]);
-
-    useEffect(() => {
-        if (currentStep === 2 && manageBoardModalOpen) {
-            setCurrentStep(3);
-        }
-    }, [manageBoardModalOpen]);
 
     useEffect(() => {
         if (currentStep === 1) {
