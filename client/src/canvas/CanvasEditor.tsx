@@ -15,6 +15,7 @@ import {
     TriangleAlert,
     Moon,
     Sun,
+    SlidersHorizontal,
 } from "lucide-react";
 import {
     deleteBoard,
@@ -38,6 +39,7 @@ import { logout } from "../api/auth";
 import { updateUserDisplayName } from "../api/me";
 import { env } from "../env";
 import { ShowDebugInfoContext } from "../types/context/ShowDebugInfoContext";
+import AdvancedOptionsModal from "./modals/AdvancedOptionsModal";
 
 interface CanvasEditorProps {
     openMyBoards: () => void;
@@ -97,6 +99,8 @@ function CanvasEditor({
     // Menu
     const [menuOpen, setMenuOpen] = useState(false);
     const [showManageThisBoardModal, setShowManageThisBoardModal] =
+        useState(false);
+    const [showAdvancedOptionsModal, setShowAdvancedOptionsModal] =
         useState(false);
     const [authView, setAuthView] = useState<
         "login" | "forgot-password" | "create-account" | "manage-user" | null
@@ -763,32 +767,9 @@ function CanvasEditor({
                         </div>
 
                         <MenuItem
-                            icon={
-                                themeContext.theme === "light" ? (
-                                    <Moon size={18} />
-                                ) : (
-                                    <Sun size={18} />
-                                )
-                            }
-                            label={`Switch to ${themeContext.theme === "light" ? "Dark" : "Light"} Mode`}
-                            onClick={() =>
-                                themeContext.updateTheme(
-                                    themeContext.theme === "light"
-                                        ? "dark"
-                                        : "light"
-                                )
-                            }
-                        />
-                        <MenuItem
-                            icon={<Info size={18} />}
-                            label={
-                                showDebugInfoContext.value
-                                    ? "Hide Debug Info"
-                                    : "Show Debug Info"
-                            }
-                            onClick={() =>
-                                showDebugInfoContext.setValue((prev) => !prev)
-                            }
+                            icon={<SlidersHorizontal size={18} />}
+                            label="Advanced Options"
+                            onClick={() => setShowAdvancedOptionsModal(true)}
                         />
                     </div>
                 </div>
@@ -871,6 +852,13 @@ function CanvasEditor({
                     onClose={() => {
                         setShowManageThisBoardModal(false);
                     }}
+                />
+            )}
+
+            {/* Advanced Options Modal */}
+            {showAdvancedOptionsModal && (
+                <AdvancedOptionsModal
+                    onClose={() => setShowAdvancedOptionsModal(false)}
                 />
             )}
 
