@@ -79,26 +79,6 @@ export default function WelcomeScreen({
                                 </p>
                             </div>
 
-                            {/* Free account upsell */}
-                            <div
-                                className="w-full rounded-2xl px-4 py-3 text-left text-sm"
-                                style={{
-                                    backgroundColor: "#2a2a2a",
-                                    borderLeft: "3px solid #ff8ca5",
-                                    color: "#c0c0c0",
-                                }}
-                            >
-                                <span
-                                    style={{ color: "#ffa4b8" }}
-                                    className="font-semibold"
-                                >
-                                    Want more?
-                                </span>{" "}
-                                Create a free account to unlock multiple boards,
-                                persistent saves across devices, and more
-                                features.
-                            </div>
-
                             {/* CTAs */}
                             <div className="flex w-full flex-col gap-3">
                                 <button
@@ -119,6 +99,26 @@ export default function WelcomeScreen({
                                 >
                                     Start drawing
                                 </button>
+
+                                {/* Free account advertisement */}
+                                <div
+                                    className="mt-7 w-full rounded-2xl px-4 py-3 text-left text-sm"
+                                    style={{
+                                        backgroundColor: "#2a2a2a",
+                                        borderLeft: "3px solid #ff8ca5",
+                                        color: "#c0c0c0",
+                                    }}
+                                >
+                                    <span
+                                        style={{ color: "#ffa4b8" }}
+                                        className="font-semibold"
+                                    >
+                                        Want more?
+                                    </span>{" "}
+                                    Create a free account to unlock multiple
+                                    boards, persistent saves across devices, and
+                                    more features.
+                                </div>
 
                                 <button
                                     onClick={() => {

@@ -90,7 +90,7 @@ function AfterSuccessfulAuth({
     const [showMyBoards, setShowMyBoards] = useState(false);
     const [myBoardsKey, setMyBoardsKey] = useState(0);
     const [canvasEditorKey, setCanvasEditorKey] = useState(0);
-    const [currentBoardId, setCurrentBoardId] = useState(initialBoardId);
+    const [currentBoardId, setCurrentBoardId] = useState(initialBoardId); // Used to transfer board id from MyBoards to CanvasEditor (as MyBoard doesn't have access to CanvasContext)
     const [tourMenuOpen, setTourMenuOpen] = useState(false);
     const [tourCameraMoveCount, setTourCameraMoveCount] = useState(0);
     const [tourKeepMenuOpen, setTourKeepMenuOpen] = useState(false);
@@ -100,7 +100,11 @@ function AfterSuccessfulAuth({
     };
 
     async function updateNewBoardLastOpened(newBoardId: string) {
+        // this entire method is hopeful api call - no need to display error to user if failed
         await updateBoardLastOpened(newBoardId);
+        // At this point the newly opened board's lastOpened property was opened
+        // The API sorts boards by last opened before returning it to us
+        // Meaning if we get all boards, it'll be sorted so that this new board is at the top.
         const newSortedBoards = await BoardsAPI.getAllBoards();
         sessionContext.updateBoards(newSortedBoards);
     }
@@ -111,7 +115,7 @@ function AfterSuccessfulAuth({
                 className={`absolute inset-0 z-${showMyBoards === false ? 100 : 1}`}
             >
                 <CanvasContextProvider
-                    key={currentBoardId}
+                    key={currentBoardId} // Remount canvas context when the current board changes - so all local variables are synced from server variables
                     defaultBoardId={currentBoardId}
                     defaultBoardCameraSize={{ x: 1000, y: 1000 }}
                     defaultColor="#000000FF"
@@ -137,7 +141,7 @@ function AfterSuccessfulAuth({
                     initialBoardId={currentBoardId}
                     key={myBoardsKey}
                     onBoardFinishZoomIn={(boardIdToShow: string) => {
-                        setCanvasEditorKey((k) => k + 1);
+                        setCanvasEditorKey((k) => k + 1); // force my boards remount
                         setCurrentBoardId(boardIdToShow);
                         setShowMyBoards(false);
                         updateNewBoardLastOpened(boardIdToShow);
@@ -195,7 +199,7 @@ function CanvasEditorDiv({
         <CanvasEditor
             key={canvasEditorKey}
             openMyBoards={() => {
-                setMyBoardsKey((k) => k + 1);
+                setMyBoardsKey((k) => k + 1); // force my boards remount
                 setShowMyBoards(true);
             }}
             tourMenuOpen={tourMenuOpen}
@@ -257,7 +261,7 @@ async function loadData(): Promise<
         userData = await loadUserDataOrCreateGuestUser();
     } catch (err) {
         console.error("Couldn't authenticate user at all!" + err);
-        return { success: false };
+        return { success: false }; // todo: just throw here.
     }
 
     console.log(
@@ -318,6 +322,7 @@ async function loadData(): Promise<
 }
 
 async function loadUserDataOrCreateGuestUser(): Promise<UserData> {
+    // Try fetching user data to see if user exists first
     let getUserDataErrorMessage;
     try {
         console.log("Attempting to retrieve current user data.");
@@ -339,6 +344,7 @@ async function loadUserDataOrCreateGuestUser(): Promise<UserData> {
             "Error does not have to do with refresh token being invalid. Could be a server-side error. Not logging out this user yet."
         );
         throw new Error("Couldn't authenticate user.");
+        // todo: if refresh token expired error, tell user to re-log back in
     }
 
     if (getUserDataErrorMessage === "Refresh token expired.") {
@@ -348,9 +354,15 @@ async function loadUserDataOrCreateGuestUser(): Promise<UserData> {
         throw new Error("Couldn't authenticate user.");
     }
 
+    // Reaching this line pretty much guarantees we don't have a guest user because the refresh token is invalid.
+    // On guest users, refresh tokens never expire, and shouldn't be invalid. Theoretically, this could happen if we change the
+    // refresh token format but that's beyond the scope of this flow.
+    // Therefore, it's ok to create a new user, locking the client out of the previously logged-into guest user and preventing its use forever
+    // (because there isn't one.)
     console.log(
         "Failed to fetch data because refresh token is invalid/nonexistent. Proceeding to create guest user."
     );
+    // If doesn't exist, attempt to create guest user
     try {
         console.log("Attempting to create guest user.");
         await GuestUsersAPI.createGuestUser();
