@@ -88,7 +88,7 @@ function AfterSuccessfulAuth({ initialBoardId }: { initialBoardId: string }) {
     const sessionContext = useContext(SessionContext);
     const firstTimeVisitorContext = useContext(FirstTimeVisitorContext);
 
-    // My boards <--> Canvas transition state
+    // My boards <--> Canvas transition
     const [showMyBoards, setShowMyBoards] = useState(false);
     const [myBoardsKey, setMyBoardsKey] = useState(0);
     const [canvasEditorKey, setCanvasEditorKey] = useState(0);
@@ -154,6 +154,7 @@ function AfterSuccessfulAuth({ initialBoardId }: { initialBoardId: string }) {
                     initialBoardId={currentBoardId}
                     key={myBoardsKey}
                     onBoardFinishZoomIn={(boardIdToShow: string) => {
+                        // force my boards remount
                         setCanvasEditorKey((k) => k + 1);
                         setCurrentBoardId(boardIdToShow);
                         setShowMyBoards(false);
@@ -329,7 +330,6 @@ async function loadUserDataOrCreateGuestUser(): Promise<UserData> {
         console.warn("Couldn't fetch user data. " + err);
     }
 
-    // Logic to handle potential server-side errors vs auth errors
     if (
         getUserDataErrorMessage !== "Unauthorized (401)" &&
         getUserDataErrorMessage !== "Invalid refresh token." &&
@@ -342,13 +342,20 @@ async function loadUserDataOrCreateGuestUser(): Promise<UserData> {
     }
 
     if (getUserDataErrorMessage === "Refresh token expired.") {
-        console.log("Refresh token has expired. Prompt user to re-log in.");
+        console.log(
+            "Refresh token has expired. TODO: Replace this log message with a useful message for the client and prompt user to re-log in."
+        );
         throw new Error("Couldn't authenticate user.");
+        // todo: if refresh token expired error, tell user to re-log back in
     }
 
-    // Reaching this line indicates we need to create a guest user
-    // because the refresh token is invalid or non-existent.
+    // Reaching this line pretty much guarantees we don't have a guest user because the refresh token is invalid.
+    // On guest users, refresh tokens never expire, and shouldn't be invalid. Theoretically, this could happen if we change the
+    // refresh token format but that's beyond the scope of this flow.
+    // Therefore, it's ok to create a new user, locking the client out of the previously logged-into guest user and preventing its use forever
+    // (because there isn't one.)
     console.log("Failed to fetch data. Proceeding to create guest user.");
+    // If doesn't exist, attempt to create guest user
     try {
         console.log("Attempting to create guest user.");
         await GuestUsersAPI.createGuestUser();
