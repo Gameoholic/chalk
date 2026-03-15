@@ -50,7 +50,8 @@ function calculateBasePosition(angle: number, radius: number) {
 
 function calculateHue(angle: number): number {
     const hueDegrees = (angle * 180) / Math.PI - 90 - 180;
-    return ((hueDegrees % 360) + 360) % 360;
+    // Applied Math.round to prevent floating-point precision issues
+    return Math.round(((hueDegrees % 360) + 360) % 360);
 }
 
 interface ColorDotProps {
@@ -563,16 +564,16 @@ export default function ColorPicker({
     const selectedColor = value !== undefined ? value : internalColor;
     const opacity = opacityProp !== undefined ? opacityProp : internalOpacity;
 
-    // Parse color and opacity from value
+    // Updated regex to accept decimals and ensure parsed numbers are rounded cleanly
     const parseColor = (colorStr: string | null) => {
         if (!colorStr) return { color: null, opacity: 100 };
         const hslaMatch = colorStr.match(
-            /hsla?\((\d+),\s*(\d+)%,\s*(\d+)%(?:,\s*([\d.]+))?\)/
+            /hsla?\(([\d.]+),\s*([\d.]+)%,\s*([\d.]+)%(?:,\s*([\d.]+))?\)/
         );
         if (hslaMatch) {
-            const h = parseInt(hslaMatch[1]);
-            const s = parseInt(hslaMatch[2]);
-            const l = parseInt(hslaMatch[3]);
+            const h = Math.round(parseFloat(hslaMatch[1]));
+            const s = Math.round(parseFloat(hslaMatch[2]));
+            const l = Math.round(parseFloat(hslaMatch[3]));
             const a = hslaMatch[4] ? parseFloat(hslaMatch[4]) * 100 : 100;
             return { color: `hsl(${h}, ${s}%, ${l}%)`, opacity: a };
         }

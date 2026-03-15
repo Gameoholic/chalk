@@ -27,6 +27,7 @@ chalk.gameoholic.dev
 - [ ] Delete specific objects
 
 #### 🎨 Visual & Polish & QOL
+- [ ] Before logging in while on guest user, warn that board will be deleted
 - [ ] Responsive design for mobile and all window sizes
 - [ ] Better error messages (like in our modify board/account modals!) when fail to create account / log in
 - [ ] Make creation of board update MyBoards instead of reloading (animation to add the board instead of just updating it plainly)
@@ -63,8 +64,8 @@ chalk.gameoholic.dev
 - [ ] Don't update board's last camera properties every frame. Do it at the same time as object save. (in fact, put their logic in the same function)
 
 #### 🐞 Bugs
+- [ ] Menu automatically opens when going from My Boards (tour prop problem)
 - [ ] Fix server.ts CORS
-- [ ] Changing opacity in color picker doesn't work
 
 #### 🔒 Dev Experience
 - [ ] Make all models fetch requests behave the same way (right now login and create account behave differently than modify account/board modals)
