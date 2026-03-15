@@ -65,6 +65,7 @@ chalk.gameoholic.dev
 - [ ] Don't update board's last camera properties every frame. Do it at the same time as object save. (in fact, put their logic in the same function)
 
 #### 🐞 Bugs
+- [ ] If skipping tour, menu will stay open forever
 - [ ] Menu automatically opens when going from My Boards (tour prop problem)
 - [ ] Fix server.ts CORS
 
