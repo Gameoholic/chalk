@@ -25,9 +25,13 @@ function Root() {
     const showAntiAliasing = savedAntiAliasing === "true"; // Default to false
 
     // If the key has never been set, this is a first-time visitor
-    const savedFirstTimeVisitor = localStorage.getItem("first-time-visitor");
+    const savedFirstTimeVisitor = localStorage.getItem("first-time-visitor") as
+        | "welcome"
+        | "tour"
+        | "false"
+        | null;
     const isFirstTimeVisitor =
-        savedFirstTimeVisitor === null || savedFirstTimeVisitor === "true";
+        savedFirstTimeVisitor === null ? "welcome" : savedFirstTimeVisitor;
 
     return (
         <FirstTimeVisitorContextProvider defaultValue={isFirstTimeVisitor}>

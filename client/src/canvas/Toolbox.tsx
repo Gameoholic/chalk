@@ -4,7 +4,13 @@ import { Tool } from "../types/canvas";
 import ColorPicker from "../components/ColorPicker";
 import { CanvasContext } from "../types/context/CanvasContext";
 
-const Toolbox = ({ className }: { className: string }) => {
+const Toolbox = ({
+    className,
+    ...props
+}: {
+    className: string;
+    [key: string]: any;
+}) => {
     const canvasContext = useContext(CanvasContext);
 
     const [showColorPicker, setShowColorPicker] = useState<boolean>(false);
@@ -93,6 +99,7 @@ const Toolbox = ({ className }: { className: string }) => {
     return (
         <div
             className={`absolute flex w-20 flex-col items-center space-y-4 p-3 ${className}`}
+            {...props}
             style={{
                 backgroundColor: "var(--card)",
                 color: "var(--card-foreground)",

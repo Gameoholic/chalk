@@ -1,8 +1,10 @@
 import { createContext, useState } from "react";
 
 interface FirstTimeVisitorContextType {
-    value: boolean;
-    setValue: React.Dispatch<React.SetStateAction<boolean>>;
+    value: "welcome" | "tour" | "false";
+    setValue: React.Dispatch<
+        React.SetStateAction<"welcome" | "tour" | "false">
+    >;
 }
 
 export const FirstTimeVisitorContext =
@@ -13,9 +15,11 @@ export function FirstTimeVisitorContextProvider({
     defaultValue,
 }: {
     children: React.ReactNode;
-    defaultValue: boolean;
+    defaultValue: "welcome" | "tour" | "false";
 }) {
-    const [value, setValue] = useState<boolean>(defaultValue);
+    const [value, setValue] = useState<"welcome" | "tour" | "false">(
+        defaultValue
+    );
 
     return (
         <FirstTimeVisitorContext.Provider value={{ value, setValue }}>

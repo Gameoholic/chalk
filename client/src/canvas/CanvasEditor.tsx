@@ -41,15 +41,23 @@ import { ShowDebugInfoContext } from "../types/context/ShowDebugInfoContext";
 
 interface CanvasEditorProps {
     openMyBoards: () => void;
-    openLoginOnMount: boolean;
-    onLoginOpened: () => void;
+    tourMenuOpen?: boolean;
+    setTourMenuOpen?: (open: boolean) => void;
+    setManageBoardModalOpenForTour?: React.Dispatch<
+        React.SetStateAction<boolean>
+    >;
+    onTourCameraMoved?: () => void;
+    isTourActive?: boolean;
 }
 
 // Handles saving and uploading data, as well as tool selection and all overlays
 function CanvasEditor({
     openMyBoards,
-    openLoginOnMount,
-    onLoginOpened,
+    tourMenuOpen,
+    setTourMenuOpen,
+    setManageBoardModalOpenForTour,
+    onTourCameraMoved,
+    isTourActive,
 }: CanvasEditorProps) {
     const themeContext = useContext(ThemeContext);
     const showDebugInfoContext = useContext(ShowDebugInfoContext);
@@ -124,11 +132,10 @@ function CanvasEditor({
 
     // Open login modal when requested from welcome screen
     useEffect(() => {
-        if (openLoginOnMount) {
-            setAuthView("login");
-            onLoginOpened();
+        if (tourMenuOpen !== undefined && setTourMenuOpen) {
+            setMenuOpen(tourMenuOpen);
         }
-    }, [openLoginOnMount, onLoginOpened]);
+    }, [tourMenuOpen, setTourMenuOpen]);
 
     // Saving objects
     // Objects that are currently being saved (mid-fetch request)
@@ -232,6 +239,10 @@ function CanvasEditor({
     // When camera is ready to be saved to database (camera finished dragging or zoom changed).
     function onCameraCommit() {
         console.log("Requesting to commit camera state to database.");
+
+        if (onTourCameraMoved) {
+            onTourCameraMoved();
+        }
 
         requestSaveObjectsOnDatabase();
     }
@@ -600,7 +611,7 @@ function CanvasEditor({
     return (
         <div className="relative h-screen w-screen">
             {/* Canvas */}
-            <div className="h-full w-full">
+            <div className="h-full w-full" data-tour-id="canvas">
                 <CanvasInteractive
                     key={canvasContext.local_currentBoardId}
                     onObjectsCommit={onObjectsCommit}
@@ -656,16 +667,24 @@ function CanvasEditor({
                 {/* Top-left menu container */}
                 <div
                     className={`absolute top-4 left-4 z-3 ${!menuOpen ? "pointer-events-none" : ""}`}
-                    onMouseLeave={() => setMenuOpen(false)}
+                    onMouseLeave={() => {
+                        if (!isTourActive) {
+                            setMenuOpen(false);
+                        }
+                    }}
                 >
                     {/* Menu burger icon — opens menu */}
                     <button
-                        onMouseEnter={() => setMenuOpen(true)}
+                        onMouseEnter={() => {
+                            setMenuOpen(true);
+                            if (setTourMenuOpen) setTourMenuOpen(true);
+                        }}
                         className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full shadow-md transition-colors"
                         style={{
                             backgroundColor: "var(--card)",
                             color: "var(--card-foreground)",
                         }}
+                        data-tour-id="menu-button"
                     >
                         <Menu size={22} />
                     </button>
@@ -679,52 +698,64 @@ function CanvasEditor({
                         }`}
                         style={{ backgroundColor: "var(--card)" }}
                     >
-                        {sessionContext.userData.role === "guest" && (
+                        <div data-tour-id="menu-login-boards">
+                            {sessionContext.userData.role === "guest" && (
+                                <MenuItem
+                                    icon={<User size={18} />}
+                                    label="Login"
+                                    onClick={() => setAuthView("login")}
+                                />
+                            )}
+                            {sessionContext.userData.role === "user" && (
+                                <MenuItem
+                                    icon={<User size={18} />}
+                                    label={
+                                        "Manage account: " +
+                                        sessionContext.userData.displayName
+                                    }
+                                    onClick={() => setAuthView("manage-user")}
+                                />
+                            )}
                             <MenuItem
-                                icon={<User size={18} />}
-                                label="Login"
-                                onClick={() => setAuthView("login")}
+                                icon={<LayoutDashboard size={18} />}
+                                label="My Boards"
+                                disabled={
+                                    sessionContext.userData.role === "guest"
+                                }
+                                disabledTooltip="You must be logged in to access additional boards."
+                                onClick={() => {
+                                    if (!hasPendingSaveOperations()) {
+                                        openMyBoards();
+                                    } else {
+                                        // quicken the save process and queue the navigate to my boards until save finishes
+                                        setQueued_navigateToMyBoards(true);
+                                        startCooldownTimeout(true);
+                                    }
+                                }}
                             />
-                        )}
-                        {sessionContext.userData.role === "user" && (
+                        </div>
+
+                        <div data-tour-id="menu-item-manage-board">
                             <MenuItem
-                                icon={<User size={18} />}
-                                label={
-                                    "Manage account: " +
-                                    sessionContext.userData.displayName
-                                }
-                                onClick={() => setAuthView("manage-user")}
+                                icon={<Settings2 size={18} />}
+                                label="Manage This Board"
+                                onClick={() => {
+                                    setShowManageThisBoardModal(true);
+                                    if (setManageBoardModalOpenForTour) {
+                                        setManageBoardModalOpenForTour(true);
+                                    }
+                                }}
                             />
-                        )}
+                        </div>
 
-                        <MenuItem
-                            icon={<LayoutDashboard size={18} />}
-                            label="My Boards"
-                            disabled={sessionContext.userData.role === "guest"}
-                            disabledTooltip="You must be logged in to access additional boards."
-                            onClick={() => {
-                                if (!hasPendingSaveOperations()) {
-                                    openMyBoards();
-                                } else {
-                                    // quicken the save process and queue the navigate to my boards until save finishes
-                                    setQueued_navigateToMyBoards(true);
-                                    startCooldownTimeout(true);
-                                }
-                            }}
-                        />
-
-                        <MenuItem
-                            icon={<Settings2 size={18} />}
-                            label="Manage This Board"
-                            onClick={() => setShowManageThisBoardModal(true)}
-                        />
-
-                        <MenuItem
-                            icon={<Share2 size={18} />}
-                            label="Share Board"
-                            disabled={true}
-                            disabledTooltip="This feature is not available yet."
-                        />
+                        <div data-tour-id="menu-item-share">
+                            <MenuItem
+                                icon={<Share2 size={18} />}
+                                label="Share Board"
+                                disabled={true}
+                                disabledTooltip="This feature is not available yet."
+                            />
+                        </div>
 
                         <MenuItem
                             icon={
@@ -809,6 +840,7 @@ function CanvasEditor({
                         onClick={handleResetCameraZoom}
                         className="border-border text-card-foreground bg-card rounded-full border px-3 py-1.5 text-xs font-bold shadow-lg backdrop-blur-md transition-all select-none hover:brightness-110 active:scale-95"
                         title="Reset Zoom"
+                        data-tour-id="zoom-reset-button"
                     >
                         {Math.round(
                             canvasContext.local_camera.zoom * 100
@@ -820,7 +852,10 @@ function CanvasEditor({
 
             <motion.div {...fadeInAnimation}>
                 {/* Toolbox */}
-                <Toolbox className="absolute top-4 right-4 rounded-lg" />
+                <Toolbox
+                    className="absolute top-4 right-4 rounded-lg"
+                    data-tour-id="toolbox"
+                />
             </motion.div>
             {/* Manage Board Modal */}
             {showManageThisBoardModal && (
@@ -828,7 +863,12 @@ function CanvasEditor({
                     onRename={handleRenameBoard}
                     onReset={handleResetBoard}
                     onDelete={handleDeleteBoard}
-                    onClose={() => setShowManageThisBoardModal(false)}
+                    onClose={() => {
+                        setShowManageThisBoardModal(false);
+                        if (setManageBoardModalOpenForTour) {
+                            setManageBoardModalOpenForTour(false);
+                        }
+                    }}
                 />
             )}
 

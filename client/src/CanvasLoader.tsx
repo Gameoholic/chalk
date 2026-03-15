@@ -16,6 +16,7 @@ import { ThemeContext } from "./types/context/ThemeContext.tsx";
 import { updateBoardLastOpened } from "./api/boards";
 import { FirstTimeVisitorContext } from "./types/context/FirstTimeVisitorContext";
 import WelcomeScreen from "./canvas/WelcomeScreen";
+import TourOverlay from "./canvas/TourOverlay";
 
 type LoadDataResult =
     | {
@@ -90,11 +91,12 @@ function AfterSuccessfulAuth({
     const [myBoardsKey, setMyBoardsKey] = useState(0);
     const [canvasEditorKey, setCanvasEditorKey] = useState(0);
     const [currentBoardId, setCurrentBoardId] = useState(initialBoardId); // Used to transfer board id from MyBoards to CanvasEditor (as MyBoard doesn't have access to CanvasContext)
-    const [openLoginOnWelcomeDismiss, setOpenLoginOnWelcomeDismiss] =
+    const [tourMenuOpen, setTourMenuOpen] = useState(false);
+    const [manageBoardModalOpenForTour, setManageBoardModalOpenForTour] =
         useState(false);
-
+    const [tourCameraMoveCount, setTourCameraMoveCount] = useState(0);
     const handleWelcomeDismiss = () => {
-        firstTimeVisitorContext.setValue(false);
+        firstTimeVisitorContext.setValue("tour");
     };
 
     async function updateNewBoardLastOpened(newBoardId: string) {
@@ -125,10 +127,15 @@ function AfterSuccessfulAuth({
                         currentBoardId={currentBoardId}
                         setMyBoardsKey={setMyBoardsKey}
                         setShowMyBoards={setShowMyBoards}
-                        openLoginOnMount={openLoginOnWelcomeDismiss}
-                        onLoginOpened={() =>
-                            setOpenLoginOnWelcomeDismiss(false)
+                        tourMenuOpen={tourMenuOpen}
+                        setTourMenuOpen={setTourMenuOpen}
+                        setManageBoardModalOpenForTour={
+                            setManageBoardModalOpenForTour
                         }
+                        onTourCameraMoved={() =>
+                            setTourCameraMoveCount((prev) => prev + 1)
+                        }
+                        isTourActive={firstTimeVisitorContext.value === "tour"}
                     />
                 </CanvasContextProvider>
             </div>
@@ -145,11 +152,24 @@ function AfterSuccessfulAuth({
                 />
             </div>
 
-            {/* Welcome screen, only for first-time visitors — rendered on top of everything */}
-            {firstTimeVisitorContext.value && (
+            {/* Welcome screen, only for first-time visitors — renders on top of everything */}
+            {firstTimeVisitorContext.value === "welcome" && (
                 <WelcomeScreen
                     onDismiss={handleWelcomeDismiss}
-                    onLoginSignUp={() => setOpenLoginOnWelcomeDismiss(true)}
+                    onLoginSignUp={() =>
+                        firstTimeVisitorContext.setValue("false")
+                    }
+                />
+            )}
+
+            {/* Tour overlay, shown after welcome screen — renders on top of everything */}
+            {firstTimeVisitorContext.value === "tour" && (
+                <TourOverlay
+                    onDone={() => firstTimeVisitorContext.setValue("false")}
+                    menuOpen={tourMenuOpen}
+                    setMenuOpen={setTourMenuOpen}
+                    manageBoardModalOpen={manageBoardModalOpenForTour}
+                    cameraMoveCount={tourCameraMoveCount}
                 />
             )}
         </div>
@@ -161,15 +181,23 @@ function CanvasEditorDiv({
     currentBoardId,
     setMyBoardsKey,
     setShowMyBoards,
-    openLoginOnMount,
-    onLoginOpened,
+    tourMenuOpen,
+    setTourMenuOpen,
+    setManageBoardModalOpenForTour,
+    onTourCameraMoved,
+    isTourActive,
 }: {
     canvasEditorKey: number;
     currentBoardId: string;
     setMyBoardsKey: React.Dispatch<React.SetStateAction<number>>;
     setShowMyBoards: React.Dispatch<React.SetStateAction<boolean>>;
-    openLoginOnMount: boolean;
-    onLoginOpened: () => void;
+    tourMenuOpen: boolean;
+    setTourMenuOpen: (open: boolean) => void;
+    setManageBoardModalOpenForTour: React.Dispatch<
+        React.SetStateAction<boolean>
+    >;
+    onTourCameraMoved: () => void;
+    isTourActive: boolean;
 }) {
     const context = useContext(CanvasContext);
     context.setLocalCurrentBoardId(currentBoardId);
@@ -181,8 +209,11 @@ function CanvasEditorDiv({
                 setMyBoardsKey((k) => k + 1); // force my boards remount
                 setShowMyBoards(true);
             }}
-            openLoginOnMount={openLoginOnMount}
-            onLoginOpened={onLoginOpened}
+            tourMenuOpen={tourMenuOpen}
+            setTourMenuOpen={setTourMenuOpen}
+            setManageBoardModalOpenForTour={setManageBoardModalOpenForTour}
+            onTourCameraMoved={onTourCameraMoved}
+            isTourActive={isTourActive}
         />
     );
 }

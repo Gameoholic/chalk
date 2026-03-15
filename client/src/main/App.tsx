@@ -32,7 +32,7 @@ export default function App() {
     useEffect(() => {
         localStorage.setItem(
             "first-time-visitor",
-            firstTimeVisitorContext.value + ""
+            firstTimeVisitorContext.value
         );
     }, [firstTimeVisitorContext.value]);
 
