@@ -13,9 +13,10 @@ import {
 } from "../types/context/CanvasContext.tsx";
 import { updateBoardLastOpened } from "../api/boards.ts";
 import { FirstTimeVisitorContext } from "../types/context/FirstTimeVisitorContext.tsx";
-import WelcomeScreen from "../canvas/WelcomeScreen.tsx";
+import WelcomeScreen from "./WelcomeScreen.tsx";
 import TourOverlay from "../canvas/TourOverlay.tsx";
 import LoadingScreen from "./LoadingScreen";
+import LoadingError from "./LoadingError";
 
 type LoadDataResult =
     | {
@@ -78,7 +79,7 @@ export default function CanvasLoader() {
                         />
                     </SessionContextProvider>
                 ) : (
-                    <AuthError />
+                    <LoadingError />
                 ))}
         </>
     );
@@ -229,24 +230,6 @@ function CanvasEditorDiv({
             openLoginOnMount={openLoginOnMount}
             onLoginOpened={onLoginOpened}
         />
-    );
-}
-
-function AuthError() {
-    return (
-        <div className="flex min-h-screen items-center justify-center text-white">
-            <div className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-[3px]">
-                <div className="rounded-xl bg-zinc-900 p-6 text-center shadow-xl">
-                    <h2 className="text-xl font-semibold text-red-400">
-                        Authentication failed
-                    </h2>
-                    <p className="mt-2 text-zinc-300">
-                        We couldn't authenticate you. Please refresh the page or
-                        try again later.
-                    </p>
-                </div>
-            </div>
-        </div>
     );
 }
 
