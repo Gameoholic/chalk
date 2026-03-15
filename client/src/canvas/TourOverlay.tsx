@@ -39,15 +39,6 @@ const TOUR_STEPS = [
         requiresMenuOpen: true,
     },
     {
-        id: "toolbox",
-        title: "Your Toolbox",
-        description:
-            "Draw, erase, and add shapes. Each tool has its own options like color and stroke width — explore them!",
-        target: "toolbox",
-        autoAdvanceOn: null,
-        requiresMenuOpen: false,
-    },
-    {
         id: "canvas-pan",
         title: "Moving Around",
         description:
@@ -62,6 +53,15 @@ const TOUR_STEPS = [
         description: "Use the scroll wheel to zoom in and out of the canvas.",
         target: "canvas",
         autoAdvanceOn: "camera-moved",
+        requiresMenuOpen: false,
+    },
+    {
+        id: "toolbox",
+        title: "Your Toolbox",
+        description:
+            "Draw, erase, and add shapes. Each tool has its own options like color and stroke width — explore them!",
+        target: "toolbox",
+        autoAdvanceOn: null,
         requiresMenuOpen: false,
     },
     {
@@ -80,6 +80,7 @@ interface TourOverlayProps {
     menuOpen: boolean;
     setMenuOpen: (open: boolean) => void;
     cameraMoveCount: number;
+    onRequiresMenuOpenChange: (value: boolean) => void;
 }
 
 export default function TourOverlay({
@@ -87,6 +88,7 @@ export default function TourOverlay({
     menuOpen,
     setMenuOpen,
     cameraMoveCount,
+    onRequiresMenuOpenChange,
 }: TourOverlayProps) {
     const firstTimeVisitorContext = useContext(FirstTimeVisitorContext);
     const [currentStep, setCurrentStep] = useState(0);
@@ -95,18 +97,32 @@ export default function TourOverlay({
     const currentStepData = TOUR_STEPS[currentStep];
 
     const stepEntryCountRef = useRef(cameraMoveCount);
-    useEffect(() => {
-        stepEntryCountRef.current = cameraMoveCount;
-    }, [currentStep]);
 
-    // Auto-advance on camera movement (steps 5, 6, 7)
+    // Handle menu open/close, requiresMenuOpen signal, and reset entry ref on step change
+    useEffect(() => {
+        onRequiresMenuOpenChange(TOUR_STEPS[currentStep].requiresMenuOpen);
+        if (currentStep === 1) setMenuOpen(true);
+        if (currentStep === 4) setMenuOpen(false);
+        stepEntryCountRef.current = cameraMoveCount;
+    }, [currentStep, setMenuOpen]);
+
+    // Auto-advance on camera movement (steps 4, 5 and 7)
+    // Step 7 dismisses on click as well — handled by the useEffect below
     useEffect(() => {
         if (cameraMoveCount <= stepEntryCountRef.current) return;
-        if (currentStep === 5) setCurrentStep(6);
-        else if (currentStep === 6) setCurrentStep(7);
-        else if (currentStep === 7) onDone();
+        if (currentStep === 4) {
+            stepEntryCountRef.current = cameraMoveCount;
+            setCurrentStep(5);
+        } else if (currentStep === 5) {
+            stepEntryCountRef.current = cameraMoveCount;
+            setCurrentStep(6);
+        } else if (currentStep === 7) {
+            stepEntryCountRef.current = cameraMoveCount;
+            onDone();
+        }
     }, [cameraMoveCount]);
 
+    // Update spotlight position when step target changes
     useEffect(() => {
         const updateSpotlight = () => {
             const element = document.querySelector(
@@ -127,27 +143,29 @@ export default function TourOverlay({
         };
     }, [currentStepData.target]);
 
+    // Auto-advance step 0 when menu opens
     useEffect(() => {
         if (currentStep === 0 && menuOpen) {
             setCurrentStep(1);
         }
     }, [menuOpen]);
 
-    useEffect(() => {
-        if (currentStep === 1) {
-            setMenuOpen(true);
-        }
-        if (currentStep === 4) {
-            setMenuOpen(false);
-        }
-    }, [currentStep, setMenuOpen]);
-
+    // On the final step, listen for any click to dismiss — with a 1s delay so
+    // residual camera movements from step 5 don't immediately trigger it
     useEffect(() => {
         if (currentStep !== 7) return;
 
-        const handleClick = () => onDone();
-        window.addEventListener("click", handleClick);
-        return () => window.removeEventListener("click", handleClick);
+        let handleClick: () => void;
+
+        const timeoutId = setTimeout(() => {
+            handleClick = () => onDone();
+            window.addEventListener("click", handleClick);
+        }, 1000);
+
+        return () => {
+            clearTimeout(timeoutId);
+            if (handleClick) window.removeEventListener("click", handleClick);
+        };
     }, [currentStep]);
 
     const nextStep = () => {
@@ -164,7 +182,7 @@ export default function TourOverlay({
 
     if (!spotlightRect) return null;
 
-    const tooltipHeight = 200; // Approximate height
+    const tooltipHeight = 200;
     const spaceBelow = window.innerHeight - spotlightRect.bottom;
     const spaceAbove = spotlightRect.top;
 
@@ -190,13 +208,10 @@ export default function TourOverlay({
             return preferredLeft;
         })();
         if (spaceBelow >= tooltipHeight + 16) {
-            // Enough space below
             tooltipTop = spotlightRect.bottom + 16;
         } else if (spaceAbove >= tooltipHeight + 16) {
-            // Enough space above
             tooltipTop = spotlightRect.top - 16 - tooltipHeight;
         } else {
-            // Not enough space, prefer below but clamp
             tooltipTop = Math.max(
                 16,
                 Math.min(

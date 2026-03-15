@@ -90,19 +90,17 @@ function AfterSuccessfulAuth({
     const [showMyBoards, setShowMyBoards] = useState(false);
     const [myBoardsKey, setMyBoardsKey] = useState(0);
     const [canvasEditorKey, setCanvasEditorKey] = useState(0);
-    const [currentBoardId, setCurrentBoardId] = useState(initialBoardId); // Used to transfer board id from MyBoards to CanvasEditor (as MyBoard doesn't have access to CanvasContext)
+    const [currentBoardId, setCurrentBoardId] = useState(initialBoardId);
     const [tourMenuOpen, setTourMenuOpen] = useState(false);
     const [tourCameraMoveCount, setTourCameraMoveCount] = useState(0);
+    const [tourKeepMenuOpen, setTourKeepMenuOpen] = useState(false);
+
     const handleWelcomeDismiss = () => {
         firstTimeVisitorContext.setValue("tour");
     };
 
     async function updateNewBoardLastOpened(newBoardId: string) {
-        // this entire method is hopeful api call - no need to display error to user if failed
         await updateBoardLastOpened(newBoardId);
-        // At this point the newly opened board's lastOpened property was opened
-        // The API sorts boards by last opened before returning it to us
-        // Meaning if we get all boards, it'll be sorted so that this new board is at the top.
         const newSortedBoards = await BoardsAPI.getAllBoards();
         sessionContext.updateBoards(newSortedBoards);
     }
@@ -113,7 +111,7 @@ function AfterSuccessfulAuth({
                 className={`absolute inset-0 z-${showMyBoards === false ? 100 : 1}`}
             >
                 <CanvasContextProvider
-                    key={currentBoardId} // Remount canvas context when the current board changes - so all local variables are synced from server variables
+                    key={currentBoardId}
                     defaultBoardId={currentBoardId}
                     defaultBoardCameraSize={{ x: 1000, y: 1000 }}
                     defaultColor="#000000FF"
@@ -130,7 +128,7 @@ function AfterSuccessfulAuth({
                         onTourCameraMoved={() =>
                             setTourCameraMoveCount((prev) => prev + 1)
                         }
-                        isTourActive={firstTimeVisitorContext.value === "tour"}
+                        keepMenuOpen={tourKeepMenuOpen}
                     />
                 </CanvasContextProvider>
             </div>
@@ -139,7 +137,7 @@ function AfterSuccessfulAuth({
                     initialBoardId={currentBoardId}
                     key={myBoardsKey}
                     onBoardFinishZoomIn={(boardIdToShow: string) => {
-                        setCanvasEditorKey((k) => k + 1); // force my boards remount
+                        setCanvasEditorKey((k) => k + 1);
                         setCurrentBoardId(boardIdToShow);
                         setShowMyBoards(false);
                         updateNewBoardLastOpened(boardIdToShow);
@@ -164,6 +162,7 @@ function AfterSuccessfulAuth({
                     menuOpen={tourMenuOpen}
                     setMenuOpen={setTourMenuOpen}
                     cameraMoveCount={tourCameraMoveCount}
+                    onRequiresMenuOpenChange={setTourKeepMenuOpen}
                 />
             )}
         </div>
@@ -178,7 +177,7 @@ function CanvasEditorDiv({
     tourMenuOpen,
     setTourMenuOpen,
     onTourCameraMoved,
-    isTourActive,
+    keepMenuOpen,
 }: {
     canvasEditorKey: number;
     currentBoardId: string;
@@ -187,7 +186,7 @@ function CanvasEditorDiv({
     tourMenuOpen: boolean;
     setTourMenuOpen: (open: boolean) => void;
     onTourCameraMoved: () => void;
-    isTourActive: boolean;
+    keepMenuOpen: boolean;
 }) {
     const context = useContext(CanvasContext);
     context.setLocalCurrentBoardId(currentBoardId);
@@ -196,13 +195,13 @@ function CanvasEditorDiv({
         <CanvasEditor
             key={canvasEditorKey}
             openMyBoards={() => {
-                setMyBoardsKey((k) => k + 1); // force my boards remount
+                setMyBoardsKey((k) => k + 1);
                 setShowMyBoards(true);
             }}
             tourMenuOpen={tourMenuOpen}
             setTourMenuOpen={setTourMenuOpen}
             onTourCameraMoved={onTourCameraMoved}
-            isTourActive={isTourActive}
+            keepMenuOpen={keepMenuOpen}
         />
     );
 }
@@ -216,7 +215,7 @@ function AuthError() {
                         Authentication failed
                     </h2>
                     <p className="mt-2 text-zinc-300">
-                        We couldn’t authenticate you. Please refresh the page or
+                        We couldn't authenticate you. Please refresh the page or
                         try again later.
                     </p>
                 </div>
@@ -277,7 +276,7 @@ async function loadData(): Promise<
         boards = await BoardsAPI.getAllBoards();
     } catch (err) {
         console.error("Couldn't load boards! " + err);
-        return { success: false }; // todo: just throw here.
+        return { success: false };
     }
     console.log(boards.length + " boards found.");
 
@@ -310,15 +309,6 @@ async function loadData(): Promise<
             boards[0].id +
             ")"
     );
-    // console.log("Fetching most recent board.");
-    // let currentBoard: BoardData;
-    // try {
-    //     currentBoard = await BoardsAPI.getBoardById(boards[0].id);
-    // } catch (err) {
-    //     console.error("Couldn't load board! " + err);
-    //     return { success: false };
-    // }
-    // console.log("Loaded board '" + currentBoard.name + "' as current board.");
     return {
         success: true,
         boards: boards,
@@ -326,8 +316,8 @@ async function loadData(): Promise<
         userData: userData,
     };
 }
+
 async function loadUserDataOrCreateGuestUser(): Promise<UserData> {
-    // Try fetching user data to see if user exists first
     let getUserDataErrorMessage;
     try {
         console.log("Attempting to retrieve current user data.");
@@ -349,7 +339,6 @@ async function loadUserDataOrCreateGuestUser(): Promise<UserData> {
             "Error does not have to do with refresh token being invalid. Could be a server-side error. Not logging out this user yet."
         );
         throw new Error("Couldn't authenticate user.");
-        // todo: if refresh token expired error, tell user to re-log back in
     }
 
     if (getUserDataErrorMessage === "Refresh token expired.") {
@@ -359,15 +348,9 @@ async function loadUserDataOrCreateGuestUser(): Promise<UserData> {
         throw new Error("Couldn't authenticate user.");
     }
 
-    // Reaching this line pretty much guarantees we don't have a guest user because the refresh token is invalid.
-    // On guest users, refresh tokens never expire, and shouldn't be invalid. Theoretically, this could happen if we change the
-    // refresh token format but that's beyond the scope of this flow.
-    // Therefore, it's ok to create a new user, locking the client out of the previously logged-into guest user and preventing its use forever
-    // (because there isn't one.)
     console.log(
         "Failed to fetch data because refresh token is invalid/nonexistent. Proceeding to create guest user."
     );
-    // If doesn't exist, attempt to create guest user
     try {
         console.log("Attempting to create guest user.");
         await GuestUsersAPI.createGuestUser();

@@ -44,7 +44,7 @@ interface CanvasEditorProps {
     tourMenuOpen?: boolean;
     setTourMenuOpen?: (open: boolean) => void;
     onTourCameraMoved?: () => void;
-    isTourActive?: boolean;
+    keepMenuOpen?: boolean;
 }
 
 // Handles saving and uploading data, as well as tool selection and all overlays
@@ -53,7 +53,7 @@ function CanvasEditor({
     tourMenuOpen,
     setTourMenuOpen,
     onTourCameraMoved,
-    isTourActive,
+    keepMenuOpen,
 }: CanvasEditorProps) {
     const themeContext = useContext(ThemeContext);
     const showDebugInfoContext = useContext(ShowDebugInfoContext);
@@ -664,7 +664,7 @@ function CanvasEditor({
                 <div
                     className={`absolute top-4 left-4 z-3 ${!menuOpen ? "pointer-events-none" : ""}`}
                     onMouseLeave={() => {
-                        if (!isTourActive) {
+                        if (!keepMenuOpen) {
                             setMenuOpen(false);
                         }
                     }}
