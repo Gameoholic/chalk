@@ -25,7 +25,7 @@ type LoadDataResult =
           boards: BoardData[];
           currentBoard: BoardData;
       }
-    | { success: false };
+    | { success: false; errorTitle: string; errorMessage: string };
 
 export default function CanvasLoader() {
     const [data, setData] = useState<LoadDataResult | null>(null);
@@ -69,7 +69,8 @@ export default function CanvasLoader() {
             )}
 
             {!loading &&
-                (data?.success ? (
+                data &&
+                (data.success ? (
                     <SessionContextProvider
                         defaultUserData={data.userData}
                         defaultBoards={data.boards}
@@ -79,7 +80,10 @@ export default function CanvasLoader() {
                         />
                     </SessionContextProvider>
                 ) : (
-                    <LoadingError />
+                    <LoadingError
+                        title={data.errorTitle}
+                        message={data.errorMessage}
+                    />
                 ))}
         </>
     );
@@ -238,8 +242,20 @@ async function loadData(): Promise<LoadDataResult> {
     try {
         userData = await loadUserDataOrCreateGuestUser();
     } catch (err) {
-        console.error("Couldn't authenticate user at all!" + err);
-        return { success: false };
+        console.error("Couldn't authenticate user at all! " + err);
+        if (err instanceof Error) {
+            return {
+                success: false,
+                errorTitle: "Authentication failed",
+                errorMessage: err.message,
+            };
+        }
+        return {
+            success: false,
+            errorTitle: "Authentication failed",
+            errorMessage:
+                "An unknown error occurred. Please refresh the page or try again later.",
+        };
     }
 
     console.log(
@@ -258,7 +274,19 @@ async function loadData(): Promise<LoadDataResult> {
         boards = await BoardsAPI.getAllBoards();
     } catch (err) {
         console.error("Couldn't load boards! " + err);
-        return { success: false };
+        if (err instanceof Error) {
+            return {
+                success: false,
+                errorTitle: "Failed to load boards",
+                errorMessage: err.message,
+            };
+        }
+        return {
+            success: false,
+            errorTitle: "Failed to load boards",
+            errorMessage:
+                "An unknown error occurred. Please refresh the page or try again later.",
+        };
     }
     console.log(boards.length + " boards found.");
 
@@ -279,7 +307,19 @@ async function loadData(): Promise<LoadDataResult> {
             };
         } catch (err) {
             console.error("Couldn't create board!");
-            return { success: false };
+            if (err instanceof Error) {
+                return {
+                    success: false,
+                    errorTitle: "Failed to create board",
+                    errorMessage: err.message,
+                };
+            }
+            return {
+                success: false,
+                errorTitle: "Failed to create board",
+                errorMessage:
+                    "An unknown error occurred. Please refresh the page or try again later.",
+            };
         }
         console.log("Board created successfully.");
     }
@@ -313,23 +353,19 @@ async function loadUserDataOrCreateGuestUser(): Promise<UserData> {
         console.warn("Couldn't fetch user data. " + err);
     }
 
-    if (
-        getUserDataErrorMessage !== "Unauthorized (401)" &&
-        getUserDataErrorMessage !== "Invalid refresh token." &&
-        getUserDataErrorMessage !== "Refresh token expired."
-    ) {
+    if (getUserDataErrorMessage === "Refresh token expired.") {
+        console.log("Refresh token has expired.");
+        throw new Error("Your session has expired. Please log in again.");
+    }
+
+    if (getUserDataErrorMessage !== "Unauthorized (401)") {
         console.log(
             "Error does not have to do with refresh token being invalid. Could be a server-side error. Not logging out this user yet."
         );
-        throw new Error("Couldn't authenticate user.");
-    }
-
-    if (getUserDataErrorMessage === "Refresh token expired.") {
-        console.log(
-            "Refresh token has expired. TODO: Replace this log message with a useful message for the client and prompt user to re-log in."
+        throw new Error(
+            getUserDataErrorMessage +
+                " Please refresh the page or try again later. If this issue persists, try logging out." // TODO: add a log out button in the error screen for this case, as it's likely some users will get stuck in this state without it
         );
-        throw new Error("Couldn't authenticate user.");
-        // todo: if refresh token expired error, tell user to re-log back in
     }
 
     // Reaching this line pretty much guarantees we don't have a guest user because the refresh token is invalid.
@@ -345,7 +381,13 @@ async function loadUserDataOrCreateGuestUser(): Promise<UserData> {
         return await MeAPI.getUserData();
     } catch (err) {
         console.error("Couldn't create guest user. " + err);
+        if (err instanceof Error) {
+            throw new Error(
+                err.message + " Please refresh the page or try again later."
+            );
+        }
+        throw new Error(
+            "An unknown error occurred. Please refresh the page or try again later."
+        );
     }
-
-    throw new Error("Couldn't authenticate user.");
 }

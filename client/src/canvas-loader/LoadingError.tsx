@@ -1,14 +1,11 @@
 import React from "react";
 
 interface LoadingErrorProps {
-    title?: string;
-    message?: string;
+    title: string;
+    message: string;
 }
 
-export default function LoadingError({
-    title = "Authentication failed",
-    message = "We couldn't authenticate you. Please refresh the page or try again later.",
-}: LoadingErrorProps) {
+export default function LoadingError({ title, message }: LoadingErrorProps) {
     const handleRefresh = () => {
         window.location.reload();
     };
