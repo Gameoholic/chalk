@@ -94,6 +94,7 @@ function AfterSuccessfulAuth({
     const [tourMenuOpen, setTourMenuOpen] = useState(false);
     const [tourCameraMoveCount, setTourCameraMoveCount] = useState(0);
     const [tourKeepMenuOpen, setTourKeepMenuOpen] = useState(false);
+    const [openLoginFromWelcome, setOpenLoginFromWelcome] = useState(false);
 
     const handleWelcomeDismiss = () => {
         firstTimeVisitorContext.setValue("tour");
@@ -133,6 +134,8 @@ function AfterSuccessfulAuth({
                             setTourCameraMoveCount((prev) => prev + 1)
                         }
                         keepMenuOpen={tourKeepMenuOpen}
+                        openLoginOnMount={openLoginFromWelcome}
+                        onLoginOpened={() => setOpenLoginFromWelcome(false)}
                     />
                 </CanvasContextProvider>
             </div>
@@ -153,9 +156,10 @@ function AfterSuccessfulAuth({
             {firstTimeVisitorContext.value === "welcome" && (
                 <WelcomeScreen
                     onDismiss={handleWelcomeDismiss}
-                    onLoginSignUp={() =>
-                        firstTimeVisitorContext.setValue("false")
-                    }
+                    onLoginSignUp={() => {
+                        setOpenLoginFromWelcome(true);
+                        firstTimeVisitorContext.setValue("false");
+                    }}
                 />
             )}
 
@@ -182,6 +186,8 @@ function CanvasEditorDiv({
     setTourMenuOpen,
     onTourCameraMoved,
     keepMenuOpen,
+    openLoginOnMount,
+    onLoginOpened,
 }: {
     canvasEditorKey: number;
     currentBoardId: string;
@@ -191,6 +197,8 @@ function CanvasEditorDiv({
     setTourMenuOpen: (open: boolean) => void;
     onTourCameraMoved: () => void;
     keepMenuOpen: boolean;
+    openLoginOnMount: boolean;
+    onLoginOpened: () => void;
 }) {
     const context = useContext(CanvasContext);
     context.setLocalCurrentBoardId(currentBoardId);
@@ -206,6 +214,8 @@ function CanvasEditorDiv({
             setTourMenuOpen={setTourMenuOpen}
             onTourCameraMoved={onTourCameraMoved}
             keepMenuOpen={keepMenuOpen}
+            openLoginOnMount={openLoginOnMount}
+            onLoginOpened={onLoginOpened}
         />
     );
 }

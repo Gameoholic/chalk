@@ -45,6 +45,8 @@ interface CanvasEditorProps {
     setTourMenuOpen?: (open: boolean) => void;
     onTourCameraMoved?: () => void;
     keepMenuOpen?: boolean;
+    openLoginOnMount?: boolean;
+    onLoginOpened?: () => void;
 }
 
 // Handles saving and uploading data, as well as tool selection and all overlays
@@ -54,6 +56,8 @@ function CanvasEditor({
     setTourMenuOpen,
     onTourCameraMoved,
     keepMenuOpen,
+    openLoginOnMount,
+    onLoginOpened,
 }: CanvasEditorProps) {
     const themeContext = useContext(ThemeContext);
     const showDebugInfoContext = useContext(ShowDebugInfoContext);
@@ -132,6 +136,14 @@ function CanvasEditor({
             setMenuOpen(tourMenuOpen);
         }
     }, [tourMenuOpen, setTourMenuOpen]);
+
+    // Open login modal when requested from welcome screen
+    useEffect(() => {
+        if (openLoginOnMount) {
+            setAuthView("login");
+            onLoginOpened?.();
+        }
+    }, [openLoginOnMount, onLoginOpened]);
 
     // Saving objects
     // Objects that are currently being saved (mid-fetch request)
