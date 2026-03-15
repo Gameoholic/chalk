@@ -355,7 +355,7 @@ async function loadUserDataOrCreateGuestUser(): Promise<UserData> {
 
     if (getUserDataErrorMessage === "Refresh token expired.") {
         console.log("Refresh token has expired.");
-        throw new Error("Your session has expired. Please log in again.");
+        throw new Error("Your session has expired. Please log in again."); // TODO: add a log out button for this one otherwise we're stuck
     }
 
     if (getUserDataErrorMessage !== "Unauthorized (401)") {
@@ -364,7 +364,7 @@ async function loadUserDataOrCreateGuestUser(): Promise<UserData> {
         );
         throw new Error(
             getUserDataErrorMessage +
-                " Please refresh the page or try again later. If this issue persists, try logging out." // TODO: add a log out button in the error screen for this case, as it's likely some users will get stuck in this state without it
+                " Please refresh the page or try again later. If this issue persists, try logging out." // TODO: add a log out button for this one otherwise we're stuck
         );
     }
 

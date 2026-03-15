@@ -34,6 +34,7 @@ chalk.gameoholic.dev
 - [ ] My boards: separate zoom in and zoom out easings, improve values
 - [ ] Fade out of CanvasEditor when visiting My Boards
 - [ ] Better light mode
+- [ ] Better handle LoadingError screen (if prompted to log in / log out, show those buttons)
 - [ ] Keybinds in bottom left corner ([Shift] Move [LMB] Draw)
 - [ ] Make lastOpen property of board nullable, so when we create the board it doesn't automatically set its lastOpened to now
 - [ ] Unify style app-wide (colors, behavior, animation of modals (I particularly like the style of create board modal)...)
@@ -64,7 +65,6 @@ chalk.gameoholic.dev
 - [ ] Don't update board's last camera properties every frame. Do it at the same time as object save. (in fact, put their logic in the same function)
 
 #### 🐞 Bugs
-- [ ] Search TODO for "add a log out button for this one otherwise we're stuck"
 - [ ] Menu automatically opens when going from My Boards (tour prop problem)
 - [ ] Fix server.ts CORS
 
