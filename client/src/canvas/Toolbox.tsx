@@ -7,7 +7,6 @@ import React, {
     useMemo,
 } from "react";
 import { MousePointer, Square, Circle, Slash, Pen, Eraser } from "lucide-react";
-import { AnimatePresence, motion } from "motion/react";
 import ColorPicker from "../components/ColorPicker";
 import { CanvasContext } from "../types/context/CanvasContext";
 import {
@@ -21,6 +20,15 @@ import {
     ToolType,
 } from "../types/tool";
 
+type ToolsData = {
+    select: { tool: SelectTool; displayName: string; icon: JSX.Element };
+    pencil: { tool: PencilTool; displayName: string; icon: JSX.Element };
+    eraser: { tool: EraserTool; displayName: string; icon: JSX.Element };
+    ellipse: { tool: EllipseTool; displayName: string; icon: JSX.Element };
+    line: { tool: LineTool; displayName: string; icon: JSX.Element };
+    rect: { tool: RectTool; displayName: string; icon: JSX.Element };
+};
+
 const Toolbox = ({
     className,
     ...props
@@ -29,8 +37,6 @@ const Toolbox = ({
     [key: string]: any;
 }) => {
     const canvasContext = useContext(CanvasContext);
-
-    const [showColorPicker, setShowColorPicker] = useState<boolean>(false);
 
     const TOOLS_DEFAULTS = {
         select: {
@@ -85,85 +91,55 @@ const Toolbox = ({
         },
     } as const;
 
-    const tools = useMemo(
-        () => ({
-            select: {
-                tool: { type: "select" } satisfies SelectTool,
-                displayName: "Select Objects",
-                icon: <MousePointer size={20} />,
-            },
+    // Tool options are stored so switching from one tool to another will keep its previous "extra" properties (e.g. rect hollow / eraser mode).
+    const [tools, setTools] = useState<ToolsData>(TOOLS_DEFAULTS);
+
+    // Whenever cached color or stroke changes, rebuild the tools (because the original value is in constructor it is called once will not update even on re-render)
+    useEffect(() => {
+        setTools((prev) => ({
+            ...prev,
             pencil: {
+                ...prev.pencil,
                 tool: {
-                    type: "pencil",
+                    ...prev.pencil.tool,
                     color: canvasContext.local_cachedColor,
                     stroke: canvasContext.local_cachedStroke,
-                } satisfies PencilTool,
-                displayName: "Pencil",
-                icon: <Pen size={20} />,
+                },
             },
             eraser: {
+                ...prev.eraser,
                 tool: {
-                    type: "eraser",
+                    ...prev.eraser.tool,
                     stroke: canvasContext.local_cachedStroke,
-                    eraserMode: "object",
-                } satisfies EraserTool,
-                displayName: "Eraser",
-                icon: <Eraser size={20} />,
+                },
             },
             ellipse: {
+                ...prev.ellipse,
                 tool: {
-                    type: "ellipse",
-                    hollow: true,
+                    ...prev.ellipse.tool,
                     color: canvasContext.local_cachedColor,
-                } satisfies EllipseTool,
-                displayName: "Draw Ellipse",
-                icon: <Circle size={20} />,
+                },
             },
             line: {
+                ...prev.line,
                 tool: {
-                    type: "line",
+                    ...prev.line.tool,
                     color: canvasContext.local_cachedColor,
                     stroke: canvasContext.local_cachedStroke,
-                } satisfies LineTool,
-                displayName: "Draw Line",
-                icon: <Slash size={20} />,
+                },
             },
             rect: {
+                ...prev.rect,
                 tool: {
-                    type: "rect",
-                    hollow: true,
+                    ...prev.rect.tool,
                     color: canvasContext.local_cachedColor,
-                } satisfies RectTool,
-                displayName: "Draw Rectangle",
-                icon: <Square size={20} />,
+                },
             },
-        }),
-        [canvasContext.local_cachedColor, canvasContext.local_cachedStroke]
-    );
-
-    const pickerRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (
-                pickerRef.current &&
-                !pickerRef.current.contains(event.target as Node)
-            ) {
-                setShowColorPicker(false);
-            }
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () =>
-            document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
+        }));
+    }, [canvasContext.local_cachedColor, canvasContext.local_cachedStroke]);
 
     const handleToolClick = (toolType: ToolType) => {
-        // If clicked on an already selected tool, unselect it (switch to default 'select' tool)
-        if (canvasContext.local_tool?.type === toolType) {
-            canvasContext.setLocalTool(tools.select.tool);
-        } else {
-            canvasContext.setLocalTool(tools[toolType].tool);
-        }
+        canvasContext.setLocalTool(tools[toolType].tool);
     };
 
     const handleColorChange = (newColor: string) => {
@@ -180,6 +156,135 @@ const Toolbox = ({
         canvasContext.setLocalCachedStroke(newStroke);
     };
 
+    const showOptionsPanel =
+        tools[canvasContext.local_tool.type]?.tool.type === "rect" ||
+        tools[canvasContext.local_tool.type]?.tool.type === "ellipse" ||
+        tools[canvasContext.local_tool.type]?.tool.type === "eraser";
+
+    return (
+        <div className={`absolute ${className}`} {...props}>
+            {/* Extra options panel for tools that need it */}
+            {showOptionsPanel && <OptionsPanel setTools={setTools} />}
+
+            {/* Toolbox  */}
+            <div
+                className="flex w-20 flex-col items-center space-y-4 p-3"
+                style={{
+                    backgroundColor: "var(--card)",
+                    color: "var(--card-foreground)",
+                    borderRadius: "12px",
+                }}
+            >
+                <h2 className="mb-2 text-sm font-bold">Tools</h2>
+
+                {/* Tool buttons */}
+                <ToolButtonsSection
+                    tools={tools}
+                    selectedToolType={canvasContext.local_tool.type}
+                    onToolClick={handleToolClick}
+                />
+
+                {/* Color Picker */}
+                <ColorPickerSection
+                    cachedColor={canvasContext.local_cachedColor}
+                    isEnabled={"color" in canvasContext.local_tool}
+                    onColorChange={handleColorChange}
+                />
+
+                {/* Stroke selector */}
+                <StrokeSection
+                    cachedStroke={canvasContext.local_cachedStroke}
+                    isEnabled={"stroke" in canvasContext.local_tool}
+                    onStrokeChange={handleStrokeChange}
+                />
+            </div>
+        </div>
+    );
+};
+
+function ToolButtonsSection({
+    tools,
+    selectedToolType,
+    onToolClick,
+}: {
+    tools: ToolsData;
+    selectedToolType: ToolType;
+    onToolClick: (toolType: ToolType) => void;
+}) {
+    return (
+        <div className="flex flex-col space-y-2">
+            {Object.entries(tools).map(([toolType, { displayName, icon }]) => {
+                const active = selectedToolType === toolType;
+                return (
+                    <button
+                        key={toolType}
+                        onClick={() => onToolClick(toolType as ToolType)}
+                        className="rounded p-2 transition"
+                        title={displayName}
+                        style={{
+                            backgroundColor: active
+                                ? "var(--accent)"
+                                : "var(--card)",
+                            color: active
+                                ? "var(--accent-foreground)"
+                                : "var(--card-foreground)",
+                            cursor: "pointer",
+                        }}
+                        onMouseEnter={(e) => {
+                            (
+                                e.currentTarget as HTMLButtonElement
+                            ).style.backgroundColor = "var(--accent)";
+                            (e.currentTarget as HTMLButtonElement).style.color =
+                                "var(--accent-foreground)";
+                        }}
+                        onMouseLeave={(e) => {
+                            (
+                                e.currentTarget as HTMLButtonElement
+                            ).style.backgroundColor = active
+                                ? "var(--accent)"
+                                : "var(--card)";
+                            (e.currentTarget as HTMLButtonElement).style.color =
+                                active
+                                    ? "var(--accent-foreground)"
+                                    : "var(--card-foreground)";
+                        }}
+                    >
+                        {icon}
+                    </button>
+                );
+            })}
+        </div>
+    );
+}
+
+function ColorPickerSection({
+    cachedColor,
+    isEnabled,
+    onColorChange,
+}: {
+    cachedColor: string;
+    isEnabled: boolean;
+    onColorChange: (color: string) => void;
+}) {
+    const [showColorPicker, setShowColorPicker] = useState(false);
+    const pickerRef = useRef<HTMLDivElement>(null);
+
+    // Click outside to close color picker
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (
+                pickerRef.current &&
+                !pickerRef.current.contains(event.target as Node)
+            ) {
+                setShowColorPicker(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () =>
+            document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    // Checkerboard background to indicate transparency in color
     const renderCheckerboard = () => {
         const squares: JSX.Element[] = [];
         for (let row = 0; row < 4; row++) {
@@ -204,424 +309,382 @@ const Toolbox = ({
     };
 
     return (
-        <div className={`absolute ${className}`} {...props}>
-            {/*Options panel  */}
-            {/* {showOptionsPanel && (
-                <div
-                    style={{
-                        position: "absolute",
-                        right: "calc(100% + 10px)",
-                        top: 0,
-                        background:
-                            "linear-gradient(160deg, rgba(255,140,165,0.10) 0%, rgba(255,140,165,0.04) 100%)",
-                        backgroundColor: "var(--card)",
-                        borderRadius: "12px",
-                        boxShadow: "-4px 0 18px rgba(255,140,165,0.12)",
-                    }}
-                >
-                    <div className="flex w-[110px] flex-col items-start p-3">
-                        <OptionsPanel
-                            tool={canvasContext.local_selectedTool}
-                            options={toolOptions}
-                            setOptions={setToolOptions}
-                        />
-                    </div>
-                </div>
-            )} */}
-
-            {/* Main toolbox column  */}
-            <div
-                className="flex w-20 flex-col items-center space-y-4 p-3"
-                style={{
-                    backgroundColor: "var(--card)",
-                    color: "var(--card-foreground)",
-                    borderRadius: "12px",
-                }}
+        <div className="relative mt-4 flex w-full flex-col items-center">
+            <label className="mb-1 text-sm">Color</label>
+            <button
+                onClick={() => setShowColorPicker(!showColorPicker)}
+                disabled={!isEnabled}
+                title={
+                    isEnabled
+                        ? "Select drawing color"
+                        : "Color not available for this tool"
+                }
+                className="border-card-foreground relative h-8 w-full cursor-pointer overflow-hidden rounded border transition disabled:cursor-not-allowed disabled:opacity-50"
             >
-                <h2 className="mb-2 text-sm font-bold">Tools</h2>
+                {renderCheckerboard()}
+                <div
+                    className="absolute inset-0"
+                    style={{ backgroundColor: cachedColor }}
+                />
+            </button>
 
-                {/* Tool buttons */}
-                <div className="flex flex-col space-y-2">
-                    {Object.entries(tools).map(
-                        ([toolType, { displayName, icon }]) => (
-                            <button
-                                key={toolType}
-                                onClick={() =>
-                                    handleToolClick(toolType as ToolType)
-                                }
-                                className="rounded p-2 transition"
-                                title={displayName}
-                                style={{
-                                    backgroundColor:
-                                        canvasContext.local_tool.type ===
-                                        toolType
-                                            ? "var(--accent)"
-                                            : "var(--card)",
-                                    color:
-                                        canvasContext.local_tool.type ===
-                                        toolType
-                                            ? "var(--accent-foreground)"
-                                            : "var(--card-foreground)",
-                                    cursor: "pointer",
-                                }}
-                                onMouseEnter={(e) => {
-                                    (
-                                        e.currentTarget as HTMLButtonElement
-                                    ).style.backgroundColor = "var(--accent)";
-                                    (
-                                        e.currentTarget as HTMLButtonElement
-                                    ).style.color = "var(--accent-foreground)";
-                                }}
-                                onMouseLeave={(e) => {
-                                    (
-                                        e.currentTarget as HTMLButtonElement
-                                    ).style.backgroundColor =
-                                        canvasContext.local_tool.type ===
-                                        toolType
-                                            ? "var(--accent)"
-                                            : "var(--card)";
-                                    (
-                                        e.currentTarget as HTMLButtonElement
-                                    ).style.color =
-                                        canvasContext.local_tool.type ===
-                                        toolType
-                                            ? "var(--accent-foreground)"
-                                            : "var(--card-foreground)";
-                                }}
-                            >
-                                {icon}
-                            </button>
-                        )
-                    )}
-                </div>
-
-                {/* Color Picker */}
-                <div className="relative mt-4 flex w-full flex-col items-center">
-                    <label className="mb-1 text-sm">Color</label>
+            {showColorPicker && (
+                <div
+                    ref={pickerRef}
+                    className="absolute top-0 right-full z-50 mr-4 flex flex-col items-center rounded-xl border border-gray-700 p-4 shadow-xl backdrop-blur-md"
+                    style={{ backgroundColor: "var(--card)" }}
+                >
+                    <ColorPicker value={cachedColor} onChange={onColorChange} />
                     <button
-                        onClick={() => {
-                            setShowColorPicker(!showColorPicker);
-                        }}
-                        disabled={!("color" in canvasContext.local_tool)}
-                        title={
-                            "color" in canvasContext.local_tool
-                                ? "Select drawing color"
-                                : "Color not available for this tool"
-                        }
-                        className="border-card-foreground relative h-8 w-full cursor-pointer overflow-hidden rounded border transition disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                        {renderCheckerboard()}
-                        <div
-                            className="absolute inset-0"
-                            style={{
-                                backgroundColor:
-                                    canvasContext.local_cachedColor,
-                            }}
-                        />
-                    </button>
-
-                    {showColorPicker && (
-                        <div
-                            ref={pickerRef}
-                            className="absolute top-0 right-full z-50 mr-4 flex flex-col items-center rounded-xl border border-gray-700 p-4 shadow-xl backdrop-blur-md"
-                            style={{ backgroundColor: "var(--card)" }}
-                        >
-                            <ColorPicker
-                                value={canvasContext.local_cachedColor}
-                                onChange={handleColorChange}
-                            />
-                            <button
-                                onClick={() => setShowColorPicker(false)}
-                                className="mt-4 rounded px-3 py-1 text-xs font-medium transition hover:brightness-110"
-                                style={{
-                                    backgroundColor: "var(--secondary)",
-                                    color: "var(--secondary-foreground)",
-                                }}
-                            >
-                                Close
-                            </button>
-                        </div>
-                    )}
-                </div>
-
-                {/* Stroke selector */}
-                <div className="mt-4 flex w-full flex-col space-y-1">
-                    <label className="text-sm">Width</label>
-                    <input
-                        type="range"
-                        min="1"
-                        max="20"
-                        value={canvasContext.local_cachedStroke}
-                        disabled={!("stroke" in canvasContext.local_tool)}
-                        title={
-                            "stroke" in canvasContext.local_tool
-                                ? "Adjust stroke width"
-                                : "Stroke not available for this tool"
-                        }
-                        onChange={(e) => {
-                            handleStrokeChange(Number(e.target.value));
-                        }}
-                        className="w-full"
+                        onClick={() => setShowColorPicker(false)}
+                        className="mt-4 rounded px-3 py-1 text-xs font-medium transition hover:brightness-110"
                         style={{
-                            accentColor: "var(--accent)",
-                            opacity: !("stroke" in canvasContext.local_tool)
-                                ? 0.5
-                                : 1,
-                            cursor:
-                                "stroke" in canvasContext.local_tool
-                                    ? "pointer"
-                                    : "not-allowed",
+                            backgroundColor: "var(--secondary)",
+                            color: "var(--secondary-foreground)",
                         }}
-                    />
-                    <span className="text-center text-xs">
-                        {canvasContext.local_cachedStroke}px
-                    </span>
+                    >
+                        Close
+                    </button>
                 </div>
-            </div>
+            )}
         </div>
     );
-};
+}
 
-// function ShapeFillOptions({
-//     tool,
-//     options,
-//     setOptions,
-// }: ToolOptionsPanelProps) {
-//     const isRect = tool === "rect";
+function StrokeSection({
+    cachedStroke,
+    isEnabled,
+    onStrokeChange,
+}: {
+    cachedStroke: number;
+    isEnabled: boolean;
+    onStrokeChange: (stroke: number) => void;
+}) {
+    return (
+        <div className="mt-4 flex w-full flex-col space-y-1">
+            <label className="text-sm">Width</label>
+            <input
+                type="range"
+                min="1"
+                max="20"
+                value={cachedStroke}
+                disabled={!isEnabled}
+                title={
+                    isEnabled
+                        ? "Adjust stroke width"
+                        : "Stroke not available for this tool"
+                }
+                onChange={(e) => onStrokeChange(Number(e.target.value))}
+                className="w-full"
+                style={{
+                    accentColor: "var(--accent)",
+                    opacity: isEnabled ? 1 : 0.5,
+                    cursor: isEnabled ? "pointer" : "not-allowed",
+                }}
+            />
+            <span className="text-center text-xs">{cachedStroke}px</span>
+        </div>
+    );
+}
 
-//     const FilledIcon = () =>
-//         isRect ? (
-//             <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-//                 <rect
-//                     x="2"
-//                     y="2"
-//                     width="20"
-//                     height="20"
-//                     rx="2"
-//                     fill="currentColor"
-//                 />
-//             </svg>
-//         ) : (
-//             <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-//                 <circle cx="12" cy="12" r="10" fill="currentColor" />
-//             </svg>
-//         );
+function OptionsPanel({
+    setTools,
+}: {
+    setTools: React.Dispatch<React.SetStateAction<ToolsData>>;
+}) {
+    const canvasContext = useContext(CanvasContext);
 
-//     const HollowIcon = () =>
-//         isRect ? (
-//             <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-//                 <rect
-//                     x="2"
-//                     y="2"
-//                     width="20"
-//                     height="20"
-//                     rx="2"
-//                     fill="none"
-//                     stroke="currentColor"
-//                     strokeWidth="2.5"
-//                 />
-//             </svg>
-//         ) : (
-//             <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-//                 <circle
-//                     cx="12"
-//                     cy="12"
-//                     r="10"
-//                     fill="none"
-//                     stroke="currentColor"
-//                     strokeWidth="2.5"
-//                 />
-//             </svg>
-//         );
+    const tool = canvasContext.local_tool as Tool;
 
-//     const choices: {
-//         label: string;
-//         hollow: boolean;
-//         Icon: () => JSX.Element;
-//     }[] = [
-//         { label: "Hollow", hollow: true, Icon: HollowIcon },
-//         { label: "Filled", hollow: false, Icon: FilledIcon },
-//     ];
+    if (tool.type === "rect" || tool.type === "ellipse") {
+        const isRect = tool.type === "rect";
+        const currentTool = tool as RectTool | EllipseTool;
 
-//     return (
-//         <div className="flex w-full flex-col gap-1">
-//             <span
-//                 className="text-center text-xs font-bold"
-//                 style={{ color: "var(--card-foreground)" }}
-//             >
-//                 Fill
-//             </span>
-//             <div className="flex flex-row gap-1">
-//                 {choices.map(({ label, hollow, Icon }) => {
-//                     const active = options.isHollow === hollow;
-//                     return (
-//                         <button
-//                             key={label}
-//                             onClick={() =>
-//                                 setOptions((prev) => ({
-//                                     ...prev,
-//                                     isHollow: hollow,
-//                                 }))
-//                             }
-//                             title={label}
-//                             className="flex flex-1 flex-col items-center gap-1 rounded-lg px-1 py-2 transition"
-//                             style={{
-//                                 backgroundColor: active
-//                                     ? "var(--accent)"
-//                                     : "transparent",
-//                                 color: active
-//                                     ? "var(--accent-foreground)"
-//                                     : "var(--card-foreground)",
-//                                 cursor: "pointer",
-//                                 border: `1.5px solid ${active ? "var(--accent-foreground)" : "transparent"}`,
-//                             }}
-//                             onMouseEnter={(e) => {
-//                                 if (!active)
-//                                     (
-//                                         e.currentTarget as HTMLButtonElement
-//                                     ).style.backgroundColor = "var(--accent)";
-//                             }}
-//                             onMouseLeave={(e) => {
-//                                 if (!active)
-//                                     (
-//                                         e.currentTarget as HTMLButtonElement
-//                                     ).style.backgroundColor = "transparent";
-//                             }}
-//                         >
-//                             <Icon />
-//                             <span className="text-xs">{label}</span>
-//                         </button>
-//                     );
-//                 })}
-//             </div>
-//         </div>
-//     );
-// }
+        const FilledIcon = () =>
+            isRect ? (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <rect
+                        x="2"
+                        y="2"
+                        width="20"
+                        height="20"
+                        rx="2"
+                        fill="currentColor"
+                    />
+                </svg>
+            ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="12" r="10" fill="currentColor" />
+                </svg>
+            );
 
-// // ── Eraser Mode Options ───────────────────────────────────────────────────────
+        const HollowIcon = () =>
+            isRect ? (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <rect
+                        x="2"
+                        y="2"
+                        width="20"
+                        height="20"
+                        rx="2"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                    />
+                </svg>
+            ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                    <circle
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                    />
+                </svg>
+            );
 
-// function EraserModeOptions({ options, setOptions }: ToolOptionsPanelProps) {
-//     const choices: {
-//         label: string;
-//         mode: "draw" | "object";
-//         Icon: () => JSX.Element;
-//     }[] = [
-//         {
-//             label: "Object",
-//             mode: "object",
-//             Icon: () => (
-//                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-//                     <rect
-//                         x="3"
-//                         y="3"
-//                         width="18"
-//                         height="18"
-//                         rx="3"
-//                         stroke="currentColor"
-//                         strokeWidth="2"
-//                         fill="none"
-//                     />
-//                     <line
-//                         x1="7"
-//                         y1="7"
-//                         x2="17"
-//                         y2="17"
-//                         stroke="currentColor"
-//                         strokeWidth="2"
-//                         strokeLinecap="round"
-//                     />
-//                     <line
-//                         x1="17"
-//                         y1="7"
-//                         x2="7"
-//                         y2="17"
-//                         stroke="currentColor"
-//                         strokeWidth="2"
-//                         strokeLinecap="round"
-//                     />
-//                 </svg>
-//             ),
-//         },
-//         {
-//             label: "Precise",
-//             mode: "draw",
-//             Icon: () => (
-//                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-//                     <path
-//                         d="M4 18 Q8 6 12 12 Q16 18 20 6"
-//                         stroke="currentColor"
-//                         strokeWidth="2.5"
-//                         strokeLinecap="round"
-//                         strokeLinejoin="round"
-//                         fill="none"
-//                     />
-//                     <line
-//                         x1="3"
-//                         y1="20"
-//                         x2="21"
-//                         y2="20"
-//                         stroke="currentColor"
-//                         strokeWidth="1.5"
-//                         strokeLinecap="round"
-//                     />
-//                 </svg>
-//             ),
-//         },
-//     ];
+        const choices = [
+            { label: "Hollow", hollow: true, Icon: HollowIcon },
+            { label: "Filled", hollow: false, Icon: FilledIcon },
+        ];
 
-//     return (
-//         <div className="flex w-full flex-col gap-1">
-//             <span
-//                 className="text-center text-xs font-bold"
-//                 style={{ color: "var(--card-foreground)" }}
-//             >
-//                 Mode
-//             </span>
-//             <div className="flex flex-row gap-1">
-//                 {choices.map(({ label, mode, Icon }) => {
-//                     const active = options.eraserMode === mode;
-//                     return (
-//                         <button
-//                             key={label}
-//                             onClick={() =>
-//                                 setOptions((prev) => ({
-//                                     ...prev,
-//                                     eraserMode: mode,
-//                                 }))
-//                             }
-//                             title={label}
-//                             className="flex flex-1 flex-col items-center gap-1 rounded-lg px-1 py-2 transition"
-//                             style={{
-//                                 backgroundColor: active
-//                                     ? "var(--accent)"
-//                                     : "transparent",
-//                                 color: active
-//                                     ? "var(--accent-foreground)"
-//                                     : "var(--card-foreground)",
-//                                 cursor: "pointer",
-//                                 border: `1.5px solid ${active ? "var(--accent-foreground)" : "transparent"}`,
-//                             }}
-//                             onMouseEnter={(e) => {
-//                                 if (!active)
-//                                     (
-//                                         e.currentTarget as HTMLButtonElement
-//                                     ).style.backgroundColor = "var(--accent)";
-//                             }}
-//                             onMouseLeave={(e) => {
-//                                 if (!active)
-//                                     (
-//                                         e.currentTarget as HTMLButtonElement
-//                                     ).style.backgroundColor = "transparent";
-//                             }}
-//                         >
-//                             <Icon />
-//                             <span className="text-xs">{label}</span>
-//                         </button>
-//                     );
-//                 })}
-//             </div>
-//         </div>
-//     );
-// }
+        return (
+            <div
+                style={{
+                    position: "absolute",
+                    right: "calc(100% + 10px)",
+                    top: 0,
+                    backgroundColor: "var(--card)",
+                    borderRadius: "12px",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                }}
+            >
+                <div className="flex w-[110px] flex-col items-start p-3">
+                    <div className="flex w-full flex-col gap-1">
+                        <span
+                            className="text-center text-xs font-bold"
+                            style={{ color: "var(--card-foreground)" }}
+                        >
+                            Fill
+                        </span>
+                        <div className="flex flex-row gap-1">
+                            {choices.map(({ label, hollow, Icon }) => {
+                                const active = currentTool.hollow === hollow;
+                                return (
+                                    <button
+                                        key={label}
+                                        onClick={() => {
+                                            canvasContext.setLocalTool(
+                                                (prev) => ({ ...prev, hollow })
+                                            );
+
+                                            setTools((prev) => ({
+                                                ...prev,
+                                                [tool.type]: {
+                                                    ...prev[tool.type],
+                                                    tool: {
+                                                        ...prev[tool.type].tool,
+                                                        hollow,
+                                                    },
+                                                },
+                                            }));
+                                        }}
+                                        title={label}
+                                        className="flex flex-1 flex-col items-center gap-1 rounded-lg px-1 py-2 transition"
+                                        style={{
+                                            backgroundColor: active
+                                                ? "var(--accent)"
+                                                : "transparent",
+                                            color: active
+                                                ? "var(--accent-foreground)"
+                                                : "var(--card-foreground)",
+                                            cursor: "pointer",
+                                            border: `1.5px solid ${active ? "var(--accent-foreground)" : "transparent"}`,
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            if (!active)
+                                                (
+                                                    e.currentTarget as HTMLButtonElement
+                                                ).style.backgroundColor =
+                                                    "var(--accent)";
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            if (!active)
+                                                (
+                                                    e.currentTarget as HTMLButtonElement
+                                                ).style.backgroundColor =
+                                                    "transparent";
+                                        }}
+                                    >
+                                        <Icon />
+                                        <span className="text-xs">{label}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    if (tool.type === "eraser") {
+        const eraserTool = tool as EraserTool;
+
+        const choices: {
+            label: string;
+            mode: "draw" | "object";
+            Icon: () => JSX.Element;
+        }[] = [
+            {
+                label: "Object",
+                mode: "object",
+                Icon: () => (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                        <rect
+                            x="3"
+                            y="3"
+                            width="18"
+                            height="18"
+                            rx="3"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            fill="none"
+                        />
+                        <line
+                            x1="7"
+                            y1="7"
+                            x2="17"
+                            y2="17"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                        />
+                        <line
+                            x1="17"
+                            y1="7"
+                            x2="7"
+                            y2="17"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                        />
+                    </svg>
+                ),
+            },
+            {
+                label: "Precise",
+                mode: "draw",
+                Icon: () => (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                        <path
+                            d="M4 18 Q8 6 12 12 Q16 18 20 6"
+                            stroke="currentColor"
+                            strokeWidth="2.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            fill="none"
+                        />
+                        <line
+                            x1="3"
+                            y1="20"
+                            x2="21"
+                            y2="20"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                        />
+                    </svg>
+                ),
+            },
+        ];
+
+        return (
+            <div
+                style={{
+                    position: "absolute",
+                    right: "calc(100% + 10px)",
+                    top: 0,
+                    backgroundColor: "var(--card)",
+                    borderRadius: "12px",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+                }}
+            >
+                <div className="flex w-[110px] flex-col items-start p-3">
+                    <div className="flex w-full flex-col gap-1">
+                        <span
+                            className="text-center text-xs font-bold"
+                            style={{ color: "var(--card-foreground)" }}
+                        >
+                            Mode
+                        </span>
+                        <div className="flex flex-row gap-1">
+                            {choices.map(({ label, mode, Icon }) => {
+                                const active = eraserTool.eraserMode === mode;
+                                return (
+                                    <button
+                                        key={label}
+                                        onClick={() => {
+                                            canvasContext.setLocalTool(
+                                                (prev) => ({
+                                                    ...prev,
+                                                    eraserMode: mode,
+                                                })
+                                            );
+
+                                            setTools((prev) => ({
+                                                ...prev,
+                                                [tool.type]: {
+                                                    ...prev[tool.type],
+                                                    tool: {
+                                                        ...prev[tool.type].tool,
+                                                        eraserMode: mode,
+                                                    },
+                                                },
+                                            }));
+                                        }}
+                                        title={label}
+                                        className="flex flex-1 flex-col items-center gap-1 rounded-lg px-1 py-2 transition"
+                                        style={{
+                                            backgroundColor: active
+                                                ? "var(--accent)"
+                                                : "transparent",
+                                            color: active
+                                                ? "var(--accent-foreground)"
+                                                : "var(--card-foreground)",
+                                            cursor: "pointer",
+                                            border: `1.5px solid ${active ? "var(--accent-foreground)" : "transparent"}`,
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            if (!active)
+                                                (
+                                                    e.currentTarget as HTMLButtonElement
+                                                ).style.backgroundColor =
+                                                    "var(--accent)";
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            if (!active)
+                                                (
+                                                    e.currentTarget as HTMLButtonElement
+                                                ).style.backgroundColor =
+                                                    "transparent";
+                                        }}
+                                    >
+                                        <Icon />
+                                        <span className="text-xs">{label}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    return null;
+}
 
 export default Toolbox;
