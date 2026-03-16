@@ -172,14 +172,21 @@ function drawRect(
     camera: Camera
 ) {
     ctx.beginPath();
-    ctx.fillStyle = object.color;
     ctx.rect(
         object.position.x - camera.position.x,
         object.position.y - camera.position.y,
         object.size.x,
         object.size.y
     );
-    ctx.fill();
+
+    if (object.hollow) {
+        ctx.strokeStyle = object.color;
+        ctx.lineWidth = getVisibleStroke(2, ctx, true);
+        ctx.stroke();
+    } else {
+        ctx.fillStyle = object.color;
+        ctx.fill();
+    }
 }
 
 function drawEllipse(
@@ -189,16 +196,23 @@ function drawEllipse(
 ) {
     ctx.beginPath();
     ctx.ellipse(
-        object.position.x - camera.position.x + object.size.x / 2, // centerX
-        object.position.y - camera.position.y + object.size.y / 2, // centerY
-        Math.abs(object.size.x / 2), // radiusX
-        Math.abs(object.size.y / 2), // radiusY
-        0, //rotation
-        0, //startangle
-        2 * Math.PI // end angle
+        object.position.x - camera.position.x + object.size.x / 2,
+        object.position.y - camera.position.y + object.size.y / 2,
+        Math.abs(object.size.x / 2),
+        Math.abs(object.size.y / 2),
+        0,
+        0,
+        2 * Math.PI
     );
-    ctx.fillStyle = object.color;
-    ctx.fill();
+
+    if (object.hollow) {
+        ctx.strokeStyle = object.color;
+        ctx.lineWidth = getVisibleStroke(1, ctx, true);
+        ctx.stroke();
+    } else {
+        ctx.fillStyle = object.color;
+        ctx.fill();
+    }
 }
 
 function drawPath(
