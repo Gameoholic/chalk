@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { BoardData } from "../data";
-import { Camera, Tool, Vec2, WorldObject } from "../canvas";
+import { Camera, Vec2, WorldObject } from "../canvas";
 import { SessionContext } from "./SessionContext";
+import { Tool, ToolType } from "../tool";
 
 /**
  * Local properties - not synced with server.
@@ -11,17 +12,19 @@ interface CanvasContextType {
     local_currentBoardId: string;
     local_unsavedObjects: WorldObject[];
     local_camera: Camera;
-    local_selectedTool: Tool;
-    local_selectedColor: string;
-    local_selectedStroke: number;
+    local_tool: Tool;
+    // Color to persist across tool changes, even for tools that don't have a color property (e.g. eraser).
+    local_cachedColor: string;
+    // Stroke to persist across tool changes, even for tools that don't have a stroke property (e.g. rect).
+    local_cachedStroke: number;
 
     // Local state updaters
     setLocalCurrentBoardId: React.Dispatch<React.SetStateAction<string>>;
     setLocalCamera: React.Dispatch<React.SetStateAction<Camera>>;
     setLocalTool: React.Dispatch<React.SetStateAction<Tool>>;
-    setLocalColor: React.Dispatch<React.SetStateAction<string>>;
-    setLocalStroke: React.Dispatch<React.SetStateAction<number>>;
     setLocalUnsavedObjects: React.Dispatch<React.SetStateAction<WorldObject[]>>;
+    setLocalCachedColor: React.Dispatch<React.SetStateAction<string>>;
+    setLocalCachedStroke: React.Dispatch<React.SetStateAction<number>>;
 
     // Server-synced-properties methods
     updateCurrentBoardCamera: (
@@ -45,19 +48,24 @@ export function CanvasContextProvider({
     defaultBoardId,
     defaultBoardCameraSize,
     defaultTool,
-    defaultColor,
-    defaultStroke,
+    defaultCachedColor,
+    defaultCachedStroke,
 }: {
     children: React.ReactNode;
     defaultBoardId: string;
     defaultBoardCameraSize: Vec2;
     defaultTool: Tool;
-    defaultColor: string;
-    defaultStroke: number;
+    defaultCachedColor: string;
+    defaultCachedStroke: number;
 }) {
     const sessionContext = useContext(SessionContext);
     const [local_currentBoardId, setLocalCurrentBoardId] =
         useState<string>(defaultBoardId);
+
+    const [local_cachedColor, setLocalCachedColor] =
+        useState<string>(defaultCachedColor);
+    const [local_cachedStroke, setLocalCachedStroke] =
+        useState<number>(defaultCachedStroke);
 
     function getCurrentBoard(): BoardData {
         const currentBoard = sessionContext.boards.find(
@@ -80,10 +88,7 @@ export function CanvasContextProvider({
         size: defaultBoardCameraSize,
     });
 
-    const [local_selectedTool, setLocalTool] = useState<Tool>(defaultTool);
-    const [local_selectedColor, setLocalColor] = useState<string>(defaultColor);
-    const [local_selectedStroke, setLocalStroke] =
-        useState<number>(defaultStroke);
+    const [local_tool, setLocalTool] = useState<Tool>(defaultTool);
 
     // --- Server-Side Sync Logic ---
     function updateCurrentBoard(boardData: BoardData) {
@@ -140,15 +145,15 @@ export function CanvasContextProvider({
                 local_currentBoardId,
                 local_unsavedObjects,
                 local_camera,
-                local_selectedTool,
-                local_selectedColor,
-                local_selectedStroke,
+                local_tool: local_tool,
+                local_cachedColor,
+                local_cachedStroke,
                 setLocalCurrentBoardId,
                 setLocalCamera,
                 setLocalTool,
-                setLocalColor,
-                setLocalStroke,
                 setLocalUnsavedObjects,
+                setLocalCachedColor,
+                setLocalCachedStroke,
                 updateCurrentBoardCamera,
                 updateCurrentBoardObjects,
                 onCurrentBoardSaved,

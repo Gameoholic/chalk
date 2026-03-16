@@ -17,6 +17,7 @@ import WelcomeScreen from "./WelcomeScreen.tsx";
 import TourOverlay from "../canvas/TourOverlay.tsx";
 import LoadingScreen from "./LoadingScreen";
 import LoadingError from "./LoadingError";
+import { PencilTool } from "../types/tool";
 
 type LoadDataResult =
     | {
@@ -133,9 +134,15 @@ function AfterSuccessfulAuth({ initialBoardId }: { initialBoardId: string }) {
                     key={currentBoardId}
                     defaultBoardId={currentBoardId}
                     defaultBoardCameraSize={{ x: 1000, y: 1000 }}
-                    defaultColor="#000000FF"
-                    defaultStroke={1}
-                    defaultTool="pencil"
+                    defaultCachedColor="#000000FF"
+                    defaultCachedStroke={1}
+                    defaultTool={
+                        {
+                            type: "pencil",
+                            color: "#000000FF",
+                            stroke: 1,
+                        } as PencilTool
+                    }
                 >
                     <CanvasEditorDiv
                         canvasEditorKey={canvasEditorKey}

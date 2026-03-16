@@ -1,12 +1,3 @@
-export type Tool =
-    | "pencil"
-    | "eraser"
-    | "select"
-    | "line"
-    | "rect"
-    | "ellipse"
-    | "none";
-
 export interface Vec2 {
     x: number;
     y: number;
@@ -50,16 +41,18 @@ export interface LineObject extends ColorableObject, StrokableObject {
     point2: Vec2;
 }
 
-export interface RectObject extends ColorableObject {
-    type: "rect";
+export interface ShapeObject extends ColorableObject {
+    hollow: boolean;
     position: Vec2; // top left coordinate (unless size is negative)
     size: Vec2; // Can be negative (for reverse)
 }
 
-export interface EllipseObject extends ColorableObject {
+export interface RectObject extends ShapeObject {
+    type: "rect";
+}
+
+export interface EllipseObject extends ShapeObject {
     type: "ellipse";
-    position: Vec2; // top left coordinate
-    size: Vec2; // Can be negative (for reverse)
 }
 
 export type WorldObject =

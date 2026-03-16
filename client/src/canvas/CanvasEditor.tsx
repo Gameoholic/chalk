@@ -1,6 +1,6 @@
 import Toolbox from "./Toolbox";
 import { RefObject, useContext, useEffect, useRef, useState } from "react";
-import { Camera, Tool, Vec2, WorldObject } from "../types/canvas";
+import { Camera, ToolType, Vec2, WorldObject } from "../types/canvas";
 import isDeepEqual from "fast-deep-equal";
 import {
     Menu,

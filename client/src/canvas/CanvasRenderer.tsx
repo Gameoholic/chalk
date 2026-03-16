@@ -1,5 +1,5 @@
 import React, { useContext } from "react";
-import CanvasBase from "./CanvasBase";
+import CanvasBase from "./CanvasDOMRenderer";
 import {
     Camera,
     EllipseObject,
@@ -151,7 +151,7 @@ function drawObjects(
                 drawLine(ctx, object, camera, antiAliasing);
                 break;
             case "rect":
-                drawRect(ctx, object, camera, antiAliasing);
+                drawRect(ctx, object, camera);
                 break;
             case "path":
                 drawPath(ctx, object, camera, antiAliasing);
@@ -160,7 +160,7 @@ function drawObjects(
                 drawEraserPath(ctx, object, camera, antiAliasing);
                 break;
             case "ellipse":
-                drawEllipse(ctx, object, camera, antiAliasing);
+                drawEllipse(ctx, object, camera);
                 break;
         }
     });
@@ -169,8 +169,7 @@ function drawObjects(
 function drawRect(
     ctx: CanvasRenderingContext2D,
     object: RectObject,
-    camera: Camera,
-    antiAliasing: boolean
+    camera: Camera
 ) {
     ctx.beginPath();
     ctx.fillStyle = object.color;
@@ -186,8 +185,7 @@ function drawRect(
 function drawEllipse(
     ctx: CanvasRenderingContext2D,
     object: EllipseObject,
-    camera: Camera,
-    antiAliasing: boolean
+    camera: Camera
 ) {
     ctx.beginPath();
     ctx.ellipse(

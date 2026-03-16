@@ -7,7 +7,7 @@ import React, {
     useMemo,
 } from "react";
 import useDimensions from "react-cool-dimensions";
-import CanvasWorld from "./CanvasWorld";
+import CanvasWorld from "./CanvasRenderer";
 import {
     Camera,
     EllipseObject,
@@ -15,13 +15,22 @@ import {
     LineObject,
     PathObject,
     RectObject,
-    Tool,
     Vec2,
     WorldObject,
 } from "../types/canvas";
 import { v4 as uuidv4 } from "uuid";
 import { CheckCircle, FileVideoCamera, Loader2, XCircle } from "lucide-react";
 import { CanvasContext } from "../types/context/CanvasContext";
+import {
+    EllipseTool,
+    EraserTool,
+    LineTool,
+    PencilTool,
+    RectTool,
+    SelectTool,
+    Tool,
+    ToolType,
+} from "../types/tool";
 
 interface CanvasInteractiveProps {
     onObjectsCommit: () => void;
@@ -125,9 +134,7 @@ function handleMouseEvents(
 ) {
     const canvasContext = useContext(CanvasContext);
 
-    const selectedTool: Tool = canvasContext.local_selectedTool;
-    const selectedColor: string = canvasContext.local_selectedColor;
-    const selectedStroke: number = canvasContext.local_selectedStroke;
+    const tool: Tool = canvasContext.local_tool;
     const camera: Camera = canvasContext.local_camera;
 
     const LEFT_MOUSE_BUTTON = 0;
@@ -149,19 +156,21 @@ function handleMouseEvents(
     interface DrawingInteraction extends Interaction {
         type: "drawing";
         objectId: string;
-        tool: DrawingTool;
+        tool: Exclude<Tool, SelectTool>;
         path: Vec2[];
     }
 
-    type DrawingTool = Exclude<Tool, "none" | "select">;
-    function isDrawingTool(tool: string): tool is DrawingTool {
-        return ["pencil", "eraser", "line", "rect", "ellipse"].includes(tool);
-    }
+    // function isDrawingTool(tool: Tool): tool is Exclude<Tool, SelectTool> {
+    //     return ["pencil", "eraser", "line", "rect", "ellipse"].includes(tool.type);
+    // }
 
     const toolHandleMouseMove: Record<
-        DrawingTool,
+        ToolType,
         (e: React.MouseEvent<HTMLCanvasElement>) => void
     > = {
+        select: () => {
+            console.error("Unexpected mouse move with select tool");
+        },
         pencil: handleMouseMovePencilDraw,
         eraser: handleMouseMoveEraserDraw,
         line: handleMouseMoveLineDraw,
@@ -179,11 +188,11 @@ function handleMouseEvents(
     }, []);
 
     const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-        if (e.button === LEFT_MOUSE_BUTTON && isDrawingTool(selectedTool)) {
+        if (e.button === LEFT_MOUSE_BUTTON && tool.type !== "select") {
             currentInteraction.current = {
                 type: "drawing",
                 objectId: uuidv4(),
-                tool: selectedTool,
+                tool: tool,
                 path: [],
             };
             return;
@@ -205,14 +214,16 @@ function handleMouseEvents(
         if (currentInteraction.current?.type !== "drawing") {
             return;
         }
+        const pencilTool = currentInteraction.current.tool as PencilTool;
+
         const mouseWorldCoords: Vec2 = screenToWorld(e, camera);
         currentInteraction.current.path.push(mouseWorldCoords);
 
         const newPath: PathObject = {
             id: currentInteraction.current.objectId,
             type: "path",
-            color: selectedColor,
-            stroke: selectedStroke,
+            color: pencilTool.color,
+            stroke: pencilTool.stroke,
             points: currentInteraction.current.path,
         };
         updateObject(newPath);
@@ -222,22 +233,29 @@ function handleMouseEvents(
         if (currentInteraction.current?.type !== "drawing") {
             return;
         }
+        const eraserTool = currentInteraction.current.tool as EraserTool;
+
         const mouseWorldCoords: Vec2 = screenToWorld(e, camera);
         currentInteraction.current.path.push(mouseWorldCoords);
 
-        const newPath: EraserPathObject = {
-            id: currentInteraction.current.objectId,
-            type: "eraser-path",
-            stroke: selectedStroke,
-            points: currentInteraction.current.path,
-        };
-        updateObject(newPath);
+        if (eraserTool.eraserMode === "object") {
+            throw new Error("Object eraser mode not implemented yet");
+        } else {
+            const newPath: EraserPathObject = {
+                id: currentInteraction.current.objectId,
+                type: "eraser-path",
+                stroke: eraserTool.stroke,
+                points: currentInteraction.current.path,
+            };
+            updateObject(newPath);
+        }
     }
 
     function handleMouseMoveLineDraw(e: React.MouseEvent<HTMLCanvasElement>) {
         if (currentInteraction.current?.type !== "drawing") {
             return;
         }
+        const lineTool = currentInteraction.current.tool as LineTool;
 
         const mouseWorldCoords: Vec2 = screenToWorld(e, camera);
         if (currentInteraction.current.path.length === 0) {
@@ -250,8 +268,8 @@ function handleMouseEvents(
         const newLine: LineObject = {
             id: currentInteraction.current.objectId,
             type: "line",
-            color: selectedColor,
-            stroke: selectedStroke,
+            color: lineTool.color,
+            stroke: lineTool.stroke,
             point1: currentInteraction.current.path[0],
             point2: currentInteraction.current.path[1],
         };
@@ -262,6 +280,7 @@ function handleMouseEvents(
         if (currentInteraction.current?.type !== "drawing") {
             return;
         }
+        const rectTool = currentInteraction.current.tool as RectTool;
 
         const mouseWorldCoords: Vec2 = screenToWorld(e, camera);
         if (currentInteraction.current.path.length === 0) {
@@ -273,7 +292,8 @@ function handleMouseEvents(
         const newRect: RectObject = {
             id: currentInteraction.current.objectId,
             type: "rect",
-            color: selectedColor,
+            color: rectTool.color,
+            hollow: rectTool.hollow,
             position: currentInteraction.current.path[0],
             size: {
                 x:
@@ -293,6 +313,7 @@ function handleMouseEvents(
         if (currentInteraction.current?.type !== "drawing") {
             return;
         }
+        const ellipseTool = currentInteraction.current.tool as EllipseTool;
 
         const mouseWorldCoords: Vec2 = screenToWorld(e, camera);
         if (currentInteraction.current.path.length === 0) {
@@ -304,7 +325,8 @@ function handleMouseEvents(
         const newEllipse: EllipseObject = {
             id: currentInteraction.current.objectId,
             type: "ellipse",
-            color: selectedColor,
+            color: ellipseTool.color,
+            hollow: ellipseTool.hollow,
             position: currentInteraction.current.path[0],
             size: {
                 x:
@@ -345,7 +367,7 @@ function handleMouseEvents(
     }
     const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
         if (currentInteraction.current?.type === "drawing") {
-            toolHandleMouseMove[currentInteraction.current.tool](e);
+            toolHandleMouseMove[currentInteraction.current.tool.type](e);
             return;
         }
 
