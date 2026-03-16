@@ -1,5 +1,4 @@
 "use client";
-
 import {
     animate,
     motion,
@@ -10,50 +9,39 @@ import {
     MotionValue,
 } from "motion/react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-
 /**
- * ==============   Hooks   ================
+ *   Hooks
  */
-
 function useMouse() {
     const x = useMotionValue(0);
     const y = useMotionValue(0);
-
     useEffect(() => {
         const handlePointerMove = (e: PointerEvent) => {
             x.set(e.clientX);
             y.set(e.clientY);
         };
-
         window.addEventListener("pointermove", handlePointerMove);
         return () =>
             window.removeEventListener("pointermove", handlePointerMove);
     }, [x, y]);
-
     return { x, y };
 }
-
 /**
- * ==============   Utils   ================
+ *   Utils
  */
-
 function calculateAngle(index: number, totalInRing: number): number {
     return (index / totalInRing) * Math.PI * 2;
 }
-
 function calculateBasePosition(angle: number, radius: number) {
     return {
         x: Math.cos(angle) * radius,
         y: Math.sin(angle) * radius,
     };
 }
-
 function calculateHue(angle: number): number {
     const hueDegrees = (angle * 180) / Math.PI - 90 - 180;
-    // Applied Math.round to prevent floating-point precision issues
     return Math.round(((hueDegrees % 360) + 360) % 360);
 }
-
 interface ColorDotProps {
     ring: number;
     index: number;
@@ -68,7 +56,6 @@ interface ColorDotProps {
     selectedColor: string | null;
     setSelectedColor: (color: string | null) => void;
 }
-
 function ColorDot({
     ring,
     index,
@@ -86,7 +73,6 @@ function ColorDot({
     const baseRadius = ring * 20;
     const angle = calculateAngle(index, totalInRing);
     const { x: baseX, y: baseY } = calculateBasePosition(angle, baseRadius);
-
     let color = "hsl(0, 0%, 0%)";
     let normalizedHue = 0;
     if (ring !== 0) {
@@ -96,90 +82,60 @@ function ColorDot({
                 ? `hsl(${normalizedHue}, 60%, 50%)`
                 : `hsl(${normalizedHue}, 90%, 60%)`;
     }
-
     const pushDistance = useTransform(() => {
         if (centerX === 0 || centerY === 0) return 0;
-
         const px = pointerX.get();
         const py = pointerY.get();
-
         const dx = px - centerX;
         const dy = py - centerY;
         const distanceFromCenter = Math.sqrt(dx * dx + dy * dy);
-
         if (distanceFromCenter > radius + 100) return 0;
-
         const dotX = centerX + baseX;
         const dotY = centerY + baseY;
-
         const cursorToDotX = dotX - px;
         const cursorToDotY = dotY - py;
         const cursorToDotDistance = Math.sqrt(
             cursorToDotX * cursorToDotX + cursorToDotY * cursorToDotY
         );
-
         const minDistance = 80;
         if (cursorToDotDistance < minDistance) {
             const pushStrength = 1 - cursorToDotDistance / minDistance;
             return pushStrength * pushMagnitude;
         }
-
         return 0;
     });
-
     const pushAngle = useTransform(() => {
         if (centerX === 0 || centerY === 0) return angle;
-
         const px = pointerX.get();
         const py = pointerY.get();
-
         const dotX = centerX + baseX;
         const dotY = centerY + baseY;
-
         const cursorToDotX = dotX - px;
         const cursorToDotY = dotY - py;
-
         return Math.atan2(cursorToDotY, cursorToDotX);
     });
-
     const pushX = useTransform(() => {
         const distance = pushDistance.get();
         const a = pushAngle.get();
         return Math.cos(a) * distance;
     });
-
     const pushY = useTransform(() => {
         const distance = pushDistance.get();
         const a = pushAngle.get();
         return Math.sin(a) * distance;
     });
-
     const springPushX = useSpring(pushX, pushSpring);
     const springPushY = useSpring(pushY, pushSpring);
-
     const x = useTransform(() => baseX + springPushX.get());
     const y = useTransform(() => baseY + springPushY.get());
-
     const dotVariants = {
-        default: {
-            scale: 1,
-        },
-        hover: {
-            scale: 1.5,
-            transition: { duration: 0.13 },
-        },
+        default: { scale: 1 },
+        hover: { scale: 1.5, transition: { duration: 0.13 } },
     };
-
     const ringVariants = {
-        default: {
-            opacity: 0,
-        },
-        hover: {
-            opacity: 0.4,
-            transition: { duration: 0.13 },
-        },
+        default: { opacity: 0 },
+        hover: { opacity: 0.4, transition: { duration: 0.13 } },
     };
-
     return (
         <motion.div
             className="absolute top-1/2 left-1/2 h-8 w-8 -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full"
@@ -211,7 +167,6 @@ function ColorDot({
         </motion.div>
     );
 }
-
 interface GradientCircleProps {
     index: number;
     totalInRing: number;
@@ -221,7 +176,6 @@ interface GradientCircleProps {
     pointerY: MotionValue<number>;
     containerRadius: number;
 }
-
 function GradientCircle({
     index,
     totalInRing,
@@ -235,42 +189,26 @@ function GradientCircle({
     const baseRadius = containerRadius - 40;
     const { x: baseX, y: baseY } = calculateBasePosition(angle, baseRadius);
     const normalizedHue = calculateHue(angle);
-
     const gradient = `radial-gradient(circle, hsla(${normalizedHue}, 90%, 60%, 1) 0%, hsla(${normalizedHue}, 90%, 60%, 0) 66%)`;
-
     const proximity = useTransform(() => {
         if (centerX === 0 || centerY === 0) return 0;
-
         const px = pointerX.get();
         const py = pointerY.get();
-
         const gradientX = centerX + baseX;
         const gradientY = centerY + baseY;
-
         const dx = px - gradientX;
         const dy = py - gradientY;
         const distance = Math.sqrt(dx * dx + dy * dy);
-
         const maxDistance = 100;
         const proximityValue = Math.max(0, 1 - distance / maxDistance);
-
         return proximityValue;
     });
-
     const { opacity, scale } = useTransform(proximity, [0, 1], {
         opacity: [0.15, 0.35],
         scale: [1, 1.2],
     });
-
-    const springOpacity = useSpring(opacity, {
-        damping: 30,
-        stiffness: 100,
-    });
-    const springScale = useSpring(scale, {
-        damping: 30,
-        stiffness: 100,
-    });
-
+    const springOpacity = useSpring(opacity, { damping: 30, stiffness: 100 });
+    const springScale = useSpring(scale, { damping: 30, stiffness: 100 });
     return (
         <motion.div
             className="pointer-events-none absolute top-1/2 left-1/2 h-[150px] w-[150px] -translate-x-1/2 -translate-y-1/2 rounded-full mix-blend-color-burn"
@@ -285,13 +223,11 @@ function GradientCircle({
         />
     );
 }
-
 interface TransparencySliderProps {
     opacity: number;
     setOpacity: (opacity: number) => void;
     selectedColor: string | null;
 }
-
 function TransparencySlider({
     opacity,
     setOpacity,
@@ -299,57 +235,37 @@ function TransparencySlider({
 }: TransparencySliderProps) {
     const trackRef = useRef<SVGPathElement>(null);
     const [isDragging, setIsDragging] = useState(false);
-
-    // Arc parameters
     const radius = 85;
-    const startAngle = 220; // degrees
-    const endAngle = 320; // degrees
+    const startAngle = 220;
+    const endAngle = 320;
     const centerX = 95;
     const centerY = 95;
-
-    // Calculate handle position based on opacity
     const normalizedOpacity = opacity / 100;
     const angle = startAngle + normalizedOpacity * (endAngle - startAngle);
     const radians = (angle * Math.PI) / 180;
-
     const handleX = centerX + Math.cos(radians) * radius;
     const handleY = centerY + Math.sin(radians) * radius;
-
-    // Create arc path
     const startRad = (startAngle * Math.PI) / 180;
     const endRad = (endAngle * Math.PI) / 180;
-
     const startX = centerX + Math.cos(startRad) * radius;
     const startY = centerY + Math.sin(startRad) * radius;
     const endX = centerX + Math.cos(endRad) * radius;
     const endY = centerY + Math.sin(endRad) * radius;
-
     const arcPath = `M ${startX} ${startY} A ${radius} ${radius} 0 0 1 ${endX} ${endY}`;
-
-    // Calculate arc length for proper dash array
     const arcLength = radius * (((endAngle - startAngle) * Math.PI) / 180);
     const progressLength = arcLength * normalizedOpacity;
-
     const updateOpacityFromEvent = (e: React.PointerEvent | PointerEvent) => {
         if (!trackRef.current) return;
-
         const svg = trackRef.current.ownerSVGElement;
         if (!svg) return;
-
         const rect = svg.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
-
         const dx = x - centerX;
         const dy = y - centerY;
         let angle = (Math.atan2(dy, dx) * 180) / Math.PI;
-
-        // Normalize angle to 0-360
         if (angle < 0) angle += 360;
-
-        // Clamp to arc range
         if (angle < startAngle && angle > endAngle) {
-            // Determine which end is closer
             const distToStart = Math.min(
                 Math.abs(angle - startAngle),
                 Math.abs(angle + 360 - startAngle)
@@ -364,44 +280,35 @@ function TransparencySlider({
         } else if (angle > endAngle && angle < 360) {
             angle = endAngle;
         }
-
         const normalizedAngle = (angle - startAngle) / (endAngle - startAngle);
         const newOpacity = Math.max(0, Math.min(100, normalizedAngle * 100));
-
         setOpacity(newOpacity);
     };
-
     const handlePointerDown = (e: React.PointerEvent) => {
         e.stopPropagation();
         setIsDragging(true);
         updateOpacityFromEvent(e);
     };
-
     const handleTrackClick = (e: React.PointerEvent) => {
         e.stopPropagation();
         updateOpacityFromEvent(e);
     };
-
     const handlePointerMove = (e: React.PointerEvent) => {
         if (isDragging) {
             e.stopPropagation();
             updateOpacityFromEvent(e);
         }
     };
-
     const handlePointerUp = () => {
         setIsDragging(false);
     };
-
     useEffect(() => {
         if (isDragging) {
             const handleWindowPointerMove = (e: PointerEvent) => {
                 updateOpacityFromEvent(e);
             };
-
             window.addEventListener("pointermove", handleWindowPointerMove);
             window.addEventListener("pointerup", handlePointerUp);
-
             return () => {
                 window.removeEventListener(
                     "pointermove",
@@ -411,7 +318,6 @@ function TransparencySlider({
             };
         }
     }, [isDragging]);
-
     return (
         <div className="pointer-events-auto relative h-[190px] w-[190px]">
             <svg
@@ -440,8 +346,6 @@ function TransparencySlider({
                         </feMerge>
                     </filter>
                 </defs>
-
-                {/* Clickable background track */}
                 <path
                     ref={trackRef}
                     d={arcPath}
@@ -452,8 +356,6 @@ function TransparencySlider({
                     className="cursor-pointer"
                     onPointerDown={handleTrackClick}
                 />
-
-                {/* Gradient track */}
                 <path
                     d={arcPath}
                     fill="none"
@@ -463,8 +365,6 @@ function TransparencySlider({
                     opacity={0.4}
                     className="pointer-events-none"
                 />
-
-                {/* Active progress */}
                 <motion.path
                     d={arcPath}
                     fill="none"
@@ -473,16 +373,10 @@ function TransparencySlider({
                     strokeLinecap="round"
                     strokeDasharray={`${progressLength} ${arcLength}`}
                     opacity={0.6}
-                    animate={{
-                        opacity: selectedColor ? 0.8 : 0.6,
-                    }}
-                    transition={{
-                        duration: 0.2,
-                    }}
+                    animate={{ opacity: selectedColor ? 0.8 : 0.6 }}
+                    transition={{ duration: 0.2 }}
                     className="pointer-events-none"
                 />
-
-                {/* Handle */}
                 <motion.g
                     onPointerDown={handlePointerDown}
                     style={{ cursor: isDragging ? "grabbing" : "grab" }}
@@ -528,7 +422,6 @@ function TransparencySlider({
         </div>
     );
 }
-
 export interface ColorPickerProps {
     pushMagnitude?: number;
     pushSpring?: SpringOptions;
@@ -537,13 +430,9 @@ export interface ColorPickerProps {
     opacity?: number;
     onOpacityChange?: (opacity: number) => void;
 }
-
 export default function ColorPicker({
     pushMagnitude = 5,
-    pushSpring = {
-        damping: 30,
-        stiffness: 100,
-    },
+    pushSpring = { damping: 30, stiffness: 100 },
     value,
     onChange,
     opacity: opacityProp,
@@ -555,14 +444,7 @@ export default function ColorPicker({
         centerY: 0,
         radius: 200,
     });
-
     const pointer = useMouse();
-
-    const [internalColor, setInternalColor] = useState<string | null>(null);
-    const [internalOpacity, setInternalOpacity] = useState<number>(100);
-
-    const selectedColor = value !== undefined ? value : internalColor;
-    const opacity = opacityProp !== undefined ? opacityProp : internalOpacity;
 
     // Updated regex to accept decimals and ensure parsed numbers are rounded cleanly
     const parseColor = (colorStr: string | null) => {
@@ -579,6 +461,23 @@ export default function ColorPicker({
         }
         return { color: colorStr, opacity: 100 };
     };
+
+    // Initialize internalColor from value prop if provided
+    const [internalColor, setInternalColor] = useState<string | null>(() => {
+        if (value !== undefined) {
+            return parseColor(value).color;
+        }
+        return null;
+    });
+    const [internalOpacity, setInternalOpacity] = useState<number>(() => {
+        if (value !== undefined) {
+            return parseColor(value).opacity;
+        }
+        return 100;
+    });
+
+    const selectedColor = value !== undefined ? value : internalColor;
+    const opacity = opacityProp !== undefined ? opacityProp : internalOpacity;
 
     const { color: parsedColor, opacity: parsedOpacity } =
         parseColor(selectedColor);
@@ -607,10 +506,12 @@ export default function ColorPicker({
     const handleOpacityChange = (newOpacity: number) => {
         setInternalOpacity(newOpacity);
         if (onChange) {
-            const currentColor = parsedColor || internalColor;
+            // Use parsedColor (normalized hsl) or fall back to selectedColor
+            const currentColor = parsedColor ?? selectedColor;
             if (currentColor) {
+                const isHsl = currentColor.startsWith("hsl");
                 const outputColor =
-                    newOpacity < 100
+                    newOpacity < 100 && isHsl
                         ? `hsla(${currentColor.slice(4, -1)}, ${newOpacity / 100})`
                         : currentColor;
                 onChange(outputColor);
@@ -633,20 +534,11 @@ export default function ColorPicker({
     }, []);
 
     const rings = [{ count: 1 }, { count: 6 }, { count: 12 }];
-
-    const dots: Array<{
-        ring: number;
-        index: number;
-        totalInRing: number;
-    }> = [];
-
+    const dots: Array<{ ring: number; index: number; totalInRing: number }> =
+        [];
     rings.forEach((ring, ringIndex) => {
         for (let i = 0; i < ring.count; i++) {
-            dots.push({
-                ring: ringIndex,
-                index: i,
-                totalInRing: ring.count,
-            });
+            dots.push({ ring: ringIndex, index: i, totalInRing: ring.count });
         }
     });
 
@@ -654,7 +546,6 @@ export default function ColorPicker({
     for (let i = 0; i <= 360; i += 30) {
         originalStopValues.push(`hsl(${i}, 90%, 60%)`);
     }
-
     const stopMotionValues = originalStopValues.map((value) =>
         useMotionValue(value)
     );
@@ -662,9 +553,7 @@ export default function ColorPicker({
     useEffect(() => {
         if (selectedColor !== null) {
             for (const stopValue of stopMotionValues) {
-                animate(stopValue, selectedColor, {
-                    duration: 0.2,
-                });
+                animate(stopValue, selectedColor, { duration: 0.2 });
             }
         } else {
             for (let i = 0; i < stopMotionValues.length; i++) {
@@ -679,15 +568,12 @@ export default function ColorPicker({
         let stops = "";
         for (let i = 0; i < stopMotionValues.length; i++) {
             stops += stopMotionValues[i].get();
-            if (i < stopMotionValues.length - 1) {
-                stops += ", ";
-            }
+            if (i < stopMotionValues.length - 1) stops += ", ";
         }
         return `conic-gradient(from 0deg, ${stops})`;
     });
 
     const gradientScale = useMotionValue(1);
-
     useEffect(() => {
         if (selectedColor !== null) {
             animate(gradientScale, 1.1, {
@@ -720,9 +606,7 @@ export default function ColorPicker({
                     />
                     <motion.div
                         className="absolute inset-0 z-10 h-full w-full rounded-full bg-[#0b1011]"
-                        animate={{
-                            scale: selectedColor !== null ? 0.9 : 0.98,
-                        }}
+                        animate={{ scale: selectedColor !== null ? 0.9 : 0.98 }}
                         transition={{
                             type: "spring",
                             visualDuration: 0.2,
@@ -730,7 +614,6 @@ export default function ColorPicker({
                         }}
                     />
                 </div>
-
                 <div
                     ref={containerRef}
                     className="relative z-20 h-[calc(100%-5px)] w-[calc(100%-5px)] overflow-visible rounded-full"
@@ -769,7 +652,6 @@ export default function ColorPicker({
                         ))}
                 </div>
             </div>
-
             {/* Transparency Slider */}
             <TransparencySlider
                 opacity={opacity}
