@@ -284,6 +284,7 @@ function drawEraserPath(
     ctx.save();
     ctx.globalCompositeOperation = "destination-out";
     ctx.beginPath();
+    ctx.strokeStyle = "rgba(0,0,0,1)"; // bugfix: Always erase fully regardless of current alpha set by previous tools
     ctx.lineWidth = getStrokeSize(object.stroke, ctx, antiAliasing);
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
