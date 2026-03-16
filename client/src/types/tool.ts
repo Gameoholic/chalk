@@ -38,11 +38,13 @@ export interface LineTool extends StrokeTool, ColorTool {
 export interface RectTool extends ColorTool {
     type: "rect";
     hollow: boolean;
+    hollowStroke: number;
 }
 
 export interface EllipseTool extends ColorTool {
     type: "ellipse";
     hollow: boolean;
+    hollowStroke: number;
 }
 
 export type Tool =

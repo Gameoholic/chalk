@@ -66,6 +66,7 @@ const Toolbox = ({
             tool: {
                 type: "ellipse",
                 hollow: true,
+                hollowStroke: 1,
                 color: canvasContext.local_cachedColor,
             } satisfies EllipseTool,
             displayName: "Draw Ellipse",
@@ -84,6 +85,7 @@ const Toolbox = ({
             tool: {
                 type: "rect",
                 hollow: true,
+                hollowStroke: 1,
                 color: canvasContext.local_cachedColor,
             } satisfies RectTool,
             displayName: "Draw Rectangle",
@@ -461,7 +463,8 @@ function OptionsPanel({
                     boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
                 }}
             >
-                <div className="flex w-[110px] flex-col items-start p-3">
+                <div className="flex w-[110px] flex-col items-start gap-3 p-3">
+                    {/* Fill */}
                     <div className="flex w-full flex-col gap-1">
                         <span
                             className="text-center text-xs font-bold"
@@ -479,7 +482,6 @@ function OptionsPanel({
                                             canvasContext.setLocalTool(
                                                 (prev) => ({ ...prev, hollow })
                                             );
-
                                             setTools((prev) => ({
                                                 ...prev,
                                                 [tool.type]: {
@@ -525,6 +527,52 @@ function OptionsPanel({
                             })}
                         </div>
                     </div>
+
+                    {/* Hollow stroke — only shown when hollow is true */}
+                    {currentTool.hollow && (
+                        <div className="flex w-full flex-col space-y-1">
+                            <span
+                                className="text-center text-xs font-bold"
+                                style={{ color: "var(--card-foreground)" }}
+                            >
+                                Width
+                            </span>
+                            <input
+                                type="range"
+                                min="1"
+                                max="20"
+                                value={currentTool.hollowStroke ?? 1}
+                                onChange={(e) => {
+                                    const hollowStroke = Number(e.target.value);
+                                    canvasContext.setLocalTool((prev) => ({
+                                        ...prev,
+                                        hollowStroke,
+                                    }));
+                                    setTools((prev) => ({
+                                        ...prev,
+                                        [tool.type]: {
+                                            ...prev[tool.type],
+                                            tool: {
+                                                ...prev[tool.type].tool,
+                                                hollowStroke,
+                                            },
+                                        },
+                                    }));
+                                }}
+                                className="w-full"
+                                style={{
+                                    accentColor: "var(--accent)",
+                                    cursor: "pointer",
+                                }}
+                            />
+                            <span
+                                className="text-center text-xs"
+                                style={{ color: "var(--card-foreground)" }}
+                            >
+                                {currentTool.hollowStroke ?? 1}px
+                            </span>
+                        </div>
+                    )}
                 </div>
             </div>
         );

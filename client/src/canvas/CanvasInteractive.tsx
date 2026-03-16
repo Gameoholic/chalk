@@ -294,6 +294,7 @@ function handleMouseEvents(
             type: "rect",
             color: rectTool.color,
             hollow: rectTool.hollow,
+            hollowStroke: rectTool.hollow ? rectTool.hollowStroke : 0,
             position: currentInteraction.current.path[0],
             size: {
                 x:
@@ -327,6 +328,7 @@ function handleMouseEvents(
             type: "ellipse",
             color: ellipseTool.color,
             hollow: ellipseTool.hollow,
+            hollowStroke: ellipseTool.hollow ? ellipseTool.hollowStroke : 0,
             position: currentInteraction.current.path[0],
             size: {
                 x:

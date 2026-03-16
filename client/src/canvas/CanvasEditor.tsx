@@ -61,7 +61,6 @@ function CanvasEditor({
     openLoginOnMount,
     onLoginOpened,
 }: CanvasEditorProps) {
-    const themeContext = useContext(ThemeContext);
     const showDebugInfoContext = useContext(ShowDebugInfoContext);
     const canvasContext = useContext(CanvasContext);
     // Use this whenever after we run code async, otherwise we get stale closure

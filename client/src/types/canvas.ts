@@ -43,6 +43,7 @@ export interface LineObject extends ColorableObject, StrokableObject {
 
 export interface ShapeObject extends ColorableObject {
     hollow: boolean;
+    hollowStroke: number; // only relevant if hollow is true, otherwise will be set to 0
     position: Vec2; // top left coordinate (unless size is negative)
     size: Vec2; // Can be negative (for reverse)
 }

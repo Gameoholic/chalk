@@ -185,7 +185,7 @@ function drawRect(
     if (object.hollow) {
         ctx.strokeStyle = object.color;
         ctx.lineWidth = getStrokeSize(
-            getStrokeSize(1, ctx, antiAliasing),
+            getStrokeSize(object.hollowStroke, ctx, antiAliasing),
             ctx,
             true
         );
@@ -216,7 +216,7 @@ function drawEllipse(
     if (object.hollow) {
         ctx.strokeStyle = object.color;
         ctx.lineWidth = getStrokeSize(
-            getStrokeSize(1, ctx, antiAliasing),
+            getStrokeSize(object.hollowStroke, ctx, antiAliasing),
             ctx,
             true
         );
