@@ -17,6 +17,7 @@ const envSchema = z.object({
     BCRYPT_SALT_ROUNDS: z.coerce.number().min(10),
     PORT: z.coerce.number().positive(),
     ALLOWED_ORIGIN: z.url(),
+    SENTRY_DSN: z.url(),
     ACCESS_TOKEN_EXPIRY: msString,
     REFRESH_TOKEN_EXPIRY: msString,
     REFRESH_TOKEN_EXPIRY_GUEST: msString,

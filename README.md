@@ -36,7 +36,6 @@ chalk.gameoholic.dev
 - [ ] Better light mode
 - [ ] Better handle LoadingError screen (if prompted to log in / log out, show those buttons)
 - [ ] Keybinds in bottom left corner ([Shift] Move [LMB] Draw)
-- [ ] Make lastOpen property of board nullable, so when we create the board it doesn't automatically set its lastOpened to now
 - [ ] Unify style app-wide (colors, behavior, animation of modals (I particularly like the style of create board modal)...)
 - [ ] When deleting board, zoom out to My Boards and Thanos-particle destroy the board. All other boards will then "cascade" with an animation.
 
