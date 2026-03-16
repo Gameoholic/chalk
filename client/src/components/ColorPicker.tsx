@@ -10,7 +10,7 @@ import {
 } from "motion/react";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 /**
- *   Hooks
+ * ==============   Hooks   ================
  */
 function useMouse() {
     const x = useMotionValue(0);
@@ -27,7 +27,7 @@ function useMouse() {
     return { x, y };
 }
 /**
- *   Utils
+ * ==============   Utils   ================
  */
 function calculateAngle(index: number, totalInRing: number): number {
     return (index / totalInRing) * Math.PI * 2;
@@ -281,7 +281,7 @@ function TransparencySlider({
             angle = endAngle;
         }
         const normalizedAngle = (angle - startAngle) / (endAngle - startAngle);
-        const newOpacity = Math.max(0, Math.min(100, normalizedAngle * 100));
+        const newOpacity = Math.max(1, Math.min(100, normalizedAngle * 100));
         setOpacity(newOpacity);
     };
     const handlePointerDown = (e: React.PointerEvent) => {
@@ -319,106 +319,122 @@ function TransparencySlider({
         }
     }, [isDragging]);
     return (
-        <div className="pointer-events-auto relative h-[190px] w-[190px]">
-            <svg
-                width="190"
-                height="190"
-                viewBox="0 0 190 190"
-                onPointerMove={handlePointerMove}
-                className="overflow-visible"
-            >
-                <defs>
-                    <linearGradient
-                        id="opacityGradient"
-                        x1="0%"
-                        y1="0%"
-                        x2="100%"
-                        y2="0%"
-                    >
-                        <stop offset="0%" stopColor="white" stopOpacity="0" />
-                        <stop offset="100%" stopColor="white" stopOpacity="1" />
-                    </linearGradient>
-                    <filter id="glow">
-                        <feGaussianBlur stdDeviation="2" result="coloredBlur" />
-                        <feMerge>
-                            <feMergeNode in="coloredBlur" />
-                            <feMergeNode in="SourceGraphic" />
-                        </feMerge>
-                    </filter>
-                </defs>
-                <path
-                    ref={trackRef}
-                    d={arcPath}
-                    fill="none"
-                    stroke="rgba(255, 255, 255, 0.1)"
-                    strokeWidth="12"
-                    strokeLinecap="round"
-                    className="cursor-pointer"
-                    onPointerDown={handleTrackClick}
-                />
-                <path
-                    d={arcPath}
-                    fill="none"
-                    stroke="url(#opacityGradient)"
-                    strokeWidth="4"
-                    strokeLinecap="round"
-                    opacity={0.4}
-                    className="pointer-events-none"
-                />
-                <motion.path
-                    d={arcPath}
-                    fill="none"
-                    stroke="white"
-                    strokeWidth="4"
-                    strokeLinecap="round"
-                    strokeDasharray={`${progressLength} ${arcLength}`}
-                    opacity={0.6}
-                    animate={{ opacity: selectedColor ? 0.8 : 0.6 }}
-                    transition={{ duration: 0.2 }}
-                    className="pointer-events-none"
-                />
-                <motion.g
-                    onPointerDown={handlePointerDown}
-                    style={{ cursor: isDragging ? "grabbing" : "grab" }}
+        <div className="pointer-events-auto relative flex flex-col items-center gap-1">
+            <span className="text-xs font-semibold tracking-wide text-white/60">
+                Opacity
+            </span>
+            <div className="relative h-[190px] w-[190px]">
+                <svg
+                    width="190"
+                    height="190"
+                    viewBox="0 0 190 190"
+                    onPointerMove={handlePointerMove}
+                    className="overflow-visible"
                 >
-                    <motion.circle
-                        cx={handleX}
-                        cy={handleY}
-                        r="14"
-                        fill="white"
-                        whileHover={{ scale: 1.2 }}
-                        whileTap={{ scale: 1.1 }}
-                        transition={{
-                            type: "spring",
-                            damping: 30,
-                            stiffness: 200,
-                        }}
-                        filter={isDragging ? "url(#glow)" : undefined}
+                    <defs>
+                        <linearGradient
+                            id="opacityGradient"
+                            x1="0%"
+                            y1="0%"
+                            x2="100%"
+                            y2="0%"
+                        >
+                            <stop
+                                offset="0%"
+                                stopColor="white"
+                                stopOpacity="0"
+                            />
+                            <stop
+                                offset="100%"
+                                stopColor="white"
+                                stopOpacity="1"
+                            />
+                        </linearGradient>
+                        <filter id="glow">
+                            <feGaussianBlur
+                                stdDeviation="2"
+                                result="coloredBlur"
+                            />
+                            <feMerge>
+                                <feMergeNode in="coloredBlur" />
+                                <feMergeNode in="SourceGraphic" />
+                            </feMerge>
+                        </filter>
+                    </defs>
+                    <path
+                        ref={trackRef}
+                        d={arcPath}
+                        fill="none"
+                        stroke="rgba(255, 255, 255, 0.1)"
+                        strokeWidth="12"
+                        strokeLinecap="round"
+                        className="cursor-pointer"
+                        onPointerDown={handleTrackClick}
                     />
-                    <motion.circle
-                        cx={handleX}
-                        cy={handleY}
-                        r="14"
+                    <path
+                        d={arcPath}
+                        fill="none"
+                        stroke="url(#opacityGradient)"
+                        strokeWidth="4"
+                        strokeLinecap="round"
+                        opacity={0.4}
+                        className="pointer-events-none"
+                    />
+                    <motion.path
+                        d={arcPath}
                         fill="none"
                         stroke="white"
-                        strokeWidth="2"
-                        opacity={0}
-                        whileHover={{ opacity: 0.4, scale: 1.3 }}
-                        transition={{ duration: 0.13 }}
-                        className="pointer-events-none mix-blend-overlay"
+                        strokeWidth="4"
+                        strokeLinecap="round"
+                        strokeDasharray={`${progressLength} ${arcLength}`}
+                        opacity={0.6}
+                        animate={{ opacity: selectedColor ? 0.8 : 0.6 }}
+                        transition={{ duration: 0.2 }}
+                        className="pointer-events-none"
                     />
-                    <text
-                        x={handleX}
-                        y={handleY}
-                        textAnchor="middle"
-                        dominantBaseline="central"
-                        className="pointer-events-none font-mono text-[9px] font-semibold select-none"
-                        fill="#0b1011"
+                    <motion.g
+                        onPointerDown={handlePointerDown}
+                        style={{ cursor: isDragging ? "grabbing" : "grab" }}
                     >
-                        {Math.round(opacity)}
-                    </text>
-                </motion.g>
-            </svg>
+                        <motion.circle
+                            cx={handleX}
+                            cy={handleY}
+                            r="14"
+                            fill="white"
+                            whileHover={{ scale: 1.2 }}
+                            whileTap={{ scale: 1.1 }}
+                            transition={{
+                                type: "spring",
+                                damping: 30,
+                                stiffness: 200,
+                            }}
+                            filter={isDragging ? "url(#glow)" : undefined}
+                        />
+                        <motion.circle
+                            cx={handleX}
+                            cy={handleY}
+                            r="14"
+                            fill="none"
+                            stroke="white"
+                            strokeWidth="2"
+                            opacity={0}
+                            whileHover={{ opacity: 0.4, scale: 1.3 }}
+                            transition={{ duration: 0.13 }}
+                            className="pointer-events-none mix-blend-overlay"
+                        />
+                        <text
+                            x={handleX}
+                            y={handleY}
+                            textAnchor="middle"
+                            dominantBaseline="central"
+                            className="pointer-events-none font-mono text-[9px] font-semibold select-none"
+                            fill="#0b1011"
+                        >
+                            {Math.round(opacity)}%
+                        </text>
+                    </motion.g>
+                </svg>
+            </div>
         </div>
     );
 }
