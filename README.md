@@ -27,6 +27,7 @@ chalk.gameoholic.dev
 - [ ] Delete specific objects
 
 #### 🎨 Visual & Polish & QOL
+- [ ] Add "connection lost" display to user
 - [ ] Offer to redownload page if error is taking too long to retry
 - [ ] Before logging in while on guest user, warn that board will be deleted
 - [ ] Responsive design for mobile and all window sizes

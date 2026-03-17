@@ -85,6 +85,10 @@ export async function upsertWorldObjects(
     maxObjectCount: number
 ) {
     try {
+        if (objects.length === 0) {
+            return err({ reason: "No objects provided for update." });
+        }
+
         // Update existing objects (This doesn't change the array length)
         const ops = objects.map((obj) => ({
             updateOne: {
@@ -115,21 +119,18 @@ export async function upsertWorldObjects(
             return err({ reason: "Couldn't find board for owner." });
         }
 
-        /**
-         * LIMIT CHECK LOGIC:
-         * If we had objects to push, but they weren't matched and weren't modified,
-         * it implies the $exists: false check failed (array is full).
-         */
-        const successfulOps = result.matchedCount;
-
-        if (successfulOps < ops.length + pushOps.length) {
+        // Every object should trigger exactly ONE match (either updating an existing, or pushing a new).
+        // If the matchedCount is less than the number of objects, it means at least one object
+        // failed both the update filter AND the push filter (which includes the maxObjectCount limit).
+        if (result.matchedCount < objects.length) {
+            // We can do the findOne here to give a highly specific error message,
+            // but this block will only run if there is actually a failure.
             const currentBoard = await collection.findOne({ _id: boardId });
             if (currentBoard && currentBoard.objects.length >= maxObjectCount) {
                 return err({ reason: "Cannot exceed max object amount." });
             }
-        }
 
-        if (result.modifiedCount !== objects.length) {
+            // Fallback error if it failed for a reason other than the limit
             return err({ reason: "Couldn't update all objects." });
         }
 
@@ -153,6 +154,10 @@ export async function deleteWorldObjects(
     objectIds: string[]
 ) {
     try {
+        if (objectIds.length === 0) {
+            return err({ reason: "No objects provided for deletion." });
+        }
+
         const result = await collection.updateOne(
             { _id: boardId, ownerId },
             { $pull: { objects: { id: { $in: objectIds } } } }
@@ -166,10 +171,6 @@ export async function deleteWorldObjects(
 
         if (result.matchedCount === 0) {
             return err({ reason: "Couldn't find board for owner." });
-        }
-
-        if (result.matchedCount !== objectIds.length) {
-            return err({ reason: "Couldn't delete all objects." });
         }
 
         return ok(undefined);
@@ -269,6 +270,10 @@ export async function updateOwnerOfAllBoards(
     newOwnerId: ObjectId
 ) {
     try {
+        if (oldOwnerId.id === newOwnerId.id) {
+            return err({ reason: "Old owner and new owner are the same." });
+        }
+
         const query = { ownerId: oldOwnerId };
         const updateDoc = { $set: { ownerId: newOwnerId } };
 
@@ -283,12 +288,6 @@ export async function updateOwnerOfAllBoards(
         if (result.matchedCount === 0) {
             return err({
                 reason: "No boards found for the old owner.",
-            });
-        }
-
-        if (result.modifiedCount === 0) {
-            return err({
-                reason: "Boards were found but not modified.",
             });
         }
     } catch (error) {
@@ -324,7 +323,7 @@ export async function findBoardByIdForUser(
             lastCameraZoom: number;
         }>(
             {
-                _id: new ObjectId(boardId),
+                _id: boardId,
                 ownerId,
             },
             {

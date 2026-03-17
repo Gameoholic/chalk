@@ -68,6 +68,17 @@ function CanvasInteractive({
         ]);
     }
 
+    function removeObject(objectId: string) {
+        // First, remove the object from the local objects (handles cases where the object was created, then immediately deleted before committing to server)
+        canvasContext.setLocalUnsavedObjects((prev) =>
+            prev.filter((obj) => obj.id !== objectId)
+        );
+        // Then prepare the object to be deleted
+        canvasContext.setLocalDeletedObjectIds(
+            (prev) => new Set([...prev, objectId])
+        );
+    }
+
     // User released left click so object should be committed to database
     function commitObjects() {
         onObjectsCommit();
@@ -85,9 +96,14 @@ function CanvasInteractive({
         handleMouseUp,
         handleWheel,
         handleContextMenu,
-    } = handleMouseEvents(updateOrAddObject, commitObjects, commitCamera);
+    } = handleMouseEvents(
+        updateOrAddObject,
+        removeObject,
+        commitObjects,
+        commitCamera
+    );
 
-    // Server-synced objects and local unsaved objects, render all
+    // Server-synced objects and local unsaved objects and locally deleted objects, render all
     const allObjects = useMemo(() => {
         const map = new Map<string, WorldObject>();
         canvasContext
@@ -96,10 +112,12 @@ function CanvasInteractive({
         canvasContext.local_unsavedObjects.forEach((obj) =>
             map.set(obj.id, obj)
         );
+        canvasContext.local_deletedObjectIds.forEach((id) => map.delete(id));
         return map;
     }, [
         canvasContext.getCurrentBoard().objects,
         canvasContext.local_unsavedObjects,
+        canvasContext.local_deletedObjectIds,
     ]);
 
     return (
@@ -129,6 +147,7 @@ function screenToWorld(
 
 function handleMouseEvents(
     updateObject: (object: WorldObject) => void,
+    removeObject: (objectId: string) => void,
     commitObjects: () => void,
     commitCamera: () => void
 ) {
@@ -239,7 +258,10 @@ function handleMouseEvents(
         currentInteraction.current.path.push(mouseWorldCoords);
 
         if (eraserTool.eraserMode === "object") {
-            throw new Error("Object eraser mode not implemented yet");
+            const hoveredObject = findObjectAtCoords(mouseWorldCoords);
+            if (hoveredObject) {
+                removeObject(hoveredObject.id);
+            }
         } else {
             const newPath: EraserPathObject = {
                 id: currentInteraction.current.objectId,
@@ -418,6 +440,75 @@ function handleMouseEvents(
     // Right click on canvas
     function handleContextMenu(e: React.MouseEvent<HTMLCanvasElement>) {
         e.preventDefault();
+    }
+
+    function findObjectAtCoords(coords: Vec2): WorldObject | null {
+        for (const obj of canvasContext
+            .getCurrentBoard()
+            .objects.concat(canvasContext.local_unsavedObjects)
+            .reverse()) {
+            // reverse so topmost-rendered object is selected
+            const bb = getBoundingBox(obj);
+            if (!bb) continue;
+            if (
+                coords.x >= bb.min.x &&
+                coords.x <= bb.max.x &&
+                coords.y >= bb.min.y &&
+                coords.y <= bb.max.y
+            ) {
+                return obj;
+            }
+        }
+        return null;
+    }
+
+    function getBoundingBox(obj: WorldObject): { min: Vec2; max: Vec2 } | null {
+        switch (obj.type) {
+            case "path":
+            case "eraser-path": {
+                if (obj.points.length === 0) return null;
+                const xs = obj.points.map((p) => p.x);
+                const ys = obj.points.map((p) => p.y);
+                const pad = (obj.stroke ?? 0) / 2;
+                return {
+                    min: { x: Math.min(...xs) - pad, y: Math.min(...ys) - pad },
+                    max: { x: Math.max(...xs) + pad, y: Math.max(...ys) + pad },
+                };
+            }
+            case "line": {
+                const pad = (obj.stroke ?? 0) / 2;
+                return {
+                    min: {
+                        x: Math.min(obj.point1.x, obj.point2.x) - pad,
+                        y: Math.min(obj.point1.y, obj.point2.y) - pad,
+                    },
+                    max: {
+                        x: Math.max(obj.point1.x, obj.point2.x) + pad,
+                        y: Math.max(obj.point1.y, obj.point2.y) + pad,
+                    },
+                };
+            }
+            case "rect":
+            case "ellipse": {
+                const x0 = Math.min(
+                    obj.position.x,
+                    obj.position.x + obj.size.x
+                );
+                const y0 = Math.min(
+                    obj.position.y,
+                    obj.position.y + obj.size.y
+                );
+                return {
+                    min: { x: x0, y: y0 },
+                    max: {
+                        x: x0 + Math.abs(obj.size.x),
+                        y: y0 + Math.abs(obj.size.y),
+                    },
+                };
+            }
+            default:
+                return null;
+        }
     }
 
     return {

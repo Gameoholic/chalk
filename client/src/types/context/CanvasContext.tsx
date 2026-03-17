@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { BoardData } from "../data";
 import { Camera, Vec2, WorldObject } from "../canvas";
 import { SessionContext } from "./SessionContext";
-import { Tool, ToolType } from "../tool";
+import { Tool } from "../tool";
 
 /**
  * Local properties - not synced with server.
@@ -11,6 +11,7 @@ interface CanvasContextType {
     // technically currentBoardId doesn't even have a server-side counterpart, we keep it local just for clarity
     local_currentBoardId: string;
     local_unsavedObjects: WorldObject[];
+    local_deletedObjectIds: Set<string>;
     local_camera: Camera;
     local_tool: Tool;
     // Color to persist across tool changes, even for tools that don't have a color property (e.g. eraser).
@@ -23,6 +24,7 @@ interface CanvasContextType {
     setLocalCamera: React.Dispatch<React.SetStateAction<Camera>>;
     setLocalTool: React.Dispatch<React.SetStateAction<Tool>>;
     setLocalUnsavedObjects: React.Dispatch<React.SetStateAction<WorldObject[]>>;
+    setLocalDeletedObjectIds: React.Dispatch<React.SetStateAction<Set<string>>>;
     setLocalCachedColor: React.Dispatch<React.SetStateAction<string>>;
     setLocalCachedStroke: React.Dispatch<React.SetStateAction<number>>;
 
@@ -34,6 +36,7 @@ interface CanvasContextType {
     updateCurrentBoardObjects: (objects: WorldObject[]) => void;
     onCurrentBoardSaved: (
         savedObjects: WorldObject[],
+        deletedObjectIds: Set<string>,
         cameraPosition: Vec2,
         cameraZoom: number
     ) => void;
@@ -77,10 +80,12 @@ export function CanvasContextProvider({
         return currentBoard;
     }
 
-    // --- Local State ---
     const [local_unsavedObjects, setLocalUnsavedObjects] = useState<
         WorldObject[]
     >([]);
+    const [local_deletedObjectIds, setLocalDeletedObjectIds] = useState<
+        Set<string>
+    >(new Set());
 
     const [local_camera, setLocalCamera] = useState<Camera>({
         position: getCurrentBoard().lastCameraPosition,
@@ -122,15 +127,17 @@ export function CanvasContextProvider({
 
     function onCurrentBoardSaved(
         savedObjects: WorldObject[],
+        deletedObjectIds: Set<string>,
         cameraPosition: Vec2,
         cameraZoom: number
     ) {
         const currentBoardData = getCurrentBoard();
         const newObjectsMap = new Map(
-            currentBoardData.objects.map((x) => [x.id, x])
+            currentBoardData.objects
+                .filter((x) => !deletedObjectIds.has(x.id))
+                .map((x) => [x.id, x])
         );
         savedObjects.forEach((x) => newObjectsMap.set(x.id, x));
-
         sessionContext.updateBoardById({
             ...currentBoardData,
             objects: Array.from(newObjectsMap.values()),
@@ -144,6 +151,7 @@ export function CanvasContextProvider({
             value={{
                 local_currentBoardId,
                 local_unsavedObjects,
+                local_deletedObjectIds,
                 local_camera,
                 local_tool: local_tool,
                 local_cachedColor,
@@ -152,6 +160,7 @@ export function CanvasContextProvider({
                 setLocalCamera,
                 setLocalTool,
                 setLocalUnsavedObjects,
+                setLocalDeletedObjectIds,
                 setLocalCachedColor,
                 setLocalCachedStroke,
                 updateCurrentBoardCamera,

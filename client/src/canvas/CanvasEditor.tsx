@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import {
     deleteBoard,
+    deleteBoardObjects,
     resetBoard,
     updateBoardCamera,
     updateBoardName,
@@ -151,7 +152,9 @@ function CanvasEditor({
     // Saving objects
     // Objects that are currently being saved (mid-fetch request)
     const objectsBeingSavedOnDatabase: RefObject<WorldObject[]> = useRef([]);
-    // Error data if couldn't save objects
+    // Objects that are currently being deleted (mid-fetch request)
+    const objectsBeingDeletedOnDatabase = useRef<Set<string>>(new Set());
+    // Error data if couldn't save board
     const [saveObjectsError, setSaveObjectsError] = useState<
         | { error: null }
         | {
@@ -209,12 +212,16 @@ function CanvasEditor({
             if (
                 saveObjectsErrorRef.current.error === null && // Use the ref to avoid stale closure
                 objectsBeingSavedOnDatabase.current.length === 0 &&
+                objectsBeingDeletedOnDatabase.current.size === 0 &&
                 (objectsToSaveOnDatabase.current.size > 0 ||
+                    objectsToDeleteOnDatabase.current.size > 0 ||
                     wasCameraUpdatedSinceLastSave())
             ) {
                 console.log(
                     "Cooldown expired! Requesting to save " +
                         objectsToSaveOnDatabase.current.size +
+                        " objects and delete " +
+                        objectsToDeleteOnDatabase.current.size +
                         " objects on database."
                 );
                 requestSaveObjectsOnDatabaseFunction.current(); // Use the ref to avoid stale closure
@@ -234,9 +241,12 @@ function CanvasEditor({
     // but our code should be able to support cases where there's multiple objects at once.
     function onObjectsCommit() {
         console.log(
-            "Requesting to commit " +
+            "Commit: Requesting to save " +
                 (canvasContext.local_unsavedObjects.length -
                     objectsBeingSavedOnDatabase.current.length) +
+                " objects and delete " +
+                (canvasContext.local_deletedObjectIds.size -
+                    objectsBeingDeletedOnDatabase.current.size) +
                 " objects to database."
         );
 
@@ -244,7 +254,10 @@ function CanvasEditor({
         canvasContext.local_unsavedObjects.forEach((object) => {
             objectsToSaveOnDatabase.current.set(object.id, object);
         });
-        requestSaveObjectsOnDatabase();
+        canvasContext.local_deletedObjectIds.forEach((objectId) => {
+            objectsToDeleteOnDatabase.current.add(objectId);
+        });
+        requestSaveBoard();
     }
 
     // When camera is ready to be saved to database (camera finished dragging or zoom changed).
@@ -255,23 +268,22 @@ function CanvasEditor({
             onTourCameraMoved();
         }
 
-        requestSaveObjectsOnDatabase();
+        requestSaveBoard();
     }
 
     // Avoid stale closure in timer effect hooks
-    const requestSaveObjectsOnDatabaseFunction = useRef(
-        requestSaveObjectsOnDatabase
-    );
+    const requestSaveObjectsOnDatabaseFunction = useRef(requestSaveBoard);
     // Keep the ref constantly updated on every single render
     useEffect(() => {
-        requestSaveObjectsOnDatabaseFunction.current =
-            requestSaveObjectsOnDatabase;
+        requestSaveObjectsOnDatabaseFunction.current = requestSaveBoard;
     });
 
     // Objects that are ready to be saved on the database
     const objectsToSaveOnDatabase: RefObject<Map<string, WorldObject>> = useRef(
         new Map()
     );
+    // Object ids that are ready to be deleted on the database
+    const objectsToDeleteOnDatabase: RefObject<Set<string>> = useRef(new Set());
 
     function wasCameraUpdatedSinceLastSave() {
         const cameraPosOnClient =
@@ -289,28 +301,37 @@ function CanvasEditor({
         );
     }
 
-    // Main method to save objects on database
-    async function requestSaveObjectsOnDatabase(asErrorRetry: boolean = false) {
+    // Main method to save the board on database
+    async function requestSaveBoard(asErrorRetry: boolean = false) {
         // Sanity check.
         const saveObjects = objectsToSaveOnDatabase.current.size > 0;
+        const deleteObjects = objectsToDeleteOnDatabase.current.size > 0;
         const saveCamera = wasCameraUpdatedSinceLastSave();
-        if (!saveObjects && !saveCamera) {
+        if (!saveObjects && !saveCamera && !deleteObjects) {
             console.warn(
-                "Request to save objects+camera ignored because object length is 0 and camera hasn't updated since last save."
+                "Request to save objects+camera ignored because object save/delete length is 0 and camera hasn't updated since last save."
             );
             return;
         }
 
         if (saveObjectsErrorRef.current.error && !asErrorRetry) {
             console.warn(
-                "Request to save objects+camera (length " +
-                    objectsToSaveOnDatabase.current.size +
+                "Request to save/delete objects+camera (length " +
+                    (objectsToSaveOnDatabase.current.size +
+                        objectsToDeleteOnDatabase.current.size) +
                     ") ignored because waiting for error retry."
             );
             return;
         }
 
-        if (objectsBeingSavedOnDatabase.current.length > 0) {
+        // todo: um what about if it's just a camera request? why dont we check that too?
+        // todo
+        //to do/
+        // todo
+        if (
+            objectsBeingSavedOnDatabase.current.length > 0 ||
+            objectsBeingDeletedOnDatabase.current.size > 0
+        ) {
             console.warn(
                 "Request to save objects+camera (length " +
                     (canvasContext.local_unsavedObjects.length -
@@ -332,11 +353,21 @@ function CanvasEditor({
         objectsBeingSavedOnDatabase.current = Array.from(
             objectsToSaveOnDatabase.current.values()
         );
+        objectsBeingDeletedOnDatabase.current = new Set(
+            objectsToDeleteOnDatabase.current
+        );
 
         if (saveObjects) {
             console.log(
                 "Saving " +
                     objectsBeingSavedOnDatabase.current.length +
+                    " board objects on database."
+            );
+        }
+        if (deleteObjects) {
+            console.log(
+                "Deleting " +
+                    objectsBeingDeletedOnDatabase.current.size +
                     " board objects on database."
             );
         }
@@ -375,10 +406,20 @@ function CanvasEditor({
             }
 
             await Promise.all(savesToExecute);
+            // Todo: For now I'm hesitant to put this along with the Promise.all() because I want to avoid a situation where
+            // an object was added/modified and also deleted in the same save operation, and then server-side it's deleted first and then re-created
+            // I'm not sure if this can happen, probably not, if I'm 100% that not then we can put this along with the Promise.all above
+            if (deleteObjects) {
+                await deleteBoardObjects(
+                    canvasContext.local_currentBoardId,
+                    objectsBeingDeletedOnDatabase.current
+                );
+            }
         } catch (err) {
             console.error("Failure to save the objects+camera!");
 
             objectsBeingSavedOnDatabase.current = [];
+            objectsBeingDeletedOnDatabase.current = new Set();
             setSaveObjectsError((prev) => {
                 const accumulatedCooldown = prev.error
                     ? prev.lastRetryCooldown
@@ -429,6 +470,7 @@ function CanvasEditor({
             objectsBeingSavedOnDatabase.current.filter(
                 (x) => !remainingUnsavedObjects.includes(x)
             ),
+            objectsBeingDeletedOnDatabase.current,
             cameraPosOnClient,
             cameraZoomOnClient
         );
@@ -436,19 +478,33 @@ function CanvasEditor({
         canvasContextRef.current.setLocalUnsavedObjects(
             remainingUnsavedObjects
         );
+        const remainingUndeletedObjectIds = new Set(
+            [...canvasContext.local_deletedObjectIds].filter(
+                (id) => !objectsBeingDeletedOnDatabase.current.has(id)
+            )
+        );
+        canvasContextRef.current.setLocalDeletedObjectIds(
+            remainingUndeletedObjectIds
+        );
 
         objectsBeingSavedOnDatabase.current = [];
+        objectsBeingDeletedOnDatabase.current = new Set();
 
         objectsToSaveOnDatabase.current = new Map();
         remainingUnsavedObjects.forEach((object) => {
             objectsToSaveOnDatabase.current.set(object.id, object);
         });
+        objectsToDeleteOnDatabase.current = remainingUndeletedObjectIds;
 
         // Save any objects that were piling up as this request was processed
         if (objectsToSaveOnDatabase.current.size > 0) {
             console.log(
                 objectsToSaveOnDatabase.current.size +
                     " objects accumulated while processing the request. Attempting to save them once cooldown expires."
+            );
+            console.log(
+                objectsToDeleteOnDatabase.current.size +
+                    " object deletions accumulated while processing the request. Attempting to save them once cooldown expires."
             );
             startCooldownTimeout();
         }
@@ -608,6 +664,9 @@ function CanvasEditor({
             objectsBeingSavedOnDatabase.current.length !== 0 ||
             objectsToSaveOnDatabase.current.size !== 0 ||
             canvasContext.local_unsavedObjects.length !== 0 ||
+            objectsBeingDeletedOnDatabase.current.size !== 0 ||
+            objectsToDeleteOnDatabase.current.size !== 0 ||
+            canvasContext.local_deletedObjectIds.size !== 0 ||
             wasCameraUpdatedSinceLastSave()
         );
     }
@@ -800,7 +859,9 @@ function CanvasEditor({
                                 canvasContext.local_unsavedObjects.length}{" "}
                             ({canvasContext.getCurrentBoard().objects.length}{" "}
                             saved on server +{" "}
-                            {canvasContext.local_unsavedObjects.length} unsaved)
+                            {canvasContext.local_unsavedObjects.length} unsaved
+                            + {canvasContext.local_deletedObjectIds.size}{" "}
+                            awaiting deletion)
                         </p>
                         <p>
                             Camera:{" "}
