@@ -6,7 +6,7 @@
 **Frontend:** React, Vite, TailwindCSS
 
 Try it here:
-chalk.gameoholic.dev
+[https://chalk.gameoholic.dev/](https://chalk.gameoholic.dev/)
 
 ## Features
 
