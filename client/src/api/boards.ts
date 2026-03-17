@@ -70,6 +70,24 @@ export async function updateBoardObjects(
     return;
 }
 
+export async function deleteBoardObjects(
+    boardId: string,
+    objectIds: Set<string>
+) {
+    const result = await fetchHelper<undefined>(
+        `me/boards/${boardId}/objects`,
+        "DELETE",
+        { objectIds: [...objectIds] }
+    );
+
+    if (!result.success) {
+        console.error("Error executing deleteBoardObjects: " + result.error);
+        throw Error(result.error);
+    }
+
+    return;
+}
+
 export async function updateBoardName(boardId: string, name: string) {
     const result = await fetchHelper<undefined>(`me/boards/${boardId}`, "PUT", {
         name,

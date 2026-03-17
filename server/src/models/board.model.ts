@@ -147,6 +147,45 @@ export async function upsertWorldObjects(
     }
 }
 
+export async function deleteWorldObjects(
+    ownerId: ObjectId,
+    boardId: ObjectId,
+    objectIds: string[]
+) {
+    try {
+        const result = await collection.updateOne(
+            { _id: boardId, ownerId },
+            { $pull: { objects: { id: { $in: objectIds } } } }
+        );
+
+        if (!result.acknowledged) {
+            return err({
+                reason: "MongoDB did not acknowledge the operation.",
+            });
+        }
+
+        if (result.matchedCount === 0) {
+            return err({ reason: "Couldn't find board for owner." });
+        }
+
+        if (result.matchedCount !== objectIds.length) {
+            return err({ reason: "Couldn't delete all objects." });
+        }
+
+        return ok(undefined);
+    } catch (error) {
+        if (error instanceof Error) {
+            return err({
+                reason: "Unknown error.",
+                previousError: {
+                    reason: error.message,
+                },
+            });
+        }
+        return err({ reason: "Unknown error and unknown type." });
+    }
+}
+
 /**
  * @return Boards created by the owner, without {objects, ownerId}, sorted by most recently opened first
  */

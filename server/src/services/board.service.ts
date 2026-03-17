@@ -629,3 +629,71 @@ export async function upsertWorldObjectsToBoard(
 
     return ok(undefined);
 }
+
+export async function deleteWorldObjectsFromBoard(
+    userId: string,
+    boardId: string,
+    objectIds: string[]
+) {
+    if (!ObjectId.isValid(userId)) {
+        return err({ reason: "User ID is invalid." });
+    }
+    if (!ObjectId.isValid(boardId)) {
+        return err({ reason: "Board ID is invalid." });
+    }
+
+    if (objectIds.length === 0) {
+        return err({ reason: "Object IDs cannot be empty." });
+    }
+
+    const result = await BoardModel.deleteWorldObjects(
+        new ObjectId(userId),
+        new ObjectId(boardId),
+        objectIds
+    );
+
+    if (!result.success) {
+        const error = result.error;
+        const errorReason = error.reason;
+
+        switch (errorReason) {
+            case "MongoDB did not acknowledge the operation.": {
+                return err({
+                    reason: "Couldn't delete objects.",
+                    previousError: error,
+                });
+            }
+            case "Couldn't find board for owner.": {
+                return err({
+                    reason: "Couldn't find board.",
+                    previousError: error,
+                });
+            }
+            case "Couldn't delete all objects.": {
+                return err({
+                    reason: "Couldn't delete objects.",
+                    previousError: error,
+                });
+            }
+            case "Unknown error.": {
+                return err({
+                    reason: "Couldn't delete objects.",
+                    previousError: error,
+                });
+            }
+            case "Unknown error and unknown type.": {
+                return err({
+                    reason: "Couldn't delete objects.",
+                    previousError: error,
+                });
+            }
+            default: {
+                throw new Error(
+                    `Unhandled error: ${errorReason satisfies never}`
+                );
+            }
+        }
+    }
+
+    return ok(undefined);
+}

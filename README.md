@@ -27,6 +27,7 @@ chalk.gameoholic.dev
 - [ ] Delete specific objects
 
 #### 🎨 Visual & Polish & QOL
+- [ ] Offer to redownload page if error is taking too long to retry
 - [ ] Before logging in while on guest user, warn that board will be deleted
 - [ ] Responsive design for mobile and all window sizes
 - [ ] Better error messages (like in our modify board/account modals!) when fail to create account / log in
@@ -40,7 +41,6 @@ chalk.gameoholic.dev
 - [ ] When deleting board, zoom out to My Boards and Thanos-particle destroy the board. All other boards will then "cascade" with an animation.
 
 #### 🔒 Security
-- [ ] Sentry URL shouldn't be exposed!!!
 - [ ] Refresh token cycling logic not optimal (stealing vuln + if user sends multiple requests just as token expires they all fail except the first)
 - [ ] Server-side ratelimiting
 - [ ] Ensure users' emails are unique

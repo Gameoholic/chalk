@@ -414,3 +414,78 @@ export async function updateWorldObjects(
         }
     }
 }
+
+export async function deleteWorldObjects(
+    req: AuthenticatedRequest,
+    res: Response
+) {
+    if (!req.authenticatedUser) {
+        return res.sendStatus(401);
+    }
+
+    const boardId = req.params.id as string;
+    if (boardId === undefined) {
+        res.status(400).json({ error: "Board id required." });
+        return;
+    }
+
+    const objectIds = req.body.objectIds as string[];
+
+    if (!Array.isArray(objectIds)) {
+        return res.status(400).json({ error: "Object IDs invalid." });
+    }
+
+    const result = await BoardService.deleteWorldObjectsFromBoard(
+        req.authenticatedUser.id,
+        boardId,
+        objectIds
+    );
+
+    if (result.success) {
+        return res.sendStatus(204);
+    }
+
+    const error = result.error;
+    const errorReason = error.reason;
+
+    switch (errorReason) {
+        case "User ID is invalid.": {
+            throw new ChalkInternalException(
+                400,
+                "Your user ID is invalid.",
+                error
+            );
+        }
+        case "Board ID is invalid.": {
+            throw new ChalkInternalException(
+                400,
+                "The board ID is invalid.",
+                error
+            );
+        }
+        case "Object IDs cannot be empty.": {
+            throw new ChalkInternalException(
+                400,
+                "Object IDs cannot be empty.",
+                error
+            );
+        }
+        case "Couldn't find board.": {
+            throw new ChalkInternalException(
+                404,
+                "Couldn't find board.",
+                error
+            );
+        }
+        case "Couldn't delete objects.": {
+            throw new ChalkInternalException(
+                500,
+                "Failed to delete objects due to an internal error.",
+                error
+            );
+        }
+        default: {
+            throw new Error(`Unhandled error: ${errorReason satisfies never}`);
+        }
+    }
+}
