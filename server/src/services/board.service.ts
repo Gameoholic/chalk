@@ -193,6 +193,12 @@ export async function transferOwnershipOfAllBoardsBelongingToUser(
         const error = result.error;
         const errorReason = error.reason;
         switch (errorReason) {
+            case "Old owner and new owner are the same.": {
+                return err({
+                    reason: "Old owner and new owner are the same.",
+                    previousError: error,
+                });
+            }
             case "No boards found for the old owner.": {
                 return err({
                     reason: "No boards found for the old user.",
@@ -200,12 +206,6 @@ export async function transferOwnershipOfAllBoardsBelongingToUser(
                 });
             }
             case "MongoDB did not acknowledge the operation.": {
-                return err({
-                    reason: "Couldn't transfer ownership of boards.",
-                    previousError: error,
-                });
-            }
-            case "Boards were found but not modified.": {
                 return err({
                     reason: "Couldn't transfer ownership of boards.",
                     previousError: error,
@@ -589,6 +589,12 @@ export async function upsertWorldObjectsToBoard(
         const errorReason = error.reason;
 
         switch (errorReason) {
+            case "No objects provided for update.": {
+                return err({
+                    reason: "No objects provided.",
+                    previousError: error,
+                });
+            }
             case "Cannot exceed max object amount.": {
                 return err({
                     reason: "Cannot exceed max object amount.",
@@ -669,9 +675,9 @@ export async function deleteWorldObjectsFromBoard(
                     previousError: error,
                 });
             }
-            case "Couldn't delete all objects.": {
+            case "No objects provided for deletion.": {
                 return err({
-                    reason: "Couldn't delete objects.",
+                    reason: "No objects provided.",
                     previousError: error,
                 });
             }

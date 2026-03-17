@@ -232,6 +232,12 @@ export async function createUser(
                     previousError: error,
                 });
             }
+            case "Old owner and new owner are the same.": {
+                return err({
+                    reason: "Couldn't transfer ownership of boards.",
+                    previousError: error,
+                });
+            }
             case "From and To user ids are the same.": {
                 return err({
                     reason: "Couldn't transfer ownership of boards.",

@@ -367,6 +367,13 @@ export async function updateWorldObjects(
     const errorReason = error.reason;
 
     switch (errorReason) {
+        case "No objects provided.": {
+            throw new ChalkInternalException(
+                400,
+                "No objects provided.",
+                error
+            );
+        }
         case "User ID is invalid.": {
             throw new ChalkInternalException(
                 400,
@@ -449,6 +456,13 @@ export async function deleteWorldObjects(
     const errorReason = error.reason;
 
     switch (errorReason) {
+        case "No objects provided.": {
+            throw new ChalkInternalException(
+                400,
+                "No objects provided.",
+                error
+            );
+        }
         case "User ID is invalid.": {
             throw new ChalkInternalException(
                 400,
