@@ -5,6 +5,7 @@ import {
     getById,
     updateBoard,
     updateWorldObjects,
+    deleteWorldObjects,
     deleteById,
 } from "../controllers/me-board.controller.js";
 import auth from "../middleware/auth.middleware.js";
@@ -16,6 +17,7 @@ router.delete("/:id", deleteById);
 router.get("/:id", getById);
 router.put("/:id", updateBoard);
 router.post("/:id/objects", updateWorldObjects);
+router.delete("/:id/objects", deleteWorldObjects);
 router.get("/", getAll);
 router.post("/", create);
 
