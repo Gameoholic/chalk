@@ -446,7 +446,7 @@ function handleMouseEvents(
 
         const newZoom =
             e.deltaY < 0 ? camera.zoom * zoomFactor : camera.zoom / zoomFactor;
-        const clampedZoom = Math.max(0.01, Math.min(100, newZoom));
+        const clampedZoom = Math.max(0.01, Math.min(1000, newZoom));
 
         const worldX = camera.position.x + mouseX / camera.zoom;
         const worldY = camera.position.y + mouseY / camera.zoom;
