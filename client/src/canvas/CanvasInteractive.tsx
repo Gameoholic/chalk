@@ -226,6 +226,7 @@ function handleMouseEvents(
                 tool: tool,
                 path: [],
             };
+            toolHandleMouseMove[currentInteraction.current.tool.type](e); // On first initial mouse down also treat it as a draw (so pressing and quickly releasing still draws a point)
             return;
         }
 
@@ -239,6 +240,28 @@ function handleMouseEvents(
             };
             return;
         }
+    };
+
+    const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+        if (currentInteraction.current?.type === "drawing") {
+            toolHandleMouseMove[currentInteraction.current.tool.type](e);
+            return;
+        }
+
+        if (currentInteraction.current?.type === "camera-drag") {
+            handleMouseMoveDragCamera(e);
+            return;
+        }
+    };
+
+    const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
+        if (currentInteraction.current?.type === "drawing") {
+            commitObjects();
+        }
+        if (currentInteraction.current?.type === "camera-drag") {
+            commitCamera();
+        }
+        currentInteraction.current = null;
     };
 
     function handleMouseMovePencilDraw(e: React.MouseEvent<HTMLCanvasElement>) {
@@ -294,7 +317,6 @@ function handleMouseEvents(
         const mouseWorldCoords: Vec2 = screenToWorld(e, camera);
         if (currentInteraction.current.path.length === 0) {
             currentInteraction.current.path[0] = mouseWorldCoords;
-            return;
         }
 
         currentInteraction.current.path[1] = mouseWorldCoords;
@@ -319,7 +341,11 @@ function handleMouseEvents(
         const mouseWorldCoords: Vec2 = screenToWorld(e, camera);
         if (currentInteraction.current.path.length === 0) {
             currentInteraction.current.path[0] = mouseWorldCoords;
-            return;
+            // We aren't gonna be able to stroke it, so there's legit nothing to draw if user just clicks and releases without dragging
+            // If it's hollow we can at least use the stroke size so we allow that
+            if (!rectTool.hollow) {
+                return;
+            }
         }
 
         currentInteraction.current.path[1] = mouseWorldCoords;
@@ -353,7 +379,11 @@ function handleMouseEvents(
         const mouseWorldCoords: Vec2 = screenToWorld(e, camera);
         if (currentInteraction.current.path.length === 0) {
             currentInteraction.current.path[0] = mouseWorldCoords;
-            return;
+            // We aren't gonna be able to stroke it, so there's legit nothing to draw if user just clicks and releases without dragging
+            // If it's hollow we can at least use the stroke size so we allow that
+            if (!ellipseTool.hollow) {
+                return;
+            }
         }
 
         currentInteraction.current.path[1] = mouseWorldCoords;
@@ -405,27 +435,6 @@ function handleMouseEvents(
             y: e.clientY,
         };
     }
-    const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-        if (currentInteraction.current?.type === "drawing") {
-            toolHandleMouseMove[currentInteraction.current.tool.type](e);
-            return;
-        }
-
-        if (currentInteraction.current?.type === "camera-drag") {
-            handleMouseMoveDragCamera(e);
-            return;
-        }
-    };
-
-    const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
-        if (currentInteraction.current?.type === "drawing") {
-            commitObjects();
-        }
-        if (currentInteraction.current?.type === "camera-drag") {
-            commitCamera();
-        }
-        currentInteraction.current = null;
-    };
 
     // // Camera zoom
     const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {

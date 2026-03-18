@@ -193,6 +193,22 @@ function drawRect(
             ctx,
             true
         );
+
+        // Single point — stroke() won't render anything, draw a filled circle instead
+        if (object.size.x === 0 || object.size.y === 0) {
+            const radius = ctx.lineWidth / 2;
+            ctx.arc(
+                object.position.x - camera.position.x,
+                object.position.y - camera.position.y,
+                radius,
+                0,
+                Math.PI * 2
+            );
+            ctx.fillStyle = object.color;
+            ctx.fill();
+            return;
+        }
+
         ctx.stroke();
     } else {
         ctx.fillStyle = object.color;
@@ -224,6 +240,22 @@ function drawEllipse(
             ctx,
             true
         );
+
+        // Single point — stroke() won't render anything, draw a filled circle instead
+        if (object.size.x === 0 || object.size.y === 0) {
+            const radius = ctx.lineWidth / 2;
+            ctx.arc(
+                object.position.x - camera.position.x,
+                object.position.y - camera.position.y,
+                radius,
+                0,
+                Math.PI * 2
+            );
+            ctx.fillStyle = object.color;
+            ctx.fill();
+            return;
+        }
+
         ctx.stroke();
     } else {
         ctx.fillStyle = object.color;
@@ -237,12 +269,27 @@ function drawPath(
     camera: Camera,
     antiAliasing: boolean
 ) {
-    if (!object.points || object.points.length < 2) return; // sanity check
+    if (!object.points || object.points.length < 1) return; // sanity check
     ctx.beginPath();
     ctx.strokeStyle = object.color;
     ctx.lineWidth = getStrokeSize(object.stroke, ctx, antiAliasing);
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
+
+    // Single point — stroke() won't render anything, draw a circle instead
+    if (object.points.length === 1) {
+        const radius = getStrokeSize(object.stroke, ctx, antiAliasing) / 2;
+        ctx.arc(
+            object.points[0].x - camera.position.x,
+            object.points[0].y - camera.position.y,
+            radius,
+            0,
+            Math.PI * 2
+        );
+        ctx.fillStyle = object.color;
+        ctx.fill();
+        return;
+    }
 
     ctx.moveTo(
         object.points[0].x - camera.position.x,
@@ -284,7 +331,7 @@ function drawEraserPath(
     camera: Camera,
     antiAliasing: boolean
 ) {
-    if (!object.points || object.points.length < 2) return;
+    if (!object.points || object.points.length < 1) return;
     ctx.save();
     ctx.globalCompositeOperation = "destination-out";
     ctx.beginPath();
@@ -292,6 +339,22 @@ function drawEraserPath(
     ctx.lineWidth = getStrokeSize(object.stroke, ctx, antiAliasing);
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
+
+    // Single point — stroke() won't render anything, draw a circle instead
+    if (object.points.length === 1) {
+        const radius = getStrokeSize(object.stroke, ctx, antiAliasing) / 2;
+        ctx.arc(
+            object.points[0].x - camera.position.x,
+            object.points[0].y - camera.position.y,
+            radius,
+            0,
+            Math.PI * 2
+        );
+        ctx.fillStyle = "rgba(0,0,0,1)";
+        ctx.fill();
+        ctx.restore();
+        return;
+    }
 
     ctx.moveTo(
         object.points[0].x - camera.position.x,
