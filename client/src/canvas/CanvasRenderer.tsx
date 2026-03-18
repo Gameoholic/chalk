@@ -19,29 +19,11 @@ interface CanvasWorldProps {
     onMouseUp?: React.MouseEventHandler<HTMLCanvasElement>;
     onWheel?: React.WheelEventHandler<HTMLCanvasElement>;
     onContextMenu?: React.MouseEventHandler<HTMLCanvasElement>;
+    // Mobile support:
+    onTouchStart?: React.TouchEventHandler<HTMLCanvasElement>;
+    onTouchMove?: React.TouchEventHandler<HTMLCanvasElement>;
+    onTouchEnd?: React.TouchEventHandler<HTMLCanvasElement>;
 }
-
-/**
- * Apply anti aliasing to a stroke size and return the new size (if enabled, stroke size will ALWAYS be opaque and be at least 1px)
- */
-const getStrokeSize = (
-    stroke: number,
-    ctx: CanvasRenderingContext2D,
-    antiAliasing: boolean
-) => {
-    // Ensures a stroke is always visible on screen.
-    // Reads the actual applied scale from the context transform so it's
-    // always in sync with whatever zoom CanvasBase just called ctx.scale() with.
-
-    // Besides anti aliasing and disabling it, there's no other solution to zoomed out drwaings looking better, besides using OpenGL or other rendering frameworks
-    // Anti aliasing = true -> Return stroke with the alpha automatically lowering when zoomed out (DOM canvas feature) to simulate sub-pixel sizes
-    if (antiAliasing) {
-        return stroke;
-    }
-    // Otherwise, always render so it's at least stroke = 1px
-    const zoom = ctx.getTransform().a;
-    return Math.max(stroke, 1 / zoom);
-};
 
 // Only renders passed objects and processes passed camera position and zoom
 // No interaction handling
@@ -89,6 +71,28 @@ function CanvasWorld({ objects, camera, ...handlers }: CanvasWorldProps) {
         </div>
     );
 }
+
+/**
+ * Apply anti aliasing to a stroke size and return the new size (if enabled, stroke size will ALWAYS be opaque and be at least 1px)
+ */
+const getStrokeSize = (
+    stroke: number,
+    ctx: CanvasRenderingContext2D,
+    antiAliasing: boolean
+) => {
+    // Ensures a stroke is always visible on screen.
+    // Reads the actual applied scale from the context transform so it's
+    // always in sync with whatever zoom CanvasBase just called ctx.scale() with.
+
+    // Besides anti aliasing and disabling it, there's no other solution to zoomed out drwaings looking better, besides using OpenGL or other rendering frameworks
+    // Anti aliasing = true -> Return stroke with the alpha automatically lowering when zoomed out (DOM canvas feature) to simulate sub-pixel sizes
+    if (antiAliasing) {
+        return stroke;
+    }
+    // Otherwise, always render so it's at least stroke = 1px
+    const zoom = ctx.getTransform().a;
+    return Math.max(stroke, 1 / zoom);
+};
 
 /**
  * Draws a grid that scales with the world, but adjusts its density

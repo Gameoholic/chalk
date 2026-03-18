@@ -96,6 +96,9 @@ function CanvasInteractive({
         handleMouseUp,
         handleWheel,
         handleContextMenu,
+        handleTouchStart,
+        handleTouchMove,
+        handleTouchEnd,
     } = handleMouseEvents(
         updateOrAddObject,
         removeObject,
@@ -121,10 +124,13 @@ function CanvasInteractive({
     ]);
 
     return (
-        <div ref={observe} className="h-full w-full">
+        <div ref={observe} className="h-full w-full touch-none">
             <CanvasWorld
                 camera={canvasContext.local_camera}
                 objects={allObjects}
+                onTouchStart={handleTouchStart} // Mobile support
+                onTouchMove={handleTouchMove} // Mobile support
+                onTouchEnd={handleTouchEnd} // Mobile support
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
@@ -179,10 +185,6 @@ function handleMouseEvents(
         path: Vec2[];
     }
 
-    // function isDrawingTool(tool: Tool): tool is Exclude<Tool, SelectTool> {
-    //     return ["pencil", "eraser", "line", "rect", "ellipse"].includes(tool.type);
-    // }
-
     const toolHandleMouseMove: Record<
         ToolType,
         (e: React.MouseEvent<HTMLCanvasElement>) => void
@@ -202,8 +204,12 @@ function handleMouseEvents(
         const handleWindowMouseUp = () => {
             currentInteraction.current = null;
         };
+        window.addEventListener("touchend", handleWindowMouseUp);
         window.addEventListener("mouseup", handleWindowMouseUp);
-        return () => window.removeEventListener("mouseup", handleWindowMouseUp);
+        return () => {
+            window.removeEventListener("mouseup", handleWindowMouseUp);
+            window.removeEventListener("touchend", handleWindowMouseUp);
+        };
     }, []);
 
     const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -511,12 +517,95 @@ function handleMouseEvents(
         }
     }
 
+    // ---------------------------------- Mobile support: ----------------------------------------
+
+    function touchToMouseEvent(
+        e: React.TouchEvent<HTMLCanvasElement>,
+        button = 0
+    ): React.MouseEvent<HTMLCanvasElement> {
+        const touch = e.touches[0] ?? e.changedTouches[0];
+        return {
+            ...e,
+            button,
+            clientX: touch.clientX,
+            clientY: touch.clientY,
+            target: e.target,
+            preventDefault: () => e.preventDefault(),
+        } as unknown as React.MouseEvent<HTMLCanvasElement>;
+    }
+
+    const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
+        e.preventDefault();
+        if (e.touches.length === 1) {
+            handleMouseDown(touchToMouseEvent(e, 0));
+        }
+    };
+
+    const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
+        e.preventDefault();
+        if (e.touches.length === 2) {
+            const touch1 = e.touches[0];
+            const touch2 = e.touches[1];
+            const dx = touch1.clientX - touch2.clientX;
+            const dy = touch1.clientY - touch2.clientY;
+            const dist = Math.hypot(dx, dy);
+
+            if (lastPinchDistance.current !== null) {
+                const scale = dist / lastPinchDistance.current;
+                // Midpoint between the two fingers (in screen space)
+                const midX = (touch1.clientX + touch2.clientX) / 2;
+                const midY = (touch1.clientY + touch2.clientY) / 2;
+                const rect = (
+                    e.target as HTMLCanvasElement
+                ).getBoundingClientRect();
+                const canvasMidX = midX - rect.left;
+                const canvasMidY = midY - rect.top;
+
+                canvasContext.setLocalCamera((prev) => {
+                    const newZoom = Math.max(
+                        0.01,
+                        Math.min(100, prev.zoom * scale)
+                    );
+                    const worldX = prev.position.x + canvasMidX / prev.zoom;
+                    const worldY = prev.position.y + canvasMidY / prev.zoom;
+                    return {
+                        ...prev,
+                        zoom: newZoom,
+                        position: {
+                            x: worldX - canvasMidX / newZoom,
+                            y: worldY - canvasMidY / newZoom,
+                        },
+                    };
+                });
+            }
+            lastPinchDistance.current = dist;
+        } else {
+            lastPinchDistance.current = null;
+            if (e.touches.length === 1) {
+                handleMouseMove(touchToMouseEvent(e));
+            }
+        }
+    };
+
+    const handleTouchEnd = (e: React.TouchEvent<HTMLCanvasElement>) => {
+        e.preventDefault();
+        commitCamera();
+        handleMouseUp(touchToMouseEvent(e));
+    };
+
+    const lastPinchDistance = useRef<number | null>(null);
+
+    // ---------------------------------- ^Mobile support^ ----------------------------------------
+
     return {
         handleMouseDown,
         handleMouseMove,
         handleMouseUp,
         handleWheel,
         handleContextMenu,
+        handleTouchStart,
+        handleTouchMove,
+        handleTouchEnd,
     };
 }
 
