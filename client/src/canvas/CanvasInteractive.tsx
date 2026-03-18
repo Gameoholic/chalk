@@ -197,6 +197,7 @@ function handleMouseEvents(
         line: handleMouseMoveLineDraw,
         rect: handleMouseMoveRectDraw,
         ellipse: handleMouseMoveEllipseDraw,
+        text: handleMouseMoveTextDraw,
     };
 
     // GLOBAL mouseup to fix mouse up outside of canvas
@@ -214,6 +215,11 @@ function handleMouseEvents(
 
     const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
         if (e.button === LEFT_MOUSE_BUTTON && tool.type !== "select") {
+            // Special case: text is a "one-time" action, not a continious mouse drag
+            if (tool.type === "text") {
+                console.warn("Text tool mouse move not implemented yet");
+                return;
+            }
             currentInteraction.current = {
                 type: "drawing",
                 objectId: uuidv4(),
@@ -368,6 +374,10 @@ function handleMouseEvents(
             },
         };
         updateObject(newEllipse);
+    }
+
+    function handleMouseMoveTextDraw(e: React.MouseEvent<HTMLCanvasElement>) {
+        throw new Error("This method should never be called.");
     }
 
     function handleMouseMoveDragCamera(e: React.MouseEvent<HTMLCanvasElement>) {
@@ -543,6 +553,7 @@ function handleMouseEvents(
 
     const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
         e.preventDefault();
+        // Custom implementation for zoom pinch with two fingers
         if (e.touches.length === 2) {
             const touch1 = e.touches[0];
             const touch2 = e.touches[1];

@@ -4,7 +4,8 @@ export type ToolType =
     | "select"
     | "line"
     | "rect"
-    | "ellipse";
+    | "ellipse"
+    | "text";
 
 interface BaseTool {
     type: ToolType;
@@ -47,10 +48,17 @@ export interface EllipseTool extends ColorTool {
     hollowStroke: number;
 }
 
+export interface TextTool extends ColorTool {
+    type: "text";
+    text: string;
+    fontSize: number;
+}
+
 export type Tool =
     | PencilTool
     | EraserTool
     | SelectTool
     | LineTool
     | RectTool
-    | EllipseTool;
+    | EllipseTool
+    | TextTool;

@@ -6,7 +6,16 @@ import React, {
     useContext,
     useMemo,
 } from "react";
-import { MousePointer, Square, Circle, Slash, Pen, Eraser } from "lucide-react";
+import {
+    MousePointer,
+    Square,
+    Circle,
+    Slash,
+    Pen,
+    Eraser,
+    Type,
+    Trash2,
+} from "lucide-react";
 import ColorPicker from "../components/ColorPicker";
 import { CanvasContext } from "../types/context/CanvasContext";
 import {
@@ -18,6 +27,7 @@ import {
     RectTool,
     Tool,
     ToolType,
+    TextTool,
 } from "../types/tool";
 
 type ToolsData = {
@@ -27,6 +37,7 @@ type ToolsData = {
     ellipse: { tool: EllipseTool; displayName: string; icon: JSX.Element };
     line: { tool: LineTool; displayName: string; icon: JSX.Element };
     rect: { tool: RectTool; displayName: string; icon: JSX.Element };
+    text: { tool: TextTool; displayName: string; icon: JSX.Element };
 };
 
 const Toolbox = ({
@@ -91,6 +102,16 @@ const Toolbox = ({
             displayName: "Draw Rectangle",
             icon: <Square size={20} />,
         },
+        text: {
+            tool: {
+                type: "text",
+                color: canvasContext.local_cachedColor,
+                text: "Text",
+                fontSize: 16,
+            } satisfies TextTool,
+            displayName: "Text",
+            icon: <Type size={20} />,
+        },
     } as const;
 
     // Tool options are stored so switching from one tool to another will keep its previous "extra" properties (e.g. rect hollow / eraser mode).
@@ -137,6 +158,13 @@ const Toolbox = ({
                     color: canvasContext.local_cachedColor,
                 },
             },
+            text: {
+                ...prev.text,
+                tool: {
+                    ...prev.text.tool,
+                    color: canvasContext.local_cachedColor,
+                },
+            },
         }));
     }, [canvasContext.local_cachedColor, canvasContext.local_cachedStroke]);
 
@@ -161,7 +189,8 @@ const Toolbox = ({
     const showOptionsPanel =
         tools[canvasContext.local_tool.type]?.tool.type === "rect" ||
         tools[canvasContext.local_tool.type]?.tool.type === "ellipse" ||
-        tools[canvasContext.local_tool.type]?.tool.type === "eraser";
+        tools[canvasContext.local_tool.type]?.tool.type === "eraser" ||
+        tools[canvasContext.local_tool.type]?.tool.type === "text";
 
     return (
         <div className={`absolute ${className}`} {...props}>
@@ -394,345 +423,293 @@ function OptionsPanel({
 }: {
     setTools: React.Dispatch<React.SetStateAction<ToolsData>>;
 }) {
-    const canvasContext = useContext(CanvasContext);
-
-    const tool = canvasContext.local_tool as Tool;
+    const { local_tool: tool } = useContext(CanvasContext);
 
     if (tool.type === "rect" || tool.type === "ellipse") {
-        const isRect = tool.type === "rect";
-        const currentTool = tool as RectTool | EllipseTool;
-
-        const FilledIcon = () =>
-            isRect ? (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <rect
-                        x="2"
-                        y="2"
-                        width="20"
-                        height="20"
-                        rx="2"
-                        fill="currentColor"
-                    />
-                </svg>
-            ) : (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <circle cx="12" cy="12" r="10" fill="currentColor" />
-                </svg>
-            );
-
-        const HollowIcon = () =>
-            isRect ? (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <rect
-                        x="2"
-                        y="2"
-                        width="20"
-                        height="20"
-                        rx="2"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                    />
-                </svg>
-            ) : (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <circle
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                    />
-                </svg>
-            );
-
-        const choices = [
-            { label: "Hollow", hollow: true, Icon: HollowIcon },
-            { label: "Filled", hollow: false, Icon: FilledIcon },
-        ];
-
-        return (
-            <div
-                style={{
-                    position: "absolute",
-                    right: "calc(100% + 10px)",
-                    top: 0,
-                    backgroundColor: "var(--card)",
-                    borderRadius: "12px",
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-                }}
-            >
-                <div className="flex w-[110px] flex-col items-start gap-3 p-3">
-                    {/* Fill */}
-                    <div className="flex w-full flex-col gap-1">
-                        <span
-                            className="text-center text-xs font-bold"
-                            style={{ color: "var(--card-foreground)" }}
-                        >
-                            Fill
-                        </span>
-                        <div className="flex flex-row gap-1">
-                            {choices.map(({ label, hollow, Icon }) => {
-                                const active = currentTool.hollow === hollow;
-                                return (
-                                    <button
-                                        key={label}
-                                        onClick={() => {
-                                            canvasContext.setLocalTool(
-                                                (prev) => ({ ...prev, hollow })
-                                            );
-                                            setTools((prev) => ({
-                                                ...prev,
-                                                [tool.type]: {
-                                                    ...prev[tool.type],
-                                                    tool: {
-                                                        ...prev[tool.type].tool,
-                                                        hollow,
-                                                    },
-                                                },
-                                            }));
-                                        }}
-                                        title={label}
-                                        className="flex flex-1 flex-col items-center gap-1 rounded-lg px-1 py-2 transition"
-                                        style={{
-                                            backgroundColor: active
-                                                ? "var(--accent)"
-                                                : "transparent",
-                                            color: active
-                                                ? "var(--accent-foreground)"
-                                                : "var(--card-foreground)",
-                                            cursor: "pointer",
-                                            border: `1.5px solid ${active ? "var(--accent-foreground)" : "transparent"}`,
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            if (!active)
-                                                (
-                                                    e.currentTarget as HTMLButtonElement
-                                                ).style.backgroundColor =
-                                                    "var(--accent)";
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            if (!active)
-                                                (
-                                                    e.currentTarget as HTMLButtonElement
-                                                ).style.backgroundColor =
-                                                    "transparent";
-                                        }}
-                                    >
-                                        <Icon />
-                                        <span className="text-xs">{label}</span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    {/* Hollow stroke — only shown when hollow is true */}
-                    {currentTool.hollow && (
-                        <div className="flex w-full flex-col space-y-1">
-                            <span
-                                className="text-center text-xs font-bold"
-                                style={{ color: "var(--card-foreground)" }}
-                            >
-                                Width
-                            </span>
-                            <input
-                                type="range"
-                                min="1"
-                                max="20"
-                                value={currentTool.hollowStroke ?? 1}
-                                onChange={(e) => {
-                                    const hollowStroke = Number(e.target.value);
-                                    canvasContext.setLocalTool((prev) => ({
-                                        ...prev,
-                                        hollowStroke,
-                                    }));
-                                    setTools((prev) => ({
-                                        ...prev,
-                                        [tool.type]: {
-                                            ...prev[tool.type],
-                                            tool: {
-                                                ...prev[tool.type].tool,
-                                                hollowStroke,
-                                            },
-                                        },
-                                    }));
-                                }}
-                                className="w-full"
-                                style={{
-                                    accentColor: "var(--accent)",
-                                    cursor: "pointer",
-                                }}
-                            />
-                            <span
-                                className="text-center text-xs"
-                                style={{ color: "var(--card-foreground)" }}
-                            >
-                                {currentTool.hollowStroke ?? 1}px
-                            </span>
-                        </div>
-                    )}
-                </div>
-            </div>
-        );
+        return <RectEllipseOptionsPanel setTools={setTools} />;
     }
 
     if (tool.type === "eraser") {
-        const eraserTool = tool as EraserTool;
-
-        const choices: {
-            label: string;
-            mode: "draw" | "object";
-            Icon: () => JSX.Element;
-        }[] = [
-            {
-                label: "Object",
-                mode: "object",
-                Icon: () => (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                        <rect
-                            x="3"
-                            y="3"
-                            width="18"
-                            height="18"
-                            rx="3"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            fill="none"
-                        />
-                        <line
-                            x1="7"
-                            y1="7"
-                            x2="17"
-                            y2="17"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                        />
-                        <line
-                            x1="17"
-                            y1="7"
-                            x2="7"
-                            y2="17"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                        />
-                    </svg>
-                ),
-            },
-            {
-                label: "Precise",
-                mode: "draw",
-                Icon: () => (
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                        <path
-                            d="M4 18 Q8 6 12 12 Q16 18 20 6"
-                            stroke="currentColor"
-                            strokeWidth="2.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            fill="none"
-                        />
-                        <line
-                            x1="3"
-                            y1="20"
-                            x2="21"
-                            y2="20"
-                            stroke="currentColor"
-                            strokeWidth="1.5"
-                            strokeLinecap="round"
-                        />
-                    </svg>
-                ),
-            },
-        ];
-
-        return (
-            <div
-                style={{
-                    position: "absolute",
-                    right: "calc(100% + 10px)",
-                    top: 0,
-                    backgroundColor: "var(--card)",
-                    borderRadius: "12px",
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-                }}
-            >
-                <div className="flex w-[110px] flex-col items-start p-3">
-                    <div className="flex w-full flex-col gap-1">
-                        <span
-                            className="text-center text-xs font-bold"
-                            style={{ color: "var(--card-foreground)" }}
-                        >
-                            Mode
-                        </span>
-                        <div className="flex flex-row gap-1">
-                            {choices.map(({ label, mode, Icon }) => {
-                                const active = eraserTool.eraserMode === mode;
-                                return (
-                                    <button
-                                        key={label}
-                                        onClick={() => {
-                                            canvasContext.setLocalTool(
-                                                (prev) => ({
-                                                    ...prev,
-                                                    eraserMode: mode,
-                                                })
-                                            );
-
-                                            setTools((prev) => ({
-                                                ...prev,
-                                                [tool.type]: {
-                                                    ...prev[tool.type],
-                                                    tool: {
-                                                        ...prev[tool.type].tool,
-                                                        eraserMode: mode,
-                                                    },
-                                                },
-                                            }));
-                                        }}
-                                        title={label}
-                                        className="flex flex-1 flex-col items-center gap-1 rounded-lg px-1 py-2 transition"
-                                        style={{
-                                            backgroundColor: active
-                                                ? "var(--accent)"
-                                                : "transparent",
-                                            color: active
-                                                ? "var(--accent-foreground)"
-                                                : "var(--card-foreground)",
-                                            cursor: "pointer",
-                                            border: `1.5px solid ${active ? "var(--accent-foreground)" : "transparent"}`,
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            if (!active)
-                                                (
-                                                    e.currentTarget as HTMLButtonElement
-                                                ).style.backgroundColor =
-                                                    "var(--accent)";
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            if (!active)
-                                                (
-                                                    e.currentTarget as HTMLButtonElement
-                                                ).style.backgroundColor =
-                                                    "transparent";
-                                        }}
-                                    >
-                                        <Icon />
-                                        <span className="text-xs">{label}</span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
+        return <EraserOptionsPanel setTools={setTools} />;
     }
 
     return null;
+}
+
+function OptionsPanelWrapper({ children }: { children: React.ReactNode }) {
+    return (
+        <div
+            style={{
+                position: "absolute",
+                right: "calc(100% + 10px)",
+                top: 0,
+                backgroundColor: "var(--card)",
+                borderRadius: "12px",
+                boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+            }}
+        >
+            {children}
+        </div>
+    );
+}
+
+function OptionsPanelLabel({ children }: { children: React.ReactNode }) {
+    return (
+        <span
+            className="text-center text-xs font-bold"
+            style={{ color: "var(--card-foreground)" }}
+        >
+            {children}
+        </span>
+    );
+}
+
+function OptionsPanelButton({
+    label,
+    active,
+    onClick,
+    children,
+}: {
+    label: string;
+    active: boolean;
+    onClick: () => void;
+    children: React.ReactNode;
+}) {
+    return (
+        <button
+            title={label}
+            onClick={onClick}
+            className="flex flex-1 flex-col items-center gap-1 rounded-lg px-1 py-2 transition"
+            style={{
+                backgroundColor: active ? "var(--accent)" : "transparent",
+                color: active
+                    ? "var(--accent-foreground)"
+                    : "var(--card-foreground)",
+                cursor: "pointer",
+                border: `1.5px solid ${active ? "var(--accent-foreground)" : "transparent"}`,
+            }}
+            onMouseEnter={(e) => {
+                if (!active)
+                    (
+                        e.currentTarget as HTMLButtonElement
+                    ).style.backgroundColor = "var(--accent)";
+            }}
+            onMouseLeave={(e) => {
+                if (!active)
+                    (
+                        e.currentTarget as HTMLButtonElement
+                    ).style.backgroundColor = "transparent";
+            }}
+        >
+            {children}
+        </button>
+    );
+}
+
+function RectEllipseOptionsPanel({
+    setTools,
+}: {
+    setTools: React.Dispatch<React.SetStateAction<ToolsData>>;
+}) {
+    const canvasContext = useContext(CanvasContext);
+    const tool = canvasContext.local_tool as RectTool | EllipseTool;
+    const isRect = tool.type === "rect";
+
+    const FilledIcon = () =>
+        isRect ? (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <rect
+                    x="2"
+                    y="2"
+                    width="20"
+                    height="20"
+                    rx="2"
+                    fill="currentColor"
+                />
+            </svg>
+        ) : (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="10" fill="currentColor" />
+            </svg>
+        );
+
+    const HollowIcon = () =>
+        isRect ? (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <rect
+                    x="2"
+                    y="2"
+                    width="20"
+                    height="20"
+                    rx="2"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                />
+            </svg>
+        ) : (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <circle
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                />
+            </svg>
+        );
+
+    const choices = [
+        { label: "Hollow", hollow: true, Icon: HollowIcon },
+        { label: "Filled", hollow: false, Icon: FilledIcon },
+    ];
+
+    return (
+        <OptionsPanelWrapper>
+            <div className="flex w-[110px] flex-col items-start gap-3 p-3">
+                <div className="flex w-full flex-col gap-1">
+                    <OptionsPanelLabel>Fill</OptionsPanelLabel>
+                    <div className="flex flex-row gap-1">
+                        {choices.map(({ label, hollow, Icon }) => {
+                            const active = tool.hollow === hollow;
+                            return (
+                                <OptionsPanelButton
+                                    key={label}
+                                    label={label}
+                                    active={active}
+                                    onClick={() => {
+                                        canvasContext.setLocalTool((prev) => ({
+                                            ...prev,
+                                            hollow,
+                                        }));
+                                        setTools((prev) => ({
+                                            ...prev,
+                                            [tool.type]: {
+                                                ...prev[tool.type],
+                                                tool: {
+                                                    ...prev[tool.type].tool,
+                                                    hollow,
+                                                },
+                                            },
+                                        }));
+                                    }}
+                                >
+                                    <Icon />
+                                    <span className="text-xs">{label}</span>
+                                </OptionsPanelButton>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {tool.hollow && (
+                    <div className="flex w-full flex-col space-y-1">
+                        <OptionsPanelLabel>Width</OptionsPanelLabel>
+                        <input
+                            type="range"
+                            min="1"
+                            max="20"
+                            value={tool.hollowStroke ?? 1}
+                            onChange={(e) => {
+                                const hollowStroke = Number(e.target.value);
+                                canvasContext.setLocalTool((prev) => ({
+                                    ...prev,
+                                    hollowStroke,
+                                }));
+                                setTools((prev) => ({
+                                    ...prev,
+                                    [tool.type]: {
+                                        ...prev[tool.type],
+                                        tool: {
+                                            ...prev[tool.type].tool,
+                                            hollowStroke,
+                                        },
+                                    },
+                                }));
+                            }}
+                            className="w-full"
+                            style={{
+                                accentColor: "var(--accent)",
+                                cursor: "pointer",
+                            }}
+                        />
+                        <span
+                            className="text-center text-xs"
+                            style={{ color: "var(--card-foreground)" }}
+                        >
+                            {tool.hollowStroke ?? 1}px
+                        </span>
+                    </div>
+                )}
+            </div>
+        </OptionsPanelWrapper>
+    );
+}
+
+function EraserOptionsPanel({
+    setTools,
+}: {
+    setTools: React.Dispatch<React.SetStateAction<ToolsData>>;
+}) {
+    const canvasContext = useContext(CanvasContext);
+    const tool = canvasContext.local_tool as EraserTool;
+    const choices: {
+        label: string;
+        mode: "draw" | "object";
+        Icon: () => JSX.Element;
+    }[] = [
+        {
+            label: "Object",
+            mode: "object",
+            Icon: () => <Trash2 width="18" height="18" />,
+        },
+        {
+            label: "Precise",
+            mode: "draw",
+            Icon: () => <Eraser width="18" height="18" />,
+        },
+    ];
+    return (
+        <OptionsPanelWrapper>
+            <div className="flex w-[110px] flex-col items-start p-3">
+                <div className="flex w-full flex-col gap-1">
+                    <OptionsPanelLabel>Mode</OptionsPanelLabel>
+                    <div className="flex flex-row gap-1">
+                        {choices.map(({ label, mode, Icon }) => {
+                            const active = tool.eraserMode === mode;
+                            return (
+                                <OptionsPanelButton
+                                    key={label}
+                                    label={label}
+                                    active={active}
+                                    onClick={() => {
+                                        canvasContext.setLocalTool((prev) => ({
+                                            ...prev,
+                                            eraserMode: mode,
+                                        }));
+                                        setTools((prev) => ({
+                                            ...prev,
+                                            [tool.type]: {
+                                                ...prev[tool.type],
+                                                tool: {
+                                                    ...prev[tool.type].tool,
+                                                    eraserMode: mode,
+                                                },
+                                            },
+                                        }));
+                                    }}
+                                >
+                                    <Icon />
+                                    <span className="text-xs">{label}</span>
+                                </OptionsPanelButton>
+                            );
+                        })}
+                    </div>
+                </div>
+            </div>
+        </OptionsPanelWrapper>
+    );
 }
 
 export default Toolbox;
