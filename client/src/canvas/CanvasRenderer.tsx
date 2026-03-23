@@ -7,13 +7,15 @@ import {
     LineObject,
     PathObject,
     RectObject,
+    Vec2,
     WorldObject,
 } from "../types/canvas";
 import { AntiAliasingContext } from "../types/context/AntiAliasingContext";
 
-interface CanvasWorldProps {
+interface CanvasRendererProps {
     objects: Map<string, WorldObject>;
     camera: Camera;
+    selectedObjectId: string | null;
     onMouseDown?: React.MouseEventHandler<HTMLCanvasElement>;
     onMouseMove?: React.MouseEventHandler<HTMLCanvasElement>;
     onMouseUp?: React.MouseEventHandler<HTMLCanvasElement>;
@@ -28,7 +30,12 @@ interface CanvasWorldProps {
 // Only renders passed objects and processes passed camera position and zoom
 // No interaction handling
 // Doesn't reference any context. Randers as is, as the passed parameters say
-function CanvasWorld({ objects, camera, ...handlers }: CanvasWorldProps) {
+function CanvasRenderer({
+    objects,
+    camera,
+    selectedObjectId,
+    ...handlers
+}: CanvasRendererProps) {
     const antiAliasing = useContext(AntiAliasingContext).value;
 
     const drawGrid_ = (ctx: CanvasRenderingContext2D) => {
@@ -37,6 +44,11 @@ function CanvasWorld({ objects, camera, ...handlers }: CanvasWorldProps) {
 
     const drawObjects_ = (ctx: CanvasRenderingContext2D) => {
         drawObjects(ctx, objects, camera, antiAliasing);
+
+        if (selectedObjectId) {
+            const selected = objects.get(selectedObjectId);
+            if (selected) drawSelectionHighlight(ctx, selected, camera);
+        }
     };
 
     return (
@@ -143,6 +155,75 @@ function drawGrid(ctx: CanvasRenderingContext2D, camera: Camera) {
     }
 
     ctx.stroke();
+}
+
+function getObjectBoundingBox(
+    obj: WorldObject
+): { min: Vec2; max: Vec2 } | null {
+    switch (obj.type) {
+        case "path":
+        case "eraser-path": {
+            if (obj.points.length === 0) return null;
+            const xs = obj.points.map((p) => p.x);
+            const ys = obj.points.map((p) => p.y);
+            const pad = (obj.stroke ?? 0) / 2;
+            return {
+                min: { x: Math.min(...xs) - pad, y: Math.min(...ys) - pad },
+                max: { x: Math.max(...xs) + pad, y: Math.max(...ys) + pad },
+            };
+        }
+        case "line": {
+            const pad = (obj.stroke ?? 0) / 2;
+            return {
+                min: {
+                    x: Math.min(obj.point1.x, obj.point2.x) - pad,
+                    y: Math.min(obj.point1.y, obj.point2.y) - pad,
+                },
+                max: {
+                    x: Math.max(obj.point1.x, obj.point2.x) + pad,
+                    y: Math.max(obj.point1.y, obj.point2.y) + pad,
+                },
+            };
+        }
+        case "rect":
+        case "ellipse": {
+            const x0 = Math.min(obj.position.x, obj.position.x + obj.size.x);
+            const y0 = Math.min(obj.position.y, obj.position.y + obj.size.y);
+            return {
+                min: { x: x0, y: y0 },
+                max: {
+                    x: x0 + Math.abs(obj.size.x),
+                    y: y0 + Math.abs(obj.size.y),
+                },
+            };
+        }
+        default:
+            return null;
+    }
+}
+
+function drawSelectionHighlight(
+    ctx: CanvasRenderingContext2D,
+    obj: WorldObject,
+    camera: Camera
+) {
+    const bb = getObjectBoundingBox(obj);
+    if (!bb) return;
+
+    const PADDING = 6 / camera.zoom; // 6px padding in screen space, constant regardless of zoom
+
+    const x = bb.min.x - camera.position.x - PADDING;
+    const y = bb.min.y - camera.position.y - PADDING;
+    const w = bb.max.x - bb.min.x + PADDING * 2;
+    const h = bb.max.y - bb.min.y + PADDING * 2;
+
+    ctx.save();
+    ctx.strokeStyle = "#ff8ca5";
+    ctx.lineWidth = 1.5 / camera.zoom;
+    ctx.setLineDash([6 / camera.zoom, 4 / camera.zoom]); // dashes scale with zoom
+    ctx.lineDashOffset = 0;
+    ctx.strokeRect(x, y, w, h);
+    ctx.restore();
 }
 
 function drawObjects(
@@ -370,4 +451,4 @@ function drawEraserPath(
     ctx.restore();
 }
 
-export default CanvasWorld;
+export default CanvasRenderer;

@@ -7,7 +7,7 @@ import React, {
     useMemo,
 } from "react";
 import useDimensions from "react-cool-dimensions";
-import CanvasWorld from "./CanvasRenderer";
+import CanvasRenderer from "./CanvasRenderer";
 import {
     Camera,
     EllipseObject,
@@ -31,6 +31,13 @@ import {
     Tool,
     ToolType,
 } from "../types/tool";
+import ObjectContextMenu from "./ObjectContextMenu";
+
+interface ContextMenuState {
+    object: WorldObject;
+    screenX: number;
+    screenY: number;
+}
 
 interface CanvasInteractiveProps {
     onObjectsCommit: () => void;
@@ -44,7 +51,6 @@ function CanvasInteractive({
     onCameraCommit,
 }: CanvasInteractiveProps) {
     const canvasContext = useContext(CanvasContext);
-
     // Automatically set camera size to this component's MAX allocated size
     const { observe, unobserve, width, height, entry } = useDimensions({
         onResize: ({ observe, unobserve, width, height, entry }) => {
@@ -89,6 +95,14 @@ function CanvasInteractive({
         onCameraCommit();
     }
 
+    // Show context menu on right clicking an object
+    const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(
+        null
+    );
+    function displayContextMenuState(contextMenuState: ContextMenuState) {
+        setContextMenu(contextMenuState);
+    }
+
     // MOUSE EVENTS
     const {
         handleMouseDown,
@@ -103,7 +117,8 @@ function CanvasInteractive({
         updateOrAddObject,
         removeObject,
         commitObjects,
-        commitCamera
+        commitCamera,
+        displayContextMenuState
     );
 
     // Server-synced objects and local unsaved objects and locally deleted objects, render all
@@ -125,9 +140,10 @@ function CanvasInteractive({
 
     return (
         <div ref={observe} className="h-full w-full touch-none">
-            <CanvasWorld
+            <CanvasRenderer
                 camera={canvasContext.local_camera}
                 objects={allObjects}
+                selectedObjectId={contextMenu?.object.id ?? null}
                 onTouchStart={handleTouchStart} // Mobile support
                 onTouchMove={handleTouchMove} // Mobile support
                 onTouchEnd={handleTouchEnd} // Mobile support
@@ -137,6 +153,24 @@ function CanvasInteractive({
                 onWheel={handleWheel}
                 onContextMenu={handleContextMenu}
             />
+
+            {contextMenu && (
+                <ObjectContextMenu
+                    object={contextMenu.object}
+                    screenX={contextMenu.screenX}
+                    screenY={contextMenu.screenY}
+                    onUpdate={(updated) => {
+                        updateOrAddObject(updated);
+                        commitObjects();
+                    }}
+                    onDelete={() => {
+                        removeObject(contextMenu.object.id);
+                        commitObjects();
+                        setContextMenu(null);
+                    }}
+                    onClose={() => setContextMenu(null)}
+                />
+            )}
         </div>
     );
 }
@@ -155,7 +189,8 @@ function handleMouseEvents(
     updateObject: (object: WorldObject) => void,
     removeObject: (objectId: string) => void,
     commitObjects: () => void,
-    commitCamera: () => void
+    commitCamera: () => void,
+    displayContextMenu: (contextMenuState: ContextMenuState) => void
 ) {
     const canvasContext = useContext(CanvasContext);
 
@@ -197,7 +232,9 @@ function handleMouseEvents(
         line: handleMouseMoveLineDraw,
         rect: handleMouseMoveRectDraw,
         ellipse: handleMouseMoveEllipseDraw,
-        text: handleMouseMoveTextDraw,
+        text: () => {
+            throw new Error("This method should never be called.");
+        },
     };
 
     // GLOBAL mouseup to fix mouse up outside of canvas
@@ -228,6 +265,17 @@ function handleMouseEvents(
             };
             toolHandleMouseMove[currentInteraction.current.tool.type](e); // On first initial mouse down also treat it as a draw (so pressing and quickly releasing still draws a point)
             return;
+        }
+        if (e.button === RIGHT_MOUSE_BUTTON) {
+            const mouseWorldCoords: Vec2 = screenToWorld(e, camera);
+            const hoveredObject = findObjectAtCoords(mouseWorldCoords);
+            if (hoveredObject) {
+                displayContextMenu({
+                    object: hoveredObject,
+                    screenX: e.clientX,
+                    screenY: e.clientY,
+                });
+            }
         }
 
         if (
@@ -404,10 +452,6 @@ function handleMouseEvents(
             },
         };
         updateObject(newEllipse);
-    }
-
-    function handleMouseMoveTextDraw(e: React.MouseEvent<HTMLCanvasElement>) {
-        throw new Error("This method should never be called.");
     }
 
     function handleMouseMoveDragCamera(e: React.MouseEvent<HTMLCanvasElement>) {

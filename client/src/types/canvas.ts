@@ -56,12 +56,17 @@ export interface EllipseObject extends ShapeObject {
     type: "ellipse";
 }
 
+export interface TextObject extends ColorableObject {
+    type: "text";
+}
+
 export type WorldObject =
     | PathObject
     | EraserPathObject
     | LineObject
     | RectObject
-    | EllipseObject;
+    | EllipseObject
+    | TextObject;
 
 export interface Camera {
     position: Vec2; // top-left world coordinate

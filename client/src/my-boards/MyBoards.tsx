@@ -1,6 +1,6 @@
 import { Plus, ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react";
 import { BoardData } from "../types/data";
-import CanvasWorld from "../canvas/CanvasRenderer";
+import CanvasRenderer from "../canvas/CanvasRenderer";
 import useDimensions from "react-cool-dimensions";
 import {
     useState,
@@ -554,7 +554,7 @@ function Board({
                                 : "pointer-events-none"
                         }
                     >
-                        <CanvasWorld
+                        <CanvasRenderer
                             objects={
                                 new Map(boardData.objects.map((o) => [o.id, o]))
                             }
