@@ -239,7 +239,10 @@ function CanvasEditor({
     // When objects are ready to be saved to database (user released left click, for example).
     // Generally, only one object will be in objectsBeingUpdatedButNotReadyForSaving when this method is called,
     // but our code should be able to support cases where there's multiple objects at once.
-    function onObjectsCommit() {
+    function onObjectsCommit(
+        updatedObjects?: WorldObject[],
+        deletedObjectIds?: string[]
+    ) {
         console.log(
             "Commit: Requesting to save " +
                 (canvasContext.local_unsavedObjects.length -
@@ -251,10 +254,11 @@ function CanvasEditor({
         );
 
         // As soon as objects start saving - objectsToSaveOnDatabase becomes irrelevant, it'll get overwritten when it finished saving. So this is ok even if this line executes mid-save.
-        canvasContext.local_unsavedObjects.forEach((object) => {
+        updatedObjects?.forEach((object) => {
             objectsToSaveOnDatabase.current.set(object.id, object);
         });
-        canvasContext.local_deletedObjectIds.forEach((objectId) => {
+
+        deletedObjectIds?.forEach((objectId) => {
             objectsToDeleteOnDatabase.current.add(objectId);
         });
         requestSaveBoard();

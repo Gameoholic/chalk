@@ -40,7 +40,10 @@ interface ContextMenuState {
 }
 
 interface CanvasInteractiveProps {
-    onObjectsCommit: () => void;
+    onObjectsCommit: (
+        updatedObjects?: WorldObject[],
+        deletedObjectIds?: string[]
+    ) => void;
     onCameraCommit: () => void;
 }
 
@@ -86,8 +89,20 @@ function CanvasInteractive({
     }
 
     // User released left click so object should be committed to database
-    function commitObjects() {
-        onObjectsCommit();
+    function commitChanges(
+        updatedObjects?: WorldObject[],
+        deletedObjectIds?: string[]
+    ) {
+        if (
+            (updatedObjects?.length === 0 && deletedObjectIds?.length === 0) ||
+            (updatedObjects === undefined && deletedObjectIds === undefined)
+        ) {
+            console.warn(
+                "Commit changes was called, but there are no changes to commit."
+            );
+        }
+        // Explicitly tells CanvasEditor what to delete, bypassing state closure bugs caused by relying only on CanvasContext states
+        onObjectsCommit(updatedObjects, deletedObjectIds);
     }
 
     // Camera ended drag or zoom changed
@@ -116,7 +131,7 @@ function CanvasInteractive({
     } = handleMouseEvents(
         updateOrAddObject,
         removeObject,
-        commitObjects,
+        commitChanges,
         commitCamera,
         displayContextMenuState
     );
@@ -161,11 +176,11 @@ function CanvasInteractive({
                     screenY={contextMenu.screenY}
                     onUpdate={(updated) => {
                         updateOrAddObject(updated);
-                        commitObjects();
+                        commitChanges([updated], undefined);
                     }}
                     onDelete={() => {
                         removeObject(contextMenu.object.id);
-                        commitObjects();
+                        commitChanges(undefined, [contextMenu.object.id]);
                         setContextMenu(null);
                     }}
                     onClose={() => setContextMenu(null)}
@@ -188,7 +203,10 @@ function screenToWorld(
 function handleMouseEvents(
     updateObject: (object: WorldObject) => void,
     removeObject: (objectId: string) => void,
-    commitObjects: () => void,
+    commitChanges: (
+        updatedObjects?: WorldObject[],
+        deletedObjectIds?: string[]
+    ) => void,
     commitCamera: () => void,
     displayContextMenu: (contextMenuState: ContextMenuState) => void
 ) {
@@ -218,6 +236,7 @@ function handleMouseEvents(
         objectId: string;
         tool: Exclude<Tool, SelectTool>;
         path: Vec2[];
+        latestObject?: WorldObject;
     }
 
     const toolHandleMouseMove: Record<
@@ -304,7 +323,10 @@ function handleMouseEvents(
 
     const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
         if (currentInteraction.current?.type === "drawing") {
-            commitObjects();
+            const objectToCommit = currentInteraction.current.latestObject;
+            if (objectToCommit) {
+                commitChanges([objectToCommit], undefined);
+            }
         }
         if (currentInteraction.current?.type === "camera-drag") {
             commitCamera();
@@ -328,6 +350,7 @@ function handleMouseEvents(
             stroke: pencilTool.stroke,
             points: currentInteraction.current.path,
         };
+        currentInteraction.current.latestObject = newPath;
         updateObject(newPath);
     }
 
@@ -344,6 +367,7 @@ function handleMouseEvents(
             const hoveredObject = findObjectAtCoords(mouseWorldCoords);
             if (hoveredObject) {
                 removeObject(hoveredObject.id);
+                commitChanges(undefined, [hoveredObject.id]);
             }
         } else {
             const newPath: EraserPathObject = {
@@ -352,6 +376,7 @@ function handleMouseEvents(
                 stroke: eraserTool.stroke,
                 points: currentInteraction.current.path,
             };
+            currentInteraction.current.latestObject = newPath;
             updateObject(newPath);
         }
     }
@@ -377,6 +402,7 @@ function handleMouseEvents(
             point1: currentInteraction.current.path[0],
             point2: currentInteraction.current.path[1],
         };
+        currentInteraction.current.latestObject = newLine;
         updateObject(newLine);
     }
 
@@ -413,6 +439,7 @@ function handleMouseEvents(
                     currentInteraction.current.path[0].y,
             },
         };
+        currentInteraction.current.latestObject = newRect;
         updateObject(newRect);
     }
 
@@ -451,6 +478,7 @@ function handleMouseEvents(
                     currentInteraction.current.path[0].y,
             },
         };
+        currentInteraction.current.latestObject = newEllipse;
         updateObject(newEllipse);
     }
 
