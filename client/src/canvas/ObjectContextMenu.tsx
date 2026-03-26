@@ -53,6 +53,14 @@ export default function ObjectContextMenu({
     const menuRef = useRef<HTMLDivElement>(null);
     const colorPickerRef = useRef<HTMLDivElement>(null);
 
+    // Always build updates from the latest object state, not the stale prop.
+    // Without this, changing stroke after color would spread the original `object`
+    // prop (which still has the old color) and silently revert the color change.
+    const currentObjectRef = useRef<WorldObject>(object);
+    useEffect(() => {
+        currentObjectRef.current = object;
+    }, [object]);
+
     const [pos, setPos] = useState({ x: screenX, y: screenY });
 
     useEffect(() => {
@@ -120,22 +128,42 @@ export default function ObjectContextMenu({
 
     const handleColorChange = (newColor: string) => {
         setColor(newColor);
-        onUpdate({ ...object, color: newColor } as WorldObject);
+        const updated = {
+            ...currentObjectRef.current,
+            color: newColor,
+        } as WorldObject;
+        currentObjectRef.current = updated;
+        onUpdate(updated);
     };
 
     const handleStrokeChange = (newStroke: number) => {
         setStroke(newStroke);
-        onUpdate({ ...object, stroke: newStroke } as WorldObject);
+        const updated = {
+            ...currentObjectRef.current,
+            stroke: newStroke,
+        } as WorldObject;
+        currentObjectRef.current = updated;
+        onUpdate(updated);
     };
 
     const handleHollowChange = (newHollow: boolean) => {
         setHollow(newHollow);
-        onUpdate({ ...object, hollow: newHollow } as WorldObject);
+        const updated = {
+            ...currentObjectRef.current,
+            hollow: newHollow,
+        } as WorldObject;
+        currentObjectRef.current = updated;
+        onUpdate(updated);
     };
 
     const handleHollowStrokeChange = (newStroke: number) => {
         setHollowStroke(newStroke);
-        onUpdate({ ...object, hollowStroke: newStroke } as WorldObject);
+        const updated = {
+            ...currentObjectRef.current,
+            hollowStroke: newStroke,
+        } as WorldObject;
+        currentObjectRef.current = updated;
+        onUpdate(updated);
     };
 
     const objectLabel: Record<WorldObject["type"], string> = {
