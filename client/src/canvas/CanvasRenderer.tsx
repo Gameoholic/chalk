@@ -12,11 +12,13 @@ import {
     WorldObject,
 } from "../types/canvas";
 import { AntiAliasingContext } from "../types/context/AntiAliasingContext";
+import { computeLines, getCursorLineAndOffset } from "./textLayout";
 
 interface CanvasRendererProps {
     objects: Map<string, WorldObject>;
     camera: Camera;
     selectedObjectId: string | null;
+    textCursor?: { objectId: string; index: number; visible: boolean };
     onMouseDown?: React.MouseEventHandler<HTMLCanvasElement>;
     onMouseMove?: React.MouseEventHandler<HTMLCanvasElement>;
     onMouseUp?: React.MouseEventHandler<HTMLCanvasElement>;
@@ -35,6 +37,7 @@ function CanvasRenderer({
     objects,
     camera,
     selectedObjectId,
+    textCursor,
     ...handlers
 }: CanvasRendererProps) {
     const antiAliasing = useContext(AntiAliasingContext).value;
@@ -44,7 +47,7 @@ function CanvasRenderer({
     };
 
     const drawObjects_ = (ctx: CanvasRenderingContext2D) => {
-        drawObjects(ctx, objects, camera, antiAliasing);
+        drawObjects(ctx, objects, camera, antiAliasing, textCursor);
 
         if (selectedObjectId) {
             const selected = objects.get(selectedObjectId);
@@ -231,7 +234,8 @@ function drawObjects(
     ctx: CanvasRenderingContext2D,
     objects: Map<string, WorldObject>,
     camera: Camera,
-    antiAliasing: boolean
+    antiAliasing: boolean,
+    textCursor?: { objectId: string; index: number; visible: boolean }
 ) {
     objects.forEach((object) => {
         switch (object.type) {
@@ -251,7 +255,18 @@ function drawObjects(
                 drawEllipse(ctx, object, camera, antiAliasing);
                 break;
             case "text":
-                drawText(ctx, object, camera, antiAliasing);
+                drawText(
+                    ctx,
+                    object,
+                    camera,
+                    antiAliasing,
+                    textCursor?.objectId === object.id
+                        ? {
+                              index: textCursor.index,
+                              visible: textCursor.visible,
+                          }
+                        : undefined
+                );
                 break;
         }
     });
@@ -352,7 +367,8 @@ function drawText(
     ctx: CanvasRenderingContext2D,
     object: TextObject,
     camera: Camera,
-    antiAliasing: boolean
+    antiAliasing: boolean,
+    cursor?: { index: number; visible: boolean }
 ) {
     const x = object.boxPosition.x - camera.position.x;
     const y = object.boxPosition.y - camera.position.y;
@@ -382,15 +398,33 @@ function drawText(
     ctx.fillStyle = object.color;
     ctx.textBaseline = "top";
 
-    // Word-wrap into the box
-    wrapText(
-        ctx,
-        object.text,
-        x + 4,
-        y + 4,
-        object.boxSize.x - 8,
-        object.fontSize * object.lineHeight
-    );
+    // Word-wrap the text into the box
+    const lineHeightPx = object.fontSize * (object.lineHeight ?? 1.2);
+    const maxWidth = object.boxSize.x - 8;
+    wrapText(ctx, object.text, x + 4, y + 4, maxWidth, lineHeightPx);
+
+    // Draw cursor
+    if (cursor?.visible) {
+        const lines = computeLines(object.text, ctx, maxWidth);
+        const { lineIndex, offsetInLine } = getCursorLineAndOffset(
+            lines,
+            cursor.index
+        );
+        const line = lines[lineIndex];
+
+        const cursorX =
+            x + 4 + ctx.measureText(line.text.slice(0, offsetInLine)).width;
+        const cursorY = y + 4 + lineIndex * lineHeightPx;
+
+        ctx.beginPath();
+        ctx.strokeStyle = object.color;
+        ctx.lineWidth = getStrokeSize(1, ctx, antiAliasing);
+        ctx.setLineDash([]);
+        ctx.moveTo(cursorX, cursorY);
+        ctx.lineTo(cursorX, cursorY + object.fontSize);
+        ctx.stroke();
+    }
+
     ctx.restore();
 }
 
@@ -402,36 +436,10 @@ function wrapText(
     maxWidth: number,
     lineHeight: number
 ) {
-    const paragraphs = text.split("\n");
-    let currentY = y;
-
-    for (const paragraph of paragraphs) {
-        if (paragraph === "") {
-            currentY += lineHeight;
-            continue;
-        }
-
-        const words = paragraph.split(" ");
-        let currentLine = "";
-
-        for (const word of words) {
-            const testLine = currentLine ? `${currentLine} ${word}` : word;
-            const { width } = ctx.measureText(testLine);
-
-            if (width > maxWidth && currentLine !== "") {
-                ctx.fillText(currentLine, x, currentY);
-                currentLine = word;
-                currentY += lineHeight;
-            } else {
-                currentLine = testLine;
-            }
-        }
-
-        if (currentLine) {
-            ctx.fillText(currentLine, x, currentY);
-            currentY += lineHeight;
-        }
-    }
+    const lines = computeLines(text, ctx, maxWidth);
+    lines.forEach((line, i) => {
+        ctx.fillText(line.text, x, y + i * lineHeight);
+    });
 }
 
 function drawPath(

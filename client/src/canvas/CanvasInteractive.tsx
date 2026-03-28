@@ -120,6 +120,140 @@ function CanvasInteractive({
         setContextMenu(contextMenuState);
     }
 
+    // Text editing
+    const [editingText, setEditingText] = useState<{
+        object: TextObject;
+        cursorIndex: number;
+    } | null>(null);
+    const [cursorVisible, setCursorVisible] = useState(true);
+    const cursorBlinkRef = useRef<number | null>(null);
+
+    function openTextEditor(object: TextObject) {
+        setEditingText({ object, cursorIndex: object.text.length });
+        setCursorVisible(true);
+        // Reset blink interval
+        if (cursorBlinkRef.current) clearInterval(cursorBlinkRef.current);
+        cursorBlinkRef.current = window.setInterval(() => {
+            setCursorVisible((prev) => !prev);
+        }, 500);
+    }
+
+    function closeTextEditor(commit: boolean) {
+        if (cursorBlinkRef.current) clearInterval(cursorBlinkRef.current);
+        if (commit && editingText) {
+            updateOrAddObject(editingText.object);
+            commitChanges([editingText.object], undefined);
+        }
+        setEditingText(null);
+    }
+
+    useEffect(() => {
+        return () => {
+            if (cursorBlinkRef.current) clearInterval(cursorBlinkRef.current);
+        };
+    }, []);
+
+    useEffect(() => {
+        if (!editingText) return;
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Reset blink so cursor is always visible right after a keypress
+            setCursorVisible(true);
+            if (cursorBlinkRef.current) clearInterval(cursorBlinkRef.current);
+            cursorBlinkRef.current = window.setInterval(() => {
+                setCursorVisible((prev) => !prev);
+            }, 500);
+
+            const { object, cursorIndex } = editingText;
+            const text = object.text;
+
+            if (e.key === "Escape") {
+                closeTextEditor(false);
+                return;
+            }
+
+            let newText = text;
+            let newCursorIndex = cursorIndex;
+
+            if (e.key === "Backspace") {
+                if (cursorIndex > 0) {
+                    newText =
+                        text.slice(0, cursorIndex - 1) +
+                        text.slice(cursorIndex);
+                    newCursorIndex = cursorIndex - 1;
+                }
+            } else if (e.key === "Delete") {
+                if (cursorIndex < text.length) {
+                    newText =
+                        text.slice(0, cursorIndex) +
+                        text.slice(cursorIndex + 1);
+                }
+            } else if (e.key === "ArrowLeft") {
+                newCursorIndex = Math.max(0, cursorIndex - 1);
+            } else if (e.key === "ArrowRight") {
+                newCursorIndex = Math.min(text.length, cursorIndex + 1);
+            } else if (e.key === "Enter") {
+                newText =
+                    text.slice(0, cursorIndex) + "\n" + text.slice(cursorIndex);
+                newCursorIndex = cursorIndex + 1;
+            } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
+                // Printable character
+                newText =
+                    text.slice(0, cursorIndex) +
+                    e.key +
+                    text.slice(cursorIndex);
+                newCursorIndex = cursorIndex + 1;
+            } else {
+                return; // nothing changed, skip remeasure
+            }
+
+            const updatedObject = {
+                ...object,
+                text: newText,
+                boxSize: measureTextBox(newText, object),
+            };
+
+            setEditingText({
+                object: updatedObject,
+                cursorIndex: newCursorIndex,
+            });
+            updateOrAddObject(updatedObject);
+        };
+
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [editingText]);
+
+    function measureTextBox(text: string, obj: TextObject): Vec2 {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d")!;
+        const style = [
+            obj.italic ? "italic" : "",
+            obj.bold ? "bold" : "",
+            `${obj.fontSize}px`,
+            obj.fontFamily,
+        ]
+            .filter(Boolean)
+            .join(" ");
+        ctx.font = style;
+
+        const lines = text.split("\n");
+        const longestLine = lines.reduce((max, line) => {
+            const w = ctx.measureText(line).width;
+            return w > max ? w : max;
+        }, 0);
+
+        const lineHeightPx = obj.fontSize * (obj.lineHeight ?? 1.2);
+        const requiredW = longestLine + 16;
+        const requiredH = lines.length * lineHeightPx + 8;
+
+        // Only grow the box, never shrink it below what the user drew
+        return {
+            x: Math.max(requiredW, obj.boxSize.x),
+            y: Math.max(requiredH, obj.boxSize.y),
+        };
+    }
+
     // MOUSE EVENTS
     const {
         handleMouseDown,
@@ -135,7 +269,10 @@ function CanvasInteractive({
         removeObject,
         commitChanges,
         commitCamera,
-        displayContextMenuState
+        displayContextMenuState,
+        openTextEditor,
+        () => editingText, // getter to avoid stale closure
+        closeTextEditor
     );
 
     // Server-synced objects and local unsaved objects and locally deleted objects, render all
@@ -169,6 +306,15 @@ function CanvasInteractive({
                 onMouseUp={handleMouseUp}
                 onWheel={handleWheel}
                 onContextMenu={handleContextMenu}
+                textCursor={
+                    editingText
+                        ? {
+                              objectId: editingText.object.id,
+                              index: editingText.cursorIndex,
+                              visible: cursorVisible,
+                          }
+                        : undefined
+                }
             />
 
             {contextMenu && (
@@ -210,7 +356,10 @@ function handleMouseEvents(
         deletedObjectIds?: string[]
     ) => void,
     commitCamera: () => void,
-    displayContextMenu: (contextMenuState: ContextMenuState) => void
+    displayContextMenu: (contextMenuState: ContextMenuState) => void,
+    openTextEditor: (object: TextObject) => void,
+    getEditingText: () => { object: TextObject; cursorIndex: number } | null, // to avoid stale closure
+    closeTextEditor: (commit: boolean) => void
 ) {
     const canvasContext = useContext(CanvasContext);
 
@@ -270,6 +419,27 @@ function handleMouseEvents(
     }, []);
 
     const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+        const editingText = getEditingText(); // avoid stale closure
+        if (
+            e.button === LEFT_MOUSE_BUTTON &&
+            tool.type === "select" &&
+            editingText
+        ) {
+            const mouseWorldCoords = screenToWorld(e, camera);
+            // If clicked outside the editing object, commit
+            const bb = getBoundingBox(editingText.object);
+            if (
+                !bb ||
+                mouseWorldCoords.x < bb.min.x ||
+                mouseWorldCoords.x > bb.max.x ||
+                mouseWorldCoords.y < bb.min.y ||
+                mouseWorldCoords.y > bb.max.y
+            ) {
+                closeTextEditor(true);
+            }
+            // Click inside while editing: could add click-to-reposition cursor here later
+            return;
+        }
         if (e.button === LEFT_MOUSE_BUTTON && tool.type !== "select") {
             currentInteraction.current = {
                 type: "drawing",
@@ -320,7 +490,11 @@ function handleMouseEvents(
         if (currentInteraction.current?.type === "drawing") {
             const objectToCommit = currentInteraction.current.latestObject;
             if (objectToCommit) {
-                commitChanges([objectToCommit], undefined);
+                if (objectToCommit.type === "text") {
+                    openTextEditor(objectToCommit as TextObject);
+                } else {
+                    commitChanges([objectToCommit], undefined);
+                }
             }
         }
         if (currentInteraction.current?.type === "camera-drag") {
@@ -486,15 +660,17 @@ function handleMouseEvents(
         const mouseWorldCoords: Vec2 = screenToWorld(e, camera);
         if (currentInteraction.current.path.length === 0) {
             currentInteraction.current.path[0] = mouseWorldCoords;
-            // There's legit nothing to draw if user just clicks and releases without dragging
-            return;
         }
+
+        // Enforce a minimum box size so a plain click still produces a usable textbox
+        const MIN_W = 20;
+        const MIN_H = 10;
 
         currentInteraction.current.path[1] = mouseWorldCoords;
         const newText: TextObject = {
             id: currentInteraction.current.objectId,
             type: "text",
-            text: "text", // Text content will be set when user finishes drawing the text box and edits it
+            text: "",
             color: textTool.color,
             bold: textTool.bold,
             italic: textTool.italic,
@@ -503,12 +679,16 @@ function handleMouseEvents(
             lineHeight: textTool.lineHeight,
             boxPosition: currentInteraction.current.path[0],
             boxSize: {
-                x:
+                x: Math.max(
                     currentInteraction.current.path[1].x -
-                    currentInteraction.current.path[0].x,
-                y:
+                        currentInteraction.current.path[0].x,
+                    MIN_W
+                ),
+                y: Math.max(
                     currentInteraction.current.path[1].y -
-                    currentInteraction.current.path[0].y,
+                        currentInteraction.current.path[0].y,
+                    MIN_H
+                ),
             },
         };
         currentInteraction.current.latestObject = newText;
