@@ -106,8 +106,11 @@ const Toolbox = ({
             tool: {
                 type: "text",
                 color: canvasContext.local_cachedColor,
-                text: "Text",
                 fontSize: 16,
+                fontFamily: "sans-serif",
+                lineHeight: 1.2,
+                bold: false,
+                italic: false,
             } satisfies TextTool,
             displayName: "Text",
             icon: <Type size={20} />,
@@ -433,6 +436,10 @@ function OptionsPanel({
         return <EraserOptionsPanel setTools={setTools} />;
     }
 
+    if (tool.type === "text") {
+        return <TextOptionsPanel setTools={setTools} />;
+    }
+
     return null;
 }
 
@@ -705,6 +712,185 @@ function EraserOptionsPanel({
                                 </OptionsPanelButton>
                             );
                         })}
+                    </div>
+                </div>
+            </div>
+        </OptionsPanelWrapper>
+    );
+}
+
+function TextOptionsPanel({
+    setTools,
+}: {
+    setTools: React.Dispatch<React.SetStateAction<ToolsData>>;
+}) {
+    const canvasContext = useContext(CanvasContext);
+    const tool = canvasContext.local_tool as TextTool;
+
+    const FONT_FAMILIES = ["sans-serif", "serif", "monospace"] as const;
+
+    const fontFamilyLabel: Record<string, string> = {
+        "sans-serif": "Sans",
+        serif: "Serif",
+        monospace: "Mono",
+    };
+
+    return (
+        <OptionsPanelWrapper>
+            <div className="flex w-[130px] flex-col items-start gap-3 p-3">
+                <div className="flex w-full flex-col space-y-1">
+                    <OptionsPanelLabel>Size</OptionsPanelLabel>
+                    <input
+                        type="range"
+                        min="8"
+                        max="200"
+                        value={tool.fontSize ?? 16}
+                        onChange={(e) => {
+                            const fontSize = Number(e.target.value);
+                            canvasContext.setLocalTool((prev) => ({
+                                ...prev,
+                                fontSize,
+                            }));
+                            setTools((prev) => ({
+                                ...prev,
+                                text: {
+                                    ...prev.text,
+                                    tool: { ...prev.text.tool, fontSize },
+                                },
+                            }));
+                        }}
+                        className="w-full"
+                        style={{
+                            accentColor: "var(--accent)",
+                            cursor: "pointer",
+                        }}
+                    />
+                    <span
+                        className="text-center text-xs"
+                        style={{ color: "var(--card-foreground)" }}
+                    >
+                        {tool.fontSize ?? 16}px
+                    </span>
+                </div>
+
+                <div className="flex w-full flex-col space-y-1">
+                    <OptionsPanelLabel>Line Height</OptionsPanelLabel>
+                    <input
+                        type="range"
+                        min="1"
+                        max="3"
+                        step="0.1"
+                        value={tool.lineHeight ?? 1.2}
+                        onChange={(e) => {
+                            const lineHeight = Number(e.target.value);
+                            canvasContext.setLocalTool((prev) => ({
+                                ...prev,
+                                lineHeight,
+                            }));
+                            setTools((prev) => ({
+                                ...prev,
+                                text: {
+                                    ...prev.text,
+                                    tool: { ...prev.text.tool, lineHeight },
+                                },
+                            }));
+                        }}
+                        className="w-full"
+                        style={{
+                            accentColor: "var(--accent)",
+                            cursor: "pointer",
+                        }}
+                    />
+                    <span
+                        className="text-center text-xs"
+                        style={{ color: "var(--card-foreground)" }}
+                    >
+                        {(tool.lineHeight ?? 1.2).toFixed(1)}x
+                    </span>
+                </div>
+
+                <div className="flex w-full flex-col gap-1">
+                    <OptionsPanelLabel>Font</OptionsPanelLabel>
+                    <div className="flex flex-row gap-1">
+                        {FONT_FAMILIES.map((family) => {
+                            const active = tool.fontFamily === family;
+                            return (
+                                <OptionsPanelButton
+                                    key={family}
+                                    label={family}
+                                    active={active}
+                                    onClick={() => {
+                                        canvasContext.setLocalTool((prev) => ({
+                                            ...prev,
+                                            fontFamily: family,
+                                        }));
+                                        setTools((prev) => ({
+                                            ...prev,
+                                            text: {
+                                                ...prev.text,
+                                                tool: {
+                                                    ...prev.text.tool,
+                                                    fontFamily: family,
+                                                },
+                                            },
+                                        }));
+                                    }}
+                                >
+                                    <span
+                                        className="text-xs"
+                                        style={{ fontFamily: family }}
+                                    >
+                                        {fontFamilyLabel[family]}
+                                    </span>
+                                </OptionsPanelButton>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                <div className="flex w-full flex-col gap-1">
+                    <OptionsPanelLabel>Style</OptionsPanelLabel>
+                    <div className="flex flex-row gap-1">
+                        <OptionsPanelButton
+                            label="Bold"
+                            active={tool.bold ?? false}
+                            onClick={() => {
+                                const bold = !tool.bold;
+                                canvasContext.setLocalTool((prev) => ({
+                                    ...prev,
+                                    bold,
+                                }));
+                                setTools((prev) => ({
+                                    ...prev,
+                                    text: {
+                                        ...prev.text,
+                                        tool: { ...prev.text.tool, bold },
+                                    },
+                                }));
+                            }}
+                        >
+                            <span className="text-xs font-bold">B</span>
+                        </OptionsPanelButton>
+                        <OptionsPanelButton
+                            label="Italic"
+                            active={tool.italic ?? false}
+                            onClick={() => {
+                                const italic = !tool.italic;
+                                canvasContext.setLocalTool((prev) => ({
+                                    ...prev,
+                                    italic,
+                                }));
+                                setTools((prev) => ({
+                                    ...prev,
+                                    text: {
+                                        ...prev.text,
+                                        tool: { ...prev.text.tool, italic },
+                                    },
+                                }));
+                            }}
+                        >
+                            <span className="text-xs italic">I</span>
+                        </OptionsPanelButton>
                     </div>
                 </div>
             </div>

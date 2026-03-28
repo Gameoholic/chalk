@@ -7,6 +7,7 @@ import {
     LineObject,
     PathObject,
     RectObject,
+    TextObject,
     Vec2,
     WorldObject,
 } from "../types/canvas";
@@ -249,6 +250,9 @@ function drawObjects(
             case "ellipse":
                 drawEllipse(ctx, object, camera, antiAliasing);
                 break;
+            case "text":
+                drawText(ctx, object, camera, antiAliasing);
+                break;
         }
     });
 }
@@ -341,6 +345,92 @@ function drawEllipse(
     } else {
         ctx.fillStyle = object.color;
         ctx.fill();
+    }
+}
+
+function drawText(
+    ctx: CanvasRenderingContext2D,
+    object: TextObject,
+    camera: Camera,
+    antiAliasing: boolean
+) {
+    const x = object.boxPosition.x - camera.position.x;
+    const y = object.boxPosition.y - camera.position.y;
+
+    // Dashed box outline
+    ctx.save();
+    ctx.strokeStyle = object.color;
+    ctx.lineWidth = getStrokeSize(1, ctx, antiAliasing);
+    ctx.setLineDash([4 / camera.zoom, 4 / camera.zoom]);
+    ctx.strokeRect(x, y, object.boxSize.x, object.boxSize.y);
+    ctx.restore();
+
+    if (!object.text) return;
+
+    // Text rendering
+    const style = [
+        object.italic ? "italic" : "",
+        object.bold ? "bold" : "",
+        `${object.fontSize}px`,
+        object.fontFamily,
+    ]
+        .filter(Boolean)
+        .join(" ");
+
+    ctx.save();
+    ctx.font = style;
+    ctx.fillStyle = object.color;
+    ctx.textBaseline = "top";
+
+    // Word-wrap into the box
+    wrapText(
+        ctx,
+        object.text,
+        x + 4,
+        y + 4,
+        object.boxSize.x - 8,
+        object.fontSize * object.lineHeight
+    );
+    ctx.restore();
+}
+
+function wrapText(
+    ctx: CanvasRenderingContext2D,
+    text: string,
+    x: number,
+    y: number,
+    maxWidth: number,
+    lineHeight: number
+) {
+    const paragraphs = text.split("\n");
+    let currentY = y;
+
+    for (const paragraph of paragraphs) {
+        if (paragraph === "") {
+            currentY += lineHeight;
+            continue;
+        }
+
+        const words = paragraph.split(" ");
+        let currentLine = "";
+
+        for (const word of words) {
+            const testLine = currentLine ? `${currentLine} ${word}` : word;
+            const { width } = ctx.measureText(testLine);
+
+            if (width > maxWidth && currentLine !== "") {
+                ctx.fillText(currentLine, x, currentY);
+                currentLine = word;
+                currentY += lineHeight;
+            } else {
+                currentLine = testLine;
+            }
+        }
+
+        if (currentLine) {
+            ctx.fillText(currentLine, x, currentY);
+            currentY += lineHeight;
+        }
     }
 }
 

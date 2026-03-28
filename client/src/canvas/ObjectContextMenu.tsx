@@ -8,16 +8,18 @@ import {
     LineObject,
     RectObject,
     EllipseObject,
+    TextObject,
 } from "../types/canvas";
 
 function hasColor(
     obj: WorldObject
-): obj is PathObject | LineObject | RectObject | EllipseObject {
+): obj is PathObject | LineObject | RectObject | EllipseObject | TextObject {
     return (
         obj.type === "path" ||
         obj.type === "line" ||
         obj.type === "rect" ||
-        obj.type === "ellipse"
+        obj.type === "ellipse" ||
+        obj.type === "text"
     );
 }
 
@@ -31,6 +33,10 @@ function hasStroke(
 
 function hasHollow(obj: WorldObject): obj is RectObject | EllipseObject {
     return obj.type === "rect" || obj.type === "ellipse";
+}
+
+function hasTextProps(obj: WorldObject): obj is TextObject {
+    return obj.type === "text";
 }
 
 interface ObjectContextMenuProps {
@@ -53,9 +59,6 @@ export default function ObjectContextMenu({
     const menuRef = useRef<HTMLDivElement>(null);
     const colorPickerRef = useRef<HTMLDivElement>(null);
 
-    // Always build updates from the latest object state, not the stale prop.
-    // Without this, changing stroke after color would spread the original `object`
-    // prop (which still has the old color) and silently revert the color change.
     const currentObjectRef = useRef<WorldObject>(object);
     useEffect(() => {
         currentObjectRef.current = object;
@@ -92,8 +95,6 @@ export default function ObjectContextMenu({
         };
     }, [onClose]);
 
-    // ─── Local state ─────────────────────────────────────
-
     const [color, setColor] = useState(
         hasColor(object) ? (object as any).color : "#000000"
     );
@@ -106,10 +107,26 @@ export default function ObjectContextMenu({
     const [hollowStroke, setHollowStroke] = useState(
         hasHollow(object) ? ((object as any).hollowStroke ?? 1) : 1
     );
+    const [fontSize, setFontSize] = useState(
+        hasTextProps(object) ? (object.fontSize ?? 16) : 16
+    );
+    const [fontFamily, setFontFamily] = useState(
+        hasTextProps(object)
+            ? (object.fontFamily ?? "sans-serif")
+            : "sans-serif"
+    );
+    const [lineHeight, setLineHeight] = useState(
+        hasTextProps(object) ? (object.lineHeight ?? 1.2) : 1.2
+    );
+    const [bold, setBold] = useState(
+        hasTextProps(object) ? (object.bold ?? false) : false
+    );
+    const [italic, setItalic] = useState(
+        hasTextProps(object) ? (object.italic ?? false) : false
+    );
 
     const [showColorPicker, setShowColorPicker] = useState(false);
 
-    // Close color picker on outside click (separate from menu close)
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (
@@ -123,8 +140,6 @@ export default function ObjectContextMenu({
         return () =>
             document.removeEventListener("mousedown", handleClickOutside);
     }, []);
-
-    // ─── Handlers ─────────────────────────────────────
 
     const handleColorChange = (newColor: string) => {
         setColor(newColor);
@@ -166,6 +181,56 @@ export default function ObjectContextMenu({
         onUpdate(updated);
     };
 
+    const handleFontSizeChange = (newFontSize: number) => {
+        setFontSize(newFontSize);
+        const updated = {
+            ...currentObjectRef.current,
+            fontSize: newFontSize,
+        } as WorldObject;
+        currentObjectRef.current = updated;
+        onUpdate(updated);
+    };
+
+    const handleFontFamilyChange = (newFontFamily: string) => {
+        setFontFamily(newFontFamily);
+        const updated = {
+            ...currentObjectRef.current,
+            fontFamily: newFontFamily,
+        } as WorldObject;
+        currentObjectRef.current = updated;
+        onUpdate(updated);
+    };
+
+    const handleLineHeightChange = (newLineHeight: number) => {
+        setLineHeight(newLineHeight);
+        const updated = {
+            ...currentObjectRef.current,
+            lineHeight: newLineHeight,
+        } as WorldObject;
+        currentObjectRef.current = updated;
+        onUpdate(updated);
+    };
+
+    const handleBoldChange = (newBold: boolean) => {
+        setBold(newBold);
+        const updated = {
+            ...currentObjectRef.current,
+            bold: newBold,
+        } as WorldObject;
+        currentObjectRef.current = updated;
+        onUpdate(updated);
+    };
+
+    const handleItalicChange = (newItalic: boolean) => {
+        setItalic(newItalic);
+        const updated = {
+            ...currentObjectRef.current,
+            italic: newItalic,
+        } as WorldObject;
+        currentObjectRef.current = updated;
+        onUpdate(updated);
+    };
+
     const objectLabel: Record<WorldObject["type"], string> = {
         path: "Path",
         "eraser-path": "Eraser Path",
@@ -175,7 +240,6 @@ export default function ObjectContextMenu({
         text: "Text",
     };
 
-    // Checkerboard (same idea as Toolbox)
     const renderCheckerboard = () => {
         const squares: JSX.Element[] = [];
 
@@ -198,6 +262,8 @@ export default function ObjectContextMenu({
         );
     };
 
+    const FONT_FAMILIES = ["sans-serif", "serif", "monospace"] as const;
+
     return (
         <div
             ref={menuRef}
@@ -218,7 +284,6 @@ export default function ObjectContextMenu({
             </p>
 
             <div className="flex flex-col gap-3">
-                {/* ─── Color (NEW) ───────────────── */}
                 {hasColor(object) && (
                     <Row label="Color">
                         <div className="relative flex items-center gap-2">
@@ -253,7 +318,6 @@ export default function ObjectContextMenu({
                     </Row>
                 )}
 
-                {/* Stroke */}
                 {hasStroke(object) && (
                     <Row label="Width">
                         <div className="flex w-full flex-col gap-1">
@@ -275,7 +339,6 @@ export default function ObjectContextMenu({
                     </Row>
                 )}
 
-                {/* Hollow */}
                 {hasHollow(object) && (
                     <>
                         <Row label="Fill">
@@ -325,6 +388,120 @@ export default function ObjectContextMenu({
                                 />
                             </Row>
                         )}
+                    </>
+                )}
+
+                {hasTextProps(object) && (
+                    <>
+                        <Row label="Size">
+                            <div className="flex w-full flex-col gap-1">
+                                <input
+                                    type="range"
+                                    min="8"
+                                    max="200"
+                                    value={fontSize}
+                                    onChange={(e) =>
+                                        handleFontSizeChange(
+                                            Number(e.target.value)
+                                        )
+                                    }
+                                    className="w-full cursor-pointer"
+                                    style={{ accentColor: "var(--accent)" }}
+                                />
+                                <span className="text-muted-foreground text-right text-xs">
+                                    {fontSize}px
+                                </span>
+                            </div>
+                        </Row>
+
+                        <Row label="Leading">
+                            <div className="flex w-full flex-col gap-1">
+                                <input
+                                    type="range"
+                                    min="1"
+                                    max="3"
+                                    step="0.1"
+                                    value={lineHeight}
+                                    onChange={(e) =>
+                                        handleLineHeightChange(
+                                            Number(e.target.value)
+                                        )
+                                    }
+                                    className="w-full cursor-pointer"
+                                    style={{ accentColor: "var(--accent)" }}
+                                />
+                                <span className="text-muted-foreground text-right text-xs">
+                                    {lineHeight.toFixed(1)}x
+                                </span>
+                            </div>
+                        </Row>
+
+                        <Row label="Font">
+                            <div className="flex gap-1">
+                                {FONT_FAMILIES.map((family) => {
+                                    const active = fontFamily === family;
+                                    const label =
+                                        family === "sans-serif"
+                                            ? "Sans"
+                                            : family === "serif"
+                                              ? "Serif"
+                                              : "Mono";
+                                    return (
+                                        <button
+                                            key={family}
+                                            onClick={() =>
+                                                handleFontFamilyChange(family)
+                                            }
+                                            className="rounded-lg px-2 py-1 text-xs font-medium"
+                                            style={{
+                                                backgroundColor: active
+                                                    ? "var(--accent)"
+                                                    : "transparent",
+                                                color: active
+                                                    ? "var(--accent-foreground)"
+                                                    : "var(--card-foreground)",
+                                                fontFamily: family,
+                                            }}
+                                        >
+                                            {label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </Row>
+
+                        <Row label="Style">
+                            <div className="flex gap-1">
+                                <button
+                                    onClick={() => handleBoldChange(!bold)}
+                                    className="rounded-lg px-2 py-1 text-xs font-bold"
+                                    style={{
+                                        backgroundColor: bold
+                                            ? "var(--accent)"
+                                            : "transparent",
+                                        color: bold
+                                            ? "var(--accent-foreground)"
+                                            : "var(--card-foreground)",
+                                    }}
+                                >
+                                    B
+                                </button>
+                                <button
+                                    onClick={() => handleItalicChange(!italic)}
+                                    className="rounded-lg px-2 py-1 text-xs italic"
+                                    style={{
+                                        backgroundColor: italic
+                                            ? "var(--accent)"
+                                            : "transparent",
+                                        color: italic
+                                            ? "var(--accent-foreground)"
+                                            : "var(--card-foreground)",
+                                    }}
+                                >
+                                    I
+                                </button>
+                            </div>
+                        </Row>
                     </>
                 )}
 

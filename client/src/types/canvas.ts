@@ -58,6 +58,14 @@ export interface EllipseObject extends ShapeObject {
 
 export interface TextObject extends ColorableObject {
     type: "text";
+    boxPosition: Vec2;
+    boxSize: Vec2;
+    text: string;
+    fontSize: number;
+    fontFamily: string;
+    lineHeight: number; // multiplier, e.g. 1.2 = 120% of fontSize
+    bold: boolean;
+    italic: boolean;
 }
 
 export type WorldObject =

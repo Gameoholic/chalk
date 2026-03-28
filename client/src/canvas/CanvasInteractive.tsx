@@ -15,6 +15,7 @@ import {
     LineObject,
     PathObject,
     RectObject,
+    TextObject,
     Vec2,
     WorldObject,
 } from "../types/canvas";
@@ -28,6 +29,7 @@ import {
     PencilTool,
     RectTool,
     SelectTool,
+    TextTool,
     Tool,
     ToolType,
 } from "../types/tool";
@@ -251,9 +253,7 @@ function handleMouseEvents(
         line: handleMouseMoveLineDraw,
         rect: handleMouseMoveRectDraw,
         ellipse: handleMouseMoveEllipseDraw,
-        text: () => {
-            throw new Error("This method should never be called.");
-        },
+        text: handleMouseMoveTextDraw,
     };
 
     // GLOBAL mouseup to fix mouse up outside of canvas
@@ -271,11 +271,6 @@ function handleMouseEvents(
 
     const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
         if (e.button === LEFT_MOUSE_BUTTON && tool.type !== "select") {
-            // Special case: text is a "one-time" action, not a continious mouse drag
-            if (tool.type === "text") {
-                console.warn("Text tool mouse move not implemented yet");
-                return;
-            }
             currentInteraction.current = {
                 type: "drawing",
                 objectId: uuidv4(),
@@ -482,6 +477,44 @@ function handleMouseEvents(
         updateObject(newEllipse);
     }
 
+    function handleMouseMoveTextDraw(e: React.MouseEvent<HTMLCanvasElement>) {
+        if (currentInteraction.current?.type !== "drawing") {
+            return;
+        }
+        const textTool = currentInteraction.current.tool as TextTool;
+
+        const mouseWorldCoords: Vec2 = screenToWorld(e, camera);
+        if (currentInteraction.current.path.length === 0) {
+            currentInteraction.current.path[0] = mouseWorldCoords;
+            // There's legit nothing to draw if user just clicks and releases without dragging
+            return;
+        }
+
+        currentInteraction.current.path[1] = mouseWorldCoords;
+        const newText: TextObject = {
+            id: currentInteraction.current.objectId,
+            type: "text",
+            text: "text", // Text content will be set when user finishes drawing the text box and edits it
+            color: textTool.color,
+            bold: textTool.bold,
+            italic: textTool.italic,
+            fontFamily: textTool.fontFamily,
+            fontSize: textTool.fontSize,
+            lineHeight: textTool.lineHeight,
+            boxPosition: currentInteraction.current.path[0],
+            boxSize: {
+                x:
+                    currentInteraction.current.path[1].x -
+                    currentInteraction.current.path[0].x,
+                y:
+                    currentInteraction.current.path[1].y -
+                    currentInteraction.current.path[0].y,
+            },
+        };
+        currentInteraction.current.latestObject = newText;
+        updateObject(newText);
+    }
+
     function handleMouseMoveDragCamera(e: React.MouseEvent<HTMLCanvasElement>) {
         if (currentInteraction.current?.type !== "camera-drag") {
             return;
@@ -600,6 +633,23 @@ function handleMouseEvents(
                     max: {
                         x: x0 + Math.abs(obj.size.x),
                         y: y0 + Math.abs(obj.size.y),
+                    },
+                };
+            }
+            case "text": {
+                const x0 = Math.min(
+                    obj.boxPosition.x,
+                    obj.boxPosition.x + obj.boxSize.x
+                );
+                const y0 = Math.min(
+                    obj.boxPosition.y,
+                    obj.boxPosition.y + obj.boxSize.y
+                );
+                return {
+                    min: { x: x0, y: y0 },
+                    max: {
+                        x: x0 + Math.abs(obj.boxSize.x),
+                        y: y0 + Math.abs(obj.boxSize.y),
                     },
                 };
             }
