@@ -145,13 +145,13 @@ export default function LoginModal({
                     >
                         Create account
                     </button>
-                    <button
+                    {/* <button
                         onClick={onForgotPassword}
                         disabled={isSubmitting || hasLoggedIn}
                         className="cursor-pointer transition hover:brightness-110"
                     >
                         Forgot password?
-                    </button>
+                    </button> */}
                 </div>
             </div>
         </div>

@@ -236,7 +236,7 @@ export default function ManageAccountModal({
                     {/* Email */}
                     <div className="space-y-1 pt-2">
                         <label className="block text-xs font-semibold tracking-wider text-gray-400 uppercase">
-                            Email
+                            Username
                         </label>
                         <span className="block text-sm text-gray-300">
                             {sessionContext.userData.email}
