@@ -22,7 +22,7 @@ export default function LoginModal({
 
     const handleSubmit = async () => {
         if (!email || !password) {
-            setError("Email and password are required.");
+            setError("Username and password are required.");
             return;
         }
 
@@ -68,8 +68,8 @@ export default function LoginModal({
 
                 {/* Email input */}
                 <input
-                    type="email"
-                    placeholder="Email"
+                    type="text"
+                    placeholder="Username"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     disabled={isSubmitting || hasLoggedIn}

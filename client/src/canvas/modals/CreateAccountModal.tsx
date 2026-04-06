@@ -21,7 +21,7 @@ export default function LoginModal({ onLogin, onClose }: Props) {
 
     const handleSubmit = async () => {
         if (!email || !password || !displayName) {
-            setError("Email, password and display name are required.");
+            setError("Username, password and display name are required.");
             return;
         }
         if (password !== confirmPassword) {
@@ -73,8 +73,8 @@ export default function LoginModal({ onLogin, onClose }: Props) {
 
                 {/* Email input */}
                 <input
-                    type="email"
-                    placeholder="Email"
+                    type="text"
+                    placeholder="Username"
                     value={email}
                     onChange={(e) => setEmail(e.target.value.trim())}
                     disabled={isSubmitting || hasCreatedAccount}
