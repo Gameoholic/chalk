@@ -72,10 +72,10 @@ export default function WelcomeScreen({
                                     className="text-base"
                                     style={{ color: "#a0a0a0" }}
                                 >
-                                    Draw, sketch and brainstorm with your team
-                                    instantly.
+                                    Draw, sketch and brainstorm instantly.
                                     <br />
-                                    No sign-up required.
+                                    Infinite drawing boards. No sign-up
+                                    required.
                                 </p>
                             </div>
 
