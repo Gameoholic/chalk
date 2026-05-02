@@ -253,13 +253,10 @@ function ToolButtonsSection({
                     <button
                         key={toolType}
                         onClick={() => onToolClick(toolType as ToolType)}
-                        disabled={toolType === "text"} // TEMPORARILY DISABLE TEXT TOOL
                         className="rounded p-2 transition"
                         title={
-                            toolType === "text"
-                                ? "Text tool is temporarily disabled"
-                                : displayName
-                        } // TEMPORARILY DISABLE TEXT TOOL
+                           displayName
+                        }
                         style={{
                             backgroundColor: active
                                 ? "var(--accent)"
@@ -268,7 +265,7 @@ function ToolButtonsSection({
                                 ? "var(--accent-foreground)"
                                 : "var(--card-foreground)",
                             cursor:
-                                toolType === "text" ? "not-allowed" : "pointer", // TEMPORARILY DISABLE TEXT TOOL
+                                "pointer",
                         }}
                         onMouseEnter={(e) => {
                             (
