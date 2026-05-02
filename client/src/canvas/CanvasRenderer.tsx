@@ -381,8 +381,6 @@ function drawText(
     ctx.strokeRect(x, y, object.boxSize.x, object.boxSize.y);
     ctx.restore();
 
-    if (!object.text) return;
-
     // Text rendering
     const style = [
         object.italic ? "italic" : "",

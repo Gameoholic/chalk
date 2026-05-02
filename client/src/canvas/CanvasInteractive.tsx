@@ -123,23 +123,20 @@ function CanvasInteractive({
     // Text editing
     const [editingText, setEditingText] = useState<{
         object: TextObject;
-        cursorIndex: number;
+        cursorVisible: boolean;
+        cursorBlinkIntervalId: number;
     } | null>(null);
-    const [cursorVisible, setCursorVisible] = useState(true);
-    const cursorBlinkRef = useRef<number | null>(null);
 
     function openTextEditor(object: TextObject) {
-        setEditingText({ object, cursorIndex: object.text.length });
-        setCursorVisible(true);
-        // Reset blink interval
-        if (cursorBlinkRef.current) clearInterval(cursorBlinkRef.current);
-        cursorBlinkRef.current = window.setInterval(() => {
-            setCursorVisible((prev) => !prev);
+        clearInterval(editingText?.cursorBlinkIntervalId);
+        const cursorBlinkIntervalId = window.setInterval(() => {
+            setEditingText((prev) => prev ? { ...prev, cursorVisible: !prev.cursorVisible } : prev);
         }, 500);
+        setEditingText({ object, cursorVisible: true, cursorBlinkIntervalId: cursorBlinkIntervalId});
     }
 
     function closeTextEditor(commit: boolean) {
-        if (cursorBlinkRef.current) clearInterval(cursorBlinkRef.current);
+        clearInterval(editingText?.cursorBlinkIntervalId);
         if (commit && editingText) {
             updateOrAddObject(editingText.object);
             commitChanges([editingText.object], undefined);
@@ -149,7 +146,7 @@ function CanvasInteractive({
 
     useEffect(() => {
         return () => {
-            if (cursorBlinkRef.current) clearInterval(cursorBlinkRef.current);
+            clearInterval(editingText?.cursorBlinkIntervalId);
         };
     }, []);
 
@@ -158,14 +155,14 @@ function CanvasInteractive({
 
         const handleKeyDown = (e: KeyboardEvent) => {
             // Reset blink so cursor is always visible right after a keypress
-            setCursorVisible(true);
-            if (cursorBlinkRef.current) clearInterval(cursorBlinkRef.current);
-            cursorBlinkRef.current = window.setInterval(() => {
-                setCursorVisible((prev) => !prev);
-            }, 500);
+            setEditingText(prev => prev ? { ...prev, cursorVisible: true } : prev);
+            clearInterval(editingText?.cursorBlinkIntervalId);
 
-            const { object, cursorIndex } = editingText;
-            const text = object.text;
+            const cursorBlinkIntervalId = window.setInterval(() => {
+                setEditingText(prev => prev ? { ...prev, cursorVisible: !prev.cursorVisible } : prev);
+            }, 500);
+            const text = editingText.object.text;
+            const cursorIndex = editingText.object.text.length;
 
             if (e.key === "Escape") {
                 closeTextEditor(false);
@@ -208,14 +205,15 @@ function CanvasInteractive({
             }
 
             const updatedObject = {
-                ...object,
+                ...editingText.object,
                 text: newText,
-                boxSize: measureTextBox(newText, object),
+                boxSize: measureTextBox(newText, editingText.object),
             };
 
             setEditingText({
                 object: updatedObject,
-                cursorIndex: newCursorIndex,
+                cursorBlinkIntervalId: cursorBlinkIntervalId,
+                cursorVisible: true
             });
             updateOrAddObject(updatedObject);
         };
@@ -310,8 +308,8 @@ function CanvasInteractive({
                     editingText
                         ? {
                               objectId: editingText.object.id,
-                              index: editingText.cursorIndex,
-                              visible: cursorVisible,
+                              index: editingText.object.text.length,
+                              visible: editingText.cursorVisible,
                           }
                         : undefined
                 }
@@ -358,7 +356,9 @@ function handleMouseEvents(
     commitCamera: () => void,
     displayContextMenu: (contextMenuState: ContextMenuState) => void,
     openTextEditor: (object: TextObject) => void,
-    getEditingText: () => { object: TextObject; cursorIndex: number } | null, // to avoid stale closure
+    getEditingText: () => {         object: TextObject;
+        cursorVisible: boolean;
+        cursorBlinkIntervalId: number; } | null, // to avoid stale closure
     closeTextEditor: (commit: boolean) => void
 ) {
     const canvasContext = useContext(CanvasContext);
@@ -670,7 +670,7 @@ function handleMouseEvents(
         const newText: TextObject = {
             id: currentInteraction.current.objectId,
             type: "text",
-            text: "Enter text here...",
+            text: "",
             color: textTool.color,
             bold: textTool.bold,
             italic: textTool.italic,
