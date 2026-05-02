@@ -662,7 +662,7 @@ function handleMouseEvents(
             currentInteraction.current.path[0] = mouseWorldCoords;
         }
 
-        // Enforce a minimum box size so a plain click still produces a usable textbox
+        // Enforce a minimum box size so a single click still produces a large enough textbox
         const MIN_W = 20;
         const MIN_H = 10;
 
@@ -670,7 +670,7 @@ function handleMouseEvents(
         const newText: TextObject = {
             id: currentInteraction.current.objectId,
             type: "text",
-            text: "",
+            text: "Enter text here...",
             color: textTool.color,
             bold: textTool.bold,
             italic: textTool.italic,
