@@ -124,12 +124,12 @@ function CanvasInteractive({
     const [editingText, setEditingText] = useState<{
         object: TextObject;
         cursorVisible: boolean;
-        cursorBlinkIntervalId: number;
     } | null>(null);
+    const cursorBlinkIntervalRef = useRef<number | undefined>(undefined);
 
     function openTextEditor(object: TextObject) {
-        clearInterval(editingText?.cursorBlinkIntervalId);
-        const cursorBlinkIntervalId = window.setInterval(() => {
+        clearInterval(cursorBlinkIntervalRef.current);
+        cursorBlinkIntervalRef.current = window.setInterval(() => {
             setEditingText((prev) =>
                 prev ? { ...prev, cursorVisible: !prev.cursorVisible } : prev
             );
@@ -137,12 +137,11 @@ function CanvasInteractive({
         setEditingText({
             object,
             cursorVisible: true,
-            cursorBlinkIntervalId: cursorBlinkIntervalId,
         });
     }
 
     function closeTextEditor() {
-        clearInterval(editingText?.cursorBlinkIntervalId);
+        clearInterval(cursorBlinkIntervalRef.current);
         if (editingText) {
             updateOrAddObject(editingText.object);
             commitChanges([editingText.object], undefined);
@@ -152,7 +151,7 @@ function CanvasInteractive({
 
     useEffect(() => {
         return () => {
-            clearInterval(editingText?.cursorBlinkIntervalId);
+            clearInterval(cursorBlinkIntervalRef.current);
         };
     }, []);
 
@@ -162,8 +161,8 @@ function CanvasInteractive({
 
         const handleKeyDown = (e: KeyboardEvent) => {
             // Reset blink so cursor is always visible right after a keypress
-            clearInterval(editingText?.cursorBlinkIntervalId);
-            const cursorBlinkIntervalId = window.setInterval(() => {
+            clearInterval(cursorBlinkIntervalRef.current);
+            cursorBlinkIntervalRef.current = window.setInterval(() => {
                 setEditingText((prev) =>
                     prev
                         ? { ...prev, cursorVisible: !prev.cursorVisible }
@@ -175,7 +174,6 @@ function CanvasInteractive({
                     ? {
                           ...prev,
                           cursorVisible: true,
-                          cursorBlinkIntervalId: cursorBlinkIntervalId,
                       }
                     : prev
             );
@@ -231,7 +229,6 @@ function CanvasInteractive({
 
             setEditingText({
                 object: updatedObject,
-                cursorBlinkIntervalId: cursorBlinkIntervalId,
                 cursorVisible: true,
             });
             updateOrAddObject(updatedObject);
@@ -378,7 +375,6 @@ function handleMouseEvents(
     getEditingText: () => {
         object: TextObject;
         cursorVisible: boolean;
-        cursorBlinkIntervalId: number;
     } | null, // to avoid stale closure
     closeTextEditor: () => void
 ) {
