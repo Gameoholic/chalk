@@ -159,6 +159,10 @@ function CanvasInteractive({
     useEffect(() => {
         if (!editingText) return;
 
+        const handleMouseDown = (e: MouseEvent) => {
+            closeTextEditor();
+        };
+
         const handleKeyDown = (e: KeyboardEvent) => {
             // Reset blink so cursor is always visible right after a keypress
             clearInterval(cursorBlinkIntervalRef.current);
@@ -235,7 +239,11 @@ function CanvasInteractive({
         };
 
         window.addEventListener("keydown", handleKeyDown);
-        return () => window.removeEventListener("keydown", handleKeyDown);
+        window.addEventListener("mousedown", handleMouseDown);
+        return () => {
+            window.removeEventListener("keydown", handleKeyDown);
+            window.removeEventListener("mousedown", handleMouseDown);
+        };
     }, [editingText]);
 
     function measureTextBox(text: string, obj: TextObject): Vec2 {
@@ -284,9 +292,7 @@ function CanvasInteractive({
         commitChanges,
         commitCamera,
         displayContextMenuState,
-        openTextEditor,
-        () => editingText, // getter to avoid stale closure
-        closeTextEditor
+        openTextEditor
     );
 
     // Server-synced objects and local unsaved objects and locally deleted objects, render all
@@ -371,12 +377,7 @@ function handleMouseEvents(
     ) => void,
     commitCamera: () => void,
     displayContextMenu: (contextMenuState: ContextMenuState) => void,
-    openTextEditor: (object: TextObject) => void,
-    getEditingText: () => {
-        object: TextObject;
-        cursorVisible: boolean;
-    } | null, // to avoid stale closure
-    closeTextEditor: () => void
+    openTextEditor: (object: TextObject) => void
 ) {
     const canvasContext = useContext(CanvasContext);
 
@@ -436,27 +437,26 @@ function handleMouseEvents(
     }, []);
 
     const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-        const editingText = getEditingText(); // avoid stale closure
-        if (
-            e.button === LEFT_MOUSE_BUTTON &&
-            tool.type === "select" &&
-            editingText
-        ) {
-            const mouseWorldCoords = screenToWorld(e, camera);
-            // If clicked outside the editing object, commit
-            const bb = getBoundingBox(editingText.object);
-            if (
-                !bb ||
-                mouseWorldCoords.x < bb.min.x ||
-                mouseWorldCoords.x > bb.max.x ||
-                mouseWorldCoords.y < bb.min.y ||
-                mouseWorldCoords.y > bb.max.y
-            ) {
-                closeTextEditor();
-            }
-            // Click inside while editing: could add click-to-reposition cursor here later
-            return;
-        }
+        // if (
+        //     e.button === LEFT_MOUSE_BUTTON &&
+        //     tool.type === "select" &&
+        //     editingText
+        // ) {
+        //     const mouseWorldCoords = screenToWorld(e, camera);
+        //     // If clicked outside the editing object, commit
+        //     const bb = getBoundingBox(editingText.object);
+        //     if (
+        //         !bb ||
+        //         mouseWorldCoords.x < bb.min.x ||
+        //         mouseWorldCoords.x > bb.max.x ||
+        //         mouseWorldCoords.y < bb.min.y ||
+        //         mouseWorldCoords.y > bb.max.y
+        //     ) {
+        //         closeTextEditor();
+        //     }
+        //     // Click inside while editing: could add click-to-reposition cursor here later
+        //     return;
+        // }
         if (e.button === LEFT_MOUSE_BUTTON && tool.type !== "select") {
             currentInteraction.current = {
                 type: "drawing",
