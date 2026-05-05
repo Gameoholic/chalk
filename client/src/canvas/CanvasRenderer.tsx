@@ -397,7 +397,7 @@ function drawText(
     ctx.textBaseline = "top";
 
     // Word-wrap the text into the box
-    const lineHeightPx = object.fontSize * (object.lineHeight ?? 1.2);
+    const lineHeightPx = object.fontSize * object.lineHeight;
     const maxWidth = object.boxSize.x - 8;
     wrapText(ctx, object.text, x + 4, y + 4, maxWidth, lineHeightPx);
 
