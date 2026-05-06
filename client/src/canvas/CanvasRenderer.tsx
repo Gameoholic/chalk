@@ -13,12 +13,14 @@ import {
 } from "../types/canvas";
 import { AntiAliasingContext } from "../types/context/AntiAliasingContext";
 import { computeLines, getCursorLineAndOffset } from "./textLayout";
+import { is } from "zod/locales";
 
 interface CanvasRendererProps {
     objects: Map<string, WorldObject>;
     camera: Camera;
     selectedObjectId: string | null;
     textCursor?: { objectId: string; index: number; visible: boolean };
+    drawingTextBoxObjectId: string | null;
     onMouseDown?: React.MouseEventHandler<HTMLCanvasElement>;
     onMouseMove?: React.MouseEventHandler<HTMLCanvasElement>;
     onMouseUp?: React.MouseEventHandler<HTMLCanvasElement>;
@@ -38,6 +40,7 @@ function CanvasRenderer({
     camera,
     selectedObjectId,
     textCursor,
+    drawingTextBoxObjectId,
     ...handlers
 }: CanvasRendererProps) {
     const antiAliasing = useContext(AntiAliasingContext).value;
@@ -47,7 +50,14 @@ function CanvasRenderer({
     };
 
     const drawObjects_ = (ctx: CanvasRenderingContext2D) => {
-        drawObjects(ctx, objects, camera, antiAliasing, textCursor);
+        drawObjects(
+            ctx,
+            objects,
+            camera,
+            antiAliasing,
+            drawingTextBoxObjectId,
+            textCursor
+        );
 
         if (selectedObjectId) {
             const selected = objects.get(selectedObjectId);
@@ -235,6 +245,7 @@ function drawObjects(
     objects: Map<string, WorldObject>,
     camera: Camera,
     antiAliasing: boolean,
+    drawingTextBoxObjectId: string | null,
     textCursor?: { objectId: string; index: number; visible: boolean }
 ) {
     objects.forEach((object) => {
@@ -265,7 +276,8 @@ function drawObjects(
                               index: textCursor.index,
                               visible: textCursor.visible,
                           }
-                        : undefined
+                        : undefined,
+                    drawingTextBoxObjectId
                 );
                 break;
         }
@@ -368,18 +380,22 @@ function drawText(
     object: TextObject,
     camera: Camera,
     antiAliasing: boolean,
-    cursor?: { index: number; visible: boolean }
+    cursor?: { index: number; visible: boolean },
+    drawingTextBoxObjectId?: string | null
 ) {
     const x = object.boxPosition.x - camera.position.x;
     const y = object.boxPosition.y - camera.position.y;
 
-    // Dashed box outline
-    ctx.save();
-    ctx.strokeStyle = object.color;
-    ctx.lineWidth = getStrokeSize(1, ctx, antiAliasing);
-    ctx.setLineDash([4 / camera.zoom, 4 / camera.zoom]);
-    ctx.strokeRect(x, y, object.boxSize.x, object.boxSize.y);
-    ctx.restore();
+    // Draw dashed box outline when text is being edited, or textbox is being drawn
+    // cursor is only defined as long as text is being actively edited
+    if (cursor || drawingTextBoxObjectId === object.id) {
+        ctx.save();
+        ctx.strokeStyle = object.color;
+        ctx.lineWidth = getStrokeSize(1, ctx, antiAliasing);
+        ctx.setLineDash([4 / camera.zoom, 4 / camera.zoom]);
+        ctx.strokeRect(x, y, object.boxSize.x, object.boxSize.y);
+        ctx.restore();
+    }
 
     // Text rendering
     const style = [

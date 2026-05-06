@@ -34,6 +34,7 @@ import {
     ToolType,
 } from "../types/tool";
 import ObjectContextMenu from "./ObjectContextMenu";
+import { set } from "zod";
 
 interface ContextMenuState {
     object: WorldObject;
@@ -125,6 +126,9 @@ function CanvasInteractive({
         object: TextObject;
         cursorVisible: boolean;
     } | null>(null);
+    const [drawingTextBoxObjectId, setDrawingTextBoxObjectId] = useState<
+        string | null
+    >(null);
     const cursorBlinkIntervalRef = useRef<number | undefined>(undefined);
 
     function openTextEditor(object: TextObject) {
@@ -160,6 +164,7 @@ function CanvasInteractive({
         if (!editingText) return;
 
         const handleMouseDown = (e: MouseEvent) => {
+            // If mouse clicked ANYWHERE during text write, close the text editor
             closeTextEditor();
         };
 
@@ -292,7 +297,8 @@ function CanvasInteractive({
         commitChanges,
         commitCamera,
         displayContextMenuState,
-        openTextEditor
+        openTextEditor,
+        setDrawingTextBoxObjectId
     );
 
     // Server-synced objects and local unsaved objects and locally deleted objects, render all
@@ -335,6 +341,7 @@ function CanvasInteractive({
                           }
                         : undefined
                 }
+                drawingTextBoxObjectId={drawingTextBoxObjectId}
             />
 
             {contextMenu && (
@@ -377,7 +384,10 @@ function handleMouseEvents(
     ) => void,
     commitCamera: () => void,
     displayContextMenu: (contextMenuState: ContextMenuState) => void,
-    openTextEditor: (object: TextObject) => void
+    openTextEditor: (object: TextObject) => void,
+    setDrawingTextBoxObjectId: React.Dispatch<
+        React.SetStateAction<string | null>
+    >
 ) {
     const canvasContext = useContext(CanvasContext);
 
@@ -513,6 +523,7 @@ function handleMouseEvents(
                     commitChanges([objectToCommit], undefined);
                 }
             }
+            setDrawingTextBoxObjectId(null);
         }
         if (currentInteraction.current?.type === "camera-drag") {
             commitCamera();
@@ -710,6 +721,7 @@ function handleMouseEvents(
         };
         currentInteraction.current.latestObject = newText;
         updateObject(newText);
+        setDrawingTextBoxObjectId(currentInteraction.current.objectId);
     }
 
     function handleMouseMoveDragCamera(e: React.MouseEvent<HTMLCanvasElement>) {
