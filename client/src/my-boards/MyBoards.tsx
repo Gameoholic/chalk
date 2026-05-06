@@ -567,6 +567,7 @@ function Board({
                                 },
                                 zoom: boardData.lastCameraZoom,
                             }}
+                            drawingTextBoxObjectId={null}
                         />
                     </div>
                 </div>
