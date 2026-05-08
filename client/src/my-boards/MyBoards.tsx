@@ -1,6 +1,6 @@
 import { Plus, ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react";
 import { BoardData } from "../types/data";
-import CanvasRenderer from "../canvas/CanvasRenderer";
+import CanvasRenderer from "../canvas/renderer/CanvasRenderer";
 import useDimensions from "react-cool-dimensions";
 import {
     useState,

@@ -1,5 +1,5 @@
 import { useContext, useEffect, useRef, useState } from "react";
-import CanvasEditor from "../canvas/CanvasEditor.tsx";
+import CanvasEditor from "../canvas/editor/CanvasEditor";
 import { BoardData, UserData } from "../types/data.ts";
 import { BoardsAPI, GuestUsersAPI, MeAPI } from "../api/index.ts";
 import MyBoards from "../my-boards/MyBoards.tsx";

@@ -1,5 +1,3 @@
-import React, { useContext } from "react";
-import CanvasBase from "./CanvasDOMRenderer";
 import {
     Camera,
     EllipseObject,
@@ -10,93 +8,8 @@ import {
     TextObject,
     Vec2,
     WorldObject,
-} from "../types/canvas";
-import { AntiAliasingContext } from "../types/context/AntiAliasingContext";
-import { computeLines, getCursorLineAndOffset } from "./textLayout";
-import { is } from "zod/locales";
-
-interface CanvasRendererProps {
-    objects: Map<string, WorldObject>;
-    camera: Camera;
-    selectedObjectId: string | null;
-    textCursor?: { objectId: string; index: number; visible: boolean };
-    drawingTextBoxObjectId: string | null;
-    onMouseDown?: React.MouseEventHandler<HTMLCanvasElement>;
-    onMouseMove?: React.MouseEventHandler<HTMLCanvasElement>;
-    onMouseUp?: React.MouseEventHandler<HTMLCanvasElement>;
-    onWheel?: React.WheelEventHandler<HTMLCanvasElement>;
-    onContextMenu?: React.MouseEventHandler<HTMLCanvasElement>;
-    // Mobile support:
-    onTouchStart?: React.TouchEventHandler<HTMLCanvasElement>;
-    onTouchMove?: React.TouchEventHandler<HTMLCanvasElement>;
-    onTouchEnd?: React.TouchEventHandler<HTMLCanvasElement>;
-}
-
-// Only renders passed objects and processes passed camera position and zoom
-// No interaction handling
-// Doesn't reference any context. Randers as is, as the passed parameters say
-function CanvasRenderer({
-    objects,
-    camera,
-    selectedObjectId,
-    textCursor,
-    drawingTextBoxObjectId,
-    ...handlers
-}: CanvasRendererProps) {
-    const antiAliasing = useContext(AntiAliasingContext).value;
-
-    const drawGrid_ = (ctx: CanvasRenderingContext2D) => {
-        drawGrid(ctx, camera);
-    };
-
-    const drawObjects_ = (ctx: CanvasRenderingContext2D) => {
-        drawObjects(
-            ctx,
-            objects,
-            camera,
-            antiAliasing,
-            drawingTextBoxObjectId,
-            textCursor
-        );
-
-        if (selectedObjectId) {
-            const selected = objects.get(selectedObjectId);
-            if (selected) drawSelectionHighlight(ctx, selected, camera);
-        }
-    };
-
-    return (
-        <div
-            style={{
-                position: "relative",
-                width: camera.size.x,
-                height: camera.size.y,
-                overflow: "hidden",
-            }}
-        >
-            {/* We separate into two layers so eraser will work on the object layer */}
-
-            {/* Grid layer — never affected by eraser */}
-            <CanvasBase
-                draw={drawGrid_}
-                width={camera.size.x}
-                height={camera.size.y}
-                zoom={camera.zoom}
-                className="bg-white"
-                style={{ position: "absolute", top: 0, left: 0 }}
-            />
-            {/* Object Layer */}
-            <CanvasBase
-                draw={drawObjects_}
-                width={camera.size.x}
-                height={camera.size.y}
-                zoom={camera.zoom}
-                style={{ position: "absolute", top: 0, left: 0 }}
-                {...handlers}
-            />
-        </div>
-    );
-}
+} from "../../../types/canvas";
+import { computeLines, getCursorLineAndOffset } from "../../textLayout";
 
 /**
  * Apply anti aliasing to a stroke size and return the new size (if enabled, stroke size will ALWAYS be opaque and be at least 1px)
@@ -119,57 +32,6 @@ const getStrokeSize = (
     const zoom = ctx.getTransform().a;
     return Math.max(stroke, 1 / zoom);
 };
-
-/**
- * Draws a grid that scales with the world, but adjusts its density
- * so cells always appear roughly the same size on screen.
- */
-function drawGrid(ctx: CanvasRenderingContext2D, camera: Camera) {
-    // These thresholds control the "Screen Size" of the tiles.
-    const MIN_TILE_SIZE = 50; // Tiles won't get smaller than this value on screen
-    const MAX_TILE_SIZE = 200; // Tiles won't get bigger than this value on screen
-    let adaptiveGridSize = MAX_TILE_SIZE;
-
-    while (adaptiveGridSize * camera.zoom < MIN_TILE_SIZE) {
-        adaptiveGridSize *= 2;
-    }
-    while (adaptiveGridSize * camera.zoom > MAX_TILE_SIZE) {
-        adaptiveGridSize /= 2;
-    }
-
-    ctx.beginPath();
-    ctx.strokeStyle = "#e2e8f0"; // Light gray
-    ctx.lineWidth = 1 / camera.zoom; // Always 1px on screen
-
-    const left = camera.position.x;
-    const top = camera.position.y;
-    const width = camera.size.x / camera.zoom;
-    const height = camera.size.y / camera.zoom;
-
-    // Snap start positions to the grid to prevent "drifting"
-    const startX = Math.floor(left / adaptiveGridSize) * adaptiveGridSize;
-    const startY = Math.floor(top / adaptiveGridSize) * adaptiveGridSize;
-
-    for (
-        let x = startX;
-        x < left + width + adaptiveGridSize;
-        x += adaptiveGridSize
-    ) {
-        ctx.moveTo(x - camera.position.x, 0);
-        ctx.lineTo(x - camera.position.x, height);
-    }
-
-    for (
-        let y = startY;
-        y < top + height + adaptiveGridSize;
-        y += adaptiveGridSize
-    ) {
-        ctx.moveTo(0, y - camera.position.y);
-        ctx.lineTo(width, y - camera.position.y);
-    }
-
-    ctx.stroke();
-}
 
 function getObjectBoundingBox(
     obj: WorldObject
@@ -216,7 +78,7 @@ function getObjectBoundingBox(
     }
 }
 
-function drawSelectionHighlight(
+export function drawSelectionHighlight(
     ctx: CanvasRenderingContext2D,
     obj: WorldObject,
     camera: Camera
@@ -240,7 +102,7 @@ function drawSelectionHighlight(
     ctx.restore();
 }
 
-function drawObjects(
+export function drawObjects(
     ctx: CanvasRenderingContext2D,
     objects: Map<string, WorldObject>,
     camera: Camera,
@@ -562,5 +424,3 @@ function drawEraserPath(
     ctx.stroke();
     ctx.restore();
 }
-
-export default CanvasRenderer;

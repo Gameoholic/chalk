@@ -9,7 +9,13 @@ interface CanvasBaseProps {
 }
 
 // Most basic canvas. No logic besides basic DOM canvas setup and drawing loop
-function CanvasBase({ draw, width, height, zoom, ...rest }: CanvasBaseProps) {
+function CanvasDOMRenderer({
+    draw,
+    width,
+    height,
+    zoom,
+    ...rest
+}: CanvasBaseProps) {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
     // Create Refs for values that change frequently
@@ -62,4 +68,4 @@ function CanvasBase({ draw, width, height, zoom, ...rest }: CanvasBaseProps) {
     return <canvas ref={canvasRef} {...rest} />;
 }
 
-export default CanvasBase;
+export default CanvasDOMRenderer;
