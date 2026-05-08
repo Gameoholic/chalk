@@ -9,7 +9,7 @@ import {
     Vec2,
     WorldObject,
 } from "../../../types/canvas";
-import { computeLines, getCursorLineAndOffset } from "../../textLayout";
+import { computeLines, getCursorLineAndOffset } from "./computeTextLayout";
 
 /**
  * Apply anti aliasing to a stroke size and return the new size (if enabled, stroke size will ALWAYS be opaque and be at least 1px)

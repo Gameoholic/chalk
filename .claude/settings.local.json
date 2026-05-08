@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(Remove-Item \"C:\\\\PC\\\\Dev\\\\chalk\\\\client\\\\src\\\\canvas\\\\CanvasRenderer.tsx\")",
-      "Bash(Remove-Item \"C:\\\\PC\\\\Dev\\\\chalk\\\\client\\\\src\\\\canvas\\\\CanvasEditor.tsx\")"
+      "Bash(Remove-Item \"C:\\\\PC\\\\Dev\\\\chalk\\\\client\\\\src\\\\canvas\\\\CanvasEditor.tsx\")",
+      "Bash(npm run *)"
     ]
   }
 }

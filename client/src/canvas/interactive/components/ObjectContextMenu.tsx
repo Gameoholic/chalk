@@ -1,6 +1,6 @@
 import { JSX, useEffect, useRef, useState } from "react";
 import { Trash2 } from "lucide-react";
-import ColorPicker from "../components/ColorPicker";
+import ColorPicker from "../../../components/ColorPicker";
 import {
     WorldObject,
     PathObject,
@@ -9,7 +9,7 @@ import {
     RectObject,
     EllipseObject,
     TextObject,
-} from "../types/canvas";
+} from "../../../types/canvas";
 
 function hasColor(
     obj: WorldObject

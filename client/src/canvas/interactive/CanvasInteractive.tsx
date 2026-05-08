@@ -3,7 +3,7 @@ import useDimensions from "react-cool-dimensions";
 import CanvasRenderer from "../renderer/CanvasRenderer";
 import { WorldObject } from "../../types/canvas";
 import { CanvasContext } from "../../types/context/CanvasContext";
-import ObjectContextMenu from "../ObjectContextMenu";
+import ObjectContextMenu from "./components/ObjectContextMenu";
 import { useTextEditing } from "./hooks/useTextEditing";
 import {
     ContextMenuState,

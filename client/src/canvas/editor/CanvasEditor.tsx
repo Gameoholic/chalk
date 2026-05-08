@@ -1,4 +1,4 @@
-import Toolbox from "../Toolbox";
+import Toolbox from "./components/Toolbox";
 import { useContext, useEffect, useRef, useState } from "react";
 import {
     Menu,
@@ -11,18 +11,18 @@ import {
     SlidersHorizontal,
 } from "lucide-react";
 import { updateBoardName } from "../../api/boards";
-import ManageThisBoardModal from "../modals/ManageThisBoardModal";
-import CreateAccountModal from "../modals/CreateAccountModal";
-import LoginModal from "../modals/LoginModal";
+import ManageThisBoardModal from "./components/ManageThisBoardModal";
+import CreateAccountModal from "./components/CreateAccountModal";
+import LoginModal from "./components/LoginModal";
 import CanvasInteractive from "../interactive/CanvasInteractive";
 import { motion } from "motion/react";
 import { CanvasContext } from "../../types/context/CanvasContext";
 import { SessionContext } from "../../types/context/SessionContext";
-import ManageAccountModal from "../modals/ManageAccountModal";
+import ManageAccountModal from "./components/ManageAccountModal";
 import { logout } from "../../api/auth";
 import { updateUserDisplayName } from "../../api/me";
 import { ShowDebugInfoContext } from "../../types/context/ShowDebugInfoContext";
-import AdvancedOptionsModal from "../modals/AdvancedOptionsModal";
+import AdvancedOptionsModal from "./components/AdvancedOptionsModal";
 import { useSaveBoard } from "./hooks/useSaveBoard";
 
 interface CanvasEditorProps {

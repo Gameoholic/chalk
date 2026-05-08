@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { X, Loader2, Eye, EyeOff, CheckCircle2 } from "lucide-react";
-import { login } from "../../api/auth";
+import { login } from "../../../api/auth";
 
 interface Props {
     onForgotPassword: () => void;

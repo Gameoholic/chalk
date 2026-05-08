@@ -16,8 +16,8 @@ import {
     Type,
     Trash2,
 } from "lucide-react";
-import ColorPicker from "../components/ColorPicker";
-import { CanvasContext } from "../types/context/CanvasContext";
+import ColorPicker from "../../../components/ColorPicker";
+import { CanvasContext } from "../../../types/context/CanvasContext";
 import {
     EllipseTool,
     SelectTool,
@@ -28,7 +28,7 @@ import {
     Tool,
     ToolType,
     TextTool,
-} from "../types/tool";
+} from "../../../types/tool";
 
 type ToolsData = {
     select: { tool: SelectTool; displayName: string; icon: JSX.Element };
@@ -254,9 +254,7 @@ function ToolButtonsSection({
                         key={toolType}
                         onClick={() => onToolClick(toolType as ToolType)}
                         className="rounded p-2 transition"
-                        title={
-                           displayName
-                        }
+                        title={displayName}
                         style={{
                             backgroundColor: active
                                 ? "var(--accent)"
@@ -264,8 +262,7 @@ function ToolButtonsSection({
                             color: active
                                 ? "var(--accent-foreground)"
                                 : "var(--card-foreground)",
-                            cursor:
-                                "pointer",
+                            cursor: "pointer",
                         }}
                         onMouseEnter={(e) => {
                             (

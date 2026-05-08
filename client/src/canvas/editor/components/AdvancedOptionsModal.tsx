@@ -1,9 +1,9 @@
 import { useContext } from "react";
 import { X, Moon, Sun, Blend, RotateCcw, Bug } from "lucide-react";
-import { ThemeContext } from "../../types/context/ThemeContext";
-import { AntiAliasingContext } from "../../types/context/AntiAliasingContext";
-import { FirstTimeVisitorContext } from "../../types/context/FirstTimeVisitorContext";
-import { ShowDebugInfoContext } from "../../types/context/ShowDebugInfoContext";
+import { ThemeContext } from "../../../types/context/ThemeContext";
+import { AntiAliasingContext } from "../../../types/context/AntiAliasingContext";
+import { FirstTimeVisitorContext } from "../../../types/context/FirstTimeVisitorContext";
+import { ShowDebugInfoContext } from "../../../types/context/ShowDebugInfoContext";
 
 interface AdvancedOptionsModalProps {
     onClose: () => void;

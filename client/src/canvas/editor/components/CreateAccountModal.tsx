@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { X, Loader2, Eye, EyeOff } from "lucide-react";
-import { createUser } from "../../api/users";
-import { WavyText } from "../../components/WavyText";
+import { createUser } from "../../../api/users";
+import { WavyText } from "../../../components/WavyText";
 
 interface Props {
     onLogin: () => void;

@@ -14,7 +14,7 @@ import {
 import { updateBoardLastOpened } from "../api/boards.ts";
 import { FirstTimeVisitorContext } from "../types/context/FirstTimeVisitorContext.tsx";
 import WelcomeScreen from "./WelcomeScreen.tsx";
-import TourOverlay from "../canvas/TourOverlay.tsx";
+import TourOverlay from "./TourOverlay.tsx";
 import LoadingScreen from "./LoadingScreen";
 import LoadingError from "./LoadingError";
 import { PencilTool } from "../types/tool";
