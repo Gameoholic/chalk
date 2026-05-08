@@ -5,22 +5,27 @@ import { WorldObject } from "../../types/canvas";
 import { CanvasContext } from "../../types/context/CanvasContext";
 import ObjectContextMenu from "./components/ObjectContextMenu";
 import { useTextEditing } from "./hooks/useTextEditing";
+import { useDrawingInteractions } from "./hooks/useDrawingInteractions";
 import {
-    ContextMenuState,
-    useDrawingInteractions,
-} from "./hooks/useDrawingInteractions";
+    CameraDragInteraction,
+    DrawingInteraction,
+    useHandleMouseEvents,
+} from "./hooks/useMouseEvents";
 
 interface CanvasInteractiveProps {
-    onObjectsCommit: (
-        updatedObjects?: WorldObject[],
+    commitChanges: (
+        updatedOrNewObjects?: WorldObject[],
         deletedObjectIds?: string[]
     ) => void;
-    onCameraCommit: () => void;
+    commitCamera: () => void;
 }
 
+/**
+ * Handles all user interactions, mouse events, drawing.
+ */
 function CanvasInteractive({
-    onObjectsCommit,
-    onCameraCommit,
+    commitChanges,
+    commitCamera,
 }: CanvasInteractiveProps) {
     const canvasContext = useContext(CanvasContext);
 
@@ -56,7 +61,7 @@ function CanvasInteractive({
     }
 
     // User released left click so object should be committed to database
-    function commitChanges(
+    function local_commitCahgnes(
         updatedObjects?: WorldObject[],
         deletedObjectIds?: string[]
     ) {
@@ -69,11 +74,7 @@ function CanvasInteractive({
             );
         }
         // Explicitly tells CanvasEditor what to delete, bypassing state closure bugs caused by relying only on CanvasContext states
-        onObjectsCommit(updatedObjects, deletedObjectIds);
-    }
-
-    function commitCamera() {
-        onCameraCommit();
+        commitChanges(updatedObjects, deletedObjectIds);
     }
 
     const {
@@ -81,25 +82,97 @@ function CanvasInteractive({
         drawingTextBoxObjectId,
         setDrawingTextBoxObjectId,
         openTextEditor,
-    } = useTextEditing(updateOrAddObject, commitChanges);
+    } = useTextEditing(updateOrAddObject, local_commitCahgnes);
 
+    const {
+        handleDrawingInteraction_MouseMove,
+        handleDrawingInteraction_MouseUp,
+    } = useDrawingInteractions({
+        updateObject: updateOrAddObject,
+        removeObject,
+        commitChanges,
+        setDrawingTextBoxObjectId,
+    });
+
+    // Handle mouse events hook
     const {
         handleMouseDown,
         handleMouseMove,
         handleMouseUp,
         handleWheel,
         handleContextMenu,
-        handleTouchStart,
-        handleTouchMove,
-        handleTouchEnd,
-    } = useDrawingInteractions(
-        updateOrAddObject,
-        removeObject,
-        commitChanges,
-        commitCamera,
-        openTextEditor,
-        setDrawingTextBoxObjectId
-    );
+    } = useHandleMouseEvents({
+        handleDrawingInteraction_MouseMove,
+        handleDrawingInteraction_MouseUp,
+        handleCameraDragInteraction_MouseMove,
+        handleCameraDragInteraction_MouseUp,
+        handleCamera_Wheel,
+        handleEditObject,
+    });
+
+    function handleCameraDragInteraction_MouseMove(
+        e: React.MouseEvent<HTMLCanvasElement>,
+        interaction: React.RefObject<CameraDragInteraction>
+    ) {
+        const dx =
+            (e.clientX - interaction.current.lastMousePos.x) /
+            canvasContext.local_camera.zoom;
+        const dy =
+            (e.clientY - interaction.current.lastMousePos.y) /
+            canvasContext.local_camera.zoom;
+
+        canvasContext.setLocalCamera((prev) => ({
+            ...prev,
+            position: {
+                x: prev.position.x - dx,
+                y: prev.position.y - dy,
+            },
+        }));
+
+        interaction.current.lastMousePos = {
+            x: e.clientX,
+            y: e.clientY,
+        };
+    }
+    function handleCameraDragInteraction_MouseUp(
+        e: React.MouseEvent<HTMLCanvasElement>,
+        interaction: React.RefObject<CameraDragInteraction>
+    ) {
+        commitCamera();
+    }
+
+    function handleCamera_Wheel(e: React.WheelEvent<HTMLCanvasElement>) {
+        e.preventDefault();
+        const zoomFactor = 1.1;
+        const rect = (e.target as HTMLCanvasElement).getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        const newZoom =
+            e.deltaY < 0
+                ? canvasContext.local_camera.zoom * zoomFactor
+                : canvasContext.local_camera.zoom / zoomFactor;
+        const clampedZoom = Math.max(0.01, Math.min(1000, newZoom));
+
+        const worldX =
+            canvasContext.local_camera.position.x +
+            mouseX / canvasContext.local_camera.zoom;
+        const worldY =
+            canvasContext.local_camera.position.y +
+            mouseY / canvasContext.local_camera.zoom;
+
+        canvasContext.setLocalCamera({
+            ...canvasContext.local_camera,
+            zoom: clampedZoom,
+            position: {
+                x: worldX - mouseX / clampedZoom,
+                y: worldY - mouseY / clampedZoom,
+            },
+        });
+        commitCamera();
+    }
+
+    function handleEditObject(object: WorldObject) {}
 
     // Server-synced objects and local unsaved objects and locally deleted objects, render all
     const allObjects = useMemo(() => {
@@ -123,9 +196,6 @@ function CanvasInteractive({
             <CanvasRenderer
                 camera={canvasContext.local_camera}
                 objects={allObjects}
-                onTouchStart={handleTouchStart}
-                onTouchMove={handleTouchMove}
-                onTouchEnd={handleTouchEnd}
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
