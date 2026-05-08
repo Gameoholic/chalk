@@ -55,7 +55,6 @@ export function useDrawingInteractions(
         deletedObjectIds?: string[]
     ) => void,
     commitCamera: () => void,
-    displayContextMenu: (contextMenuState: ContextMenuState) => void,
     openTextEditor: (object: TextObject) => void,
     setDrawingTextBoxObjectId: React.Dispatch<
         React.SetStateAction<string | null>
@@ -74,6 +73,7 @@ export function useDrawingInteractions(
         DrawingInteraction | CameraDragInteraction | null
     >(null);
     const lastPinchDistance = useRef<number | null>(null);
+    const selectedObjectIds = useRef<Set<string>>(new Set());
 
     function findObjectAtCoords(coords: Vec2): WorldObject | null {
         return hitTest(
@@ -129,11 +129,7 @@ export function useDrawingInteractions(
             const mouseWorldCoords: Vec2 = screenToWorld(e, camera);
             const hoveredObject = findObjectAtCoords(mouseWorldCoords);
             if (hoveredObject) {
-                displayContextMenu({
-                    object: hoveredObject,
-                    screenX: e.clientX,
-                    screenY: e.clientY,
-                });
+                selectedObjectIds.current = new Set([hoveredObject.id]);
             }
         }
 

@@ -76,14 +76,6 @@ function CanvasInteractive({
         onCameraCommit();
     }
 
-    // Show context menu on right clicking an object
-    const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(
-        null
-    );
-    function displayContextMenuState(contextMenuState: ContextMenuState) {
-        setContextMenu(contextMenuState);
-    }
-
     const {
         editingText,
         drawingTextBoxObjectId,
@@ -105,7 +97,6 @@ function CanvasInteractive({
         removeObject,
         commitChanges,
         commitCamera,
-        displayContextMenuState,
         openTextEditor,
         setDrawingTextBoxObjectId
     );
@@ -132,7 +123,6 @@ function CanvasInteractive({
             <CanvasRenderer
                 camera={canvasContext.local_camera}
                 objects={allObjects}
-                selectedObjectId={contextMenu?.object.id ?? null}
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
@@ -153,7 +143,7 @@ function CanvasInteractive({
                 drawingTextBoxObjectId={drawingTextBoxObjectId}
             />
 
-            {contextMenu && (
+            {/* {contextMenu && (
                 <ObjectContextMenu
                     object={contextMenu.object}
                     screenX={contextMenu.screenX}
@@ -169,7 +159,7 @@ function CanvasInteractive({
                     }}
                     onClose={() => setContextMenu(null)}
                 />
-            )}
+            )} */}
         </div>
     );
 }

@@ -8,7 +8,6 @@ import { drawObjects, drawSelectionHighlight } from "./utils/drawObjects";
 interface CanvasRendererProps {
     objects: Map<string, WorldObject>;
     camera: Camera;
-    selectedObjectId: string | null;
     textCursor?: { objectId: string; index: number; visible: boolean };
     drawingTextBoxObjectId: string | null;
     onMouseDown?: React.MouseEventHandler<HTMLCanvasElement>;
@@ -28,7 +27,6 @@ interface CanvasRendererProps {
 function CanvasRenderer({
     objects,
     camera,
-    selectedObjectId,
     textCursor,
     drawingTextBoxObjectId,
     ...handlers
@@ -49,10 +47,10 @@ function CanvasRenderer({
             textCursor
         );
 
-        if (selectedObjectId) {
-            const selected = objects.get(selectedObjectId);
-            if (selected) drawSelectionHighlight(ctx, selected, camera);
-        }
+        // if (selectedObjectId) {
+        //     const selected = objects.get(selectedObjectId);
+        //     if (selected) drawSelectionHighlight(ctx, selected, camera);
+        // }
     };
 
     return (
