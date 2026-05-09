@@ -94,11 +94,26 @@ export function useMultipleObjectSelection() {
     }
 
     function handleSingleObjectSelected(object: WorldObject) {
-        setSelectedObjectIds(new Set([object.id]));
+        if (selectedObjectIds.has(object.id)) {
+            // if already selected, deselect it
+            setSelectedObjectIds(new Set());
+        } else {
+            setSelectedObjectIds(new Set([object.id]));
+        }
     }
 
+    // This is for shift clicking objects
     function handleAdditionalSingleObjectSelected(object: WorldObject) {
-        setSelectedObjectIds((prev) => new Set([...prev, object.id]));
+        setSelectedObjectIds((prev) => {
+            const next = new Set(prev);
+            // If already selected, deselect it
+            if (next.has(object.id)) {
+                next.delete(object.id);
+            } else {
+                next.add(object.id);
+            }
+            return next;
+        });
     }
 
     function handleDeselectAllObjects() {
