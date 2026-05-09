@@ -150,8 +150,8 @@ export function useHandleMouseEvents({
             return;
         }
 
-        // If left clicking on an object with any tool, edit it
-        if (e.button === LEFT_MOUSE_BUTTON) {
+        // If left clicking on an object with select tool, edit it
+        if (e.button === LEFT_MOUSE_BUTTON && tool.type === "select") {
             const mouseWorldCoords: Vec2 = screenToWorld(e, camera);
             const clickedObject = findObjectAtCoords(mouseWorldCoords);
             if (clickedObject) {
