@@ -163,7 +163,7 @@ export function useHandleMouseEvents({
             // If using the select tool, deselect all objects
             if (tool.type === "select") {
                 handleDeselectAllObjects();
-                return;
+                // we don't return on purpose, could also be dragging camera
             }
         }
 
