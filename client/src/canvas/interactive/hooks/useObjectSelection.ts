@@ -10,9 +10,9 @@ import { findObjectsInArea, getBoundingBox } from "../utils/canvasHitTesting";
 // }
 
 /**
- * Multiple object selection interactions
+ * Object selection interactions
  */
-export function useMultipleObjectSelection() {
+export function useObjectSelection() {
     const canvasContext = useContext(CanvasContext);
     const camera = canvasContext.local_camera;
 

@@ -11,7 +11,7 @@ import {
     useHandleMouseEvents,
 } from "./hooks/useMouseEvents";
 import { useCamera } from "./hooks/useCamera";
-import { useMultipleObjectSelection } from "./hooks/useObjectSelection";
+import { useObjectSelection } from "./hooks/useObjectSelection";
 import { EditObjectToolbar } from "./components/EditObjectToolbar";
 
 interface CanvasInteractiveProps {
@@ -133,7 +133,7 @@ function CanvasInteractive({
         handleSingleObjectSelected,
         handleAdditionalSingleObjectSelected,
         handleDeselectAllObjects,
-    } = useMultipleObjectSelection();
+    } = useObjectSelection();
 
     // Handle mouse events hook - main method which will handle the interactions from before
     const {
