@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from "react";
+import { Trash2 } from "lucide-react";
 import { Camera, WorldObject } from "../../../types/canvas";
 import { getBoundingBox } from "../utils/canvasHitTesting";
 import ColorPicker from "../../../components/ColorPicker";
@@ -63,12 +64,14 @@ interface EditObjectToolbarProps {
     selectedObjects: WorldObject[];
     camera: Camera;
     onUpdate: (updatedObjects: WorldObject[]) => void;
+    onDelete: (deletedObjectIds: string[]) => void;
 }
 
 export function EditObjectToolbar({
     selectedObjects,
     camera,
     onUpdate,
+    onDelete,
 }: EditObjectToolbarProps) {
     const [showColorPicker, setShowColorPicker] = useState(false);
     const pickerRef = useRef<HTMLDivElement>(null);
@@ -163,6 +166,17 @@ export function EditObjectToolbar({
                 —
             </text>
         </svg>
+    );
+
+    const divider = (
+        <div
+            style={{
+                width: 1,
+                height: 20,
+                backgroundColor: "var(--border)",
+                flexShrink: 0,
+            }}
+        />
     );
 
     return (
@@ -454,6 +468,34 @@ export function EditObjectToolbar({
                     {italicValue === "mixed" ? "—" : "I"}
                 </button>
             )}
+
+            {/* Divider + Delete */}
+            {divider}
+            <button
+                title="Delete"
+                onClick={() => onDelete(selectedObjects.map((obj) => obj.id))}
+                style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 6,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    cursor: "pointer",
+                    backgroundColor: "transparent",
+                    color: "#f87171",
+                    border: "none",
+                }}
+                onMouseEnter={(e) =>
+                    (e.currentTarget.style.backgroundColor =
+                        "rgba(248,113,113,0.1)")
+                }
+                onMouseLeave={(e) =>
+                    (e.currentTarget.style.backgroundColor = "transparent")
+                }
+            >
+                <Trash2 size={15} />
+            </button>
         </div>
     );
 }

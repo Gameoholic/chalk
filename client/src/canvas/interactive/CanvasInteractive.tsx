@@ -195,6 +195,11 @@ function CanvasInteractive({
                         updated.forEach(updateOrAddObject);
                         _commitObjectChanges(updated, undefined);
                     }}
+                    onDelete={(ids) => {
+                        ids.forEach(removeObject);
+                        _commitObjectChanges(undefined, ids);
+                        handleDeselectAllObjects();
+                    }}
                 />
             )}
         </div>
