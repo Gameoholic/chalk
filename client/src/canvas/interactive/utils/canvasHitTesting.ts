@@ -81,3 +81,21 @@ export function findObjectAtCoords(
     }
     return null;
 }
+
+// Returns all objects whose bounding box overlaps the rectangle (world space)
+export function findObjectsInArea(
+    objects: WorldObject[],
+    min: Vec2,
+    max: Vec2
+): WorldObject[] {
+    return objects.filter((obj) => {
+        const bb = getBoundingBox(obj);
+        if (!bb) return false;
+        return (
+            bb.min.x <= max.x &&
+            bb.max.x >= min.x &&
+            bb.min.y <= max.y &&
+            bb.max.y >= min.y
+        );
+    });
+}

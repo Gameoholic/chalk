@@ -3,7 +3,7 @@ import { MultipleObjectSelectionInteraction } from "./useMouseEvents";
 import { CanvasContext } from "../../../types/context/CanvasContext";
 import { Vec2, WorldObject } from "../../../types/canvas";
 import { screenToWorld } from "../utils/canvasCoords";
-import { getBoundingBox } from "../utils/canvasHitTesting";
+import { findObjectsInArea, getBoundingBox } from "../utils/canvasHitTesting";
 
 // interface useMultipleObjectSelectionProps {
 
@@ -50,47 +50,42 @@ export function useMultipleObjectSelection() {
         if (!interaction.current.boxStart || !interaction.current.boxEnd)
             return;
 
-        // GET ALL OBJECTS INSIDE THE SELECTION BOX
-        const minX = Math.min(
-            interaction.current.boxStart.x,
-            interaction.current.boxEnd.x
-        );
-        const minY = Math.min(
-            interaction.current.boxStart.y,
-            interaction.current.boxEnd.y
-        );
-        const maxX = Math.max(
-            interaction.current.boxStart.x,
-            interaction.current.boxEnd.x
-        );
-        const maxY = Math.max(
-            interaction.current.boxStart.y,
-            interaction.current.boxEnd.y
-        );
-
         const allObjects = [
             ...canvasContext.getCurrentBoard().objects,
             ...canvasContext.local_unsavedObjects,
         ]; // hikakin todo fix - we should have more centralized way of getting all UPDATED object states...
 
-        const ids = new Set<string>(
-            allObjects
-                .filter((obj) => {
-                    const bb = getBoundingBox(obj);
-                    if (!bb) return false;
-                    // Check if bounding boxes overlap
-                    return (
-                        bb.min.x <= maxX &&
-                        bb.max.x >= minX &&
-                        bb.min.y <= maxY &&
-                        bb.max.y >= minY
-                    );
-                })
-                .map((obj) => obj.id)
+        const selectionMin: Vec2 = {
+            x: Math.min(
+                interaction.current.boxStart.x,
+                interaction.current.boxEnd.x
+            ),
+            y: Math.min(
+                interaction.current.boxStart.y,
+                interaction.current.boxEnd.y
+            ),
+        };
+        const selectionMax: Vec2 = {
+            x: Math.max(
+                interaction.current.boxStart.x,
+                interaction.current.boxEnd.x
+            ),
+            y: Math.max(
+                interaction.current.boxStart.y,
+                interaction.current.boxEnd.y
+            ),
+        };
+
+        const objectsInSelectionBox = new Set<string>(
+            findObjectsInArea(allObjects, selectionMin, selectionMax).map(
+                (obj) => obj.id
+            )
         );
 
-        // select all objects including the already selected ones
-        setSelectedObjectIds((prev) => new Set([...prev, ...ids]));
+        // select all objects including previously selected ones
+        setSelectedObjectIds(
+            (prev) => new Set([...prev, ...objectsInSelectionBox])
+        );
     }
 
     function handleSingleObjectSelected(object: WorldObject) {
