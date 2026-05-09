@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useRef } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import { v4 as uuidv4 } from "uuid";
 import { CanvasContext } from "../../../types/context/CanvasContext";
 import {
@@ -31,7 +31,7 @@ const MIDDLE_MOUSE_BUTTON = 1;
 const RIGHT_MOUSE_BUTTON = 2;
 
 export interface Interaction {
-    type: "camera-drag" | "drawing";
+    type: "camera-drag" | "drawing" | "multiple-object-selection";
 }
 export interface CameraDragInteraction extends Interaction {
     type: "camera-drag";
@@ -43,6 +43,12 @@ export interface DrawingInteraction extends Interaction {
     tool: Exclude<Tool, SelectTool>;
     path: Vec2[];
     latestObject?: WorldObject;
+}
+
+export interface MultipleObjectSelectionInteraction extends Interaction {
+    type: "multiple-object-selection";
+    boxStart: Vec2 | null;
+    boxEnd: Vec2 | null;
 }
 
 interface useHandleMouseEventsProps {
@@ -62,8 +68,16 @@ interface useHandleMouseEventsProps {
         e: React.MouseEvent<HTMLCanvasElement>,
         interaction: React.RefObject<CameraDragInteraction>
     ) => void;
+    handleMultipleObjectSelectionInteraction_MouseMove: (
+        e: React.MouseEvent<HTMLCanvasElement>,
+        interaction: React.RefObject<MultipleObjectSelectionInteraction>
+    ) => void;
+    handleMultipleObjectSelectionInteraction_MouseUp: (
+        e: React.MouseEvent<HTMLCanvasElement>,
+        interaction: React.RefObject<MultipleObjectSelectionInteraction>
+    ) => void;
     handleCamera_Wheel: (e: React.WheelEvent<HTMLCanvasElement>) => void;
-    handleEditObject: (object: WorldObject) => void;
+    handleSingleObjectSelected: (object: WorldObject) => void;
 }
 
 /**
@@ -74,15 +88,20 @@ export function useHandleMouseEvents({
     handleDrawingInteraction_MouseUp,
     handleCameraDragInteraction_MouseMove,
     handleCameraDragInteraction_MouseUp,
+    handleMultipleObjectSelectionInteraction_MouseMove,
+    handleMultipleObjectSelectionInteraction_MouseUp,
     handleCamera_Wheel,
-    handleEditObject,
+    handleSingleObjectSelected,
 }: useHandleMouseEventsProps) {
     const canvasContext = useContext(CanvasContext);
     const tool: Tool = canvasContext.local_tool;
     const camera: Camera = canvasContext.local_camera;
 
     const currentInteraction = useRef<
-        DrawingInteraction | CameraDragInteraction | null
+        | DrawingInteraction
+        | CameraDragInteraction
+        | MultipleObjectSelectionInteraction
+        | null
     >(null);
 
     // hikakin todo fix - what about local_deletedObjects? we should have more centralized way of getting all UPDATED object states...
@@ -102,12 +121,26 @@ export function useHandleMouseEvents({
     }
 
     const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+        // If holding shift + left mouse button regardless of tool, edit them
+        if (e.button === LEFT_MOUSE_BUTTON && e.shiftKey) {
+            currentInteraction.current = {
+                type: "multiple-object-selection",
+                boxStart: null,
+                boxEnd: null,
+            };
+            handleMultipleObjectSelectionInteraction_MouseMove(
+                e,
+                currentInteraction as React.RefObject<MultipleObjectSelectionInteraction>
+            );
+            return;
+        }
+
         // If left click was pressed regardless of tool over an object, edit it
         if (e.button === LEFT_MOUSE_BUTTON) {
             const mouseWorldCoords: Vec2 = screenToWorld(e, camera);
             const clickedObject = findObjectAtCoords(mouseWorldCoords);
             if (clickedObject) {
-                handleEditObject(clickedObject);
+                handleSingleObjectSelected(clickedObject);
                 return;
             }
         }
@@ -156,6 +189,13 @@ export function useHandleMouseEvents({
             );
             return;
         }
+        if (currentInteraction.current?.type === "multiple-object-selection") {
+            handleMultipleObjectSelectionInteraction_MouseMove(
+                e,
+                currentInteraction as React.RefObject<MultipleObjectSelectionInteraction>
+            );
+            return;
+        }
     };
 
     const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -169,6 +209,12 @@ export function useHandleMouseEvents({
             handleCameraDragInteraction_MouseUp(
                 e,
                 currentInteraction as React.RefObject<CameraDragInteraction>
+            );
+        }
+        if (currentInteraction.current?.type === "multiple-object-selection") {
+            handleMultipleObjectSelectionInteraction_MouseUp(
+                e,
+                currentInteraction as React.RefObject<MultipleObjectSelectionInteraction>
             );
         }
         currentInteraction.current = null;

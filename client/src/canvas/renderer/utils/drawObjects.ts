@@ -86,19 +86,44 @@ export function drawSelectionHighlight(
     const bb = getObjectBoundingBox(obj);
     if (!bb) return;
 
-    const PADDING = 6 / camera.zoom; // 6px padding in screen space, constant regardless of zoom
-
+    const PADDING = 6 / camera.zoom;
     const x = bb.min.x - camera.position.x - PADDING;
     const y = bb.min.y - camera.position.y - PADDING;
     const w = bb.max.x - bb.min.x + PADDING * 2;
     const h = bb.max.y - bb.min.y + PADDING * 2;
 
     ctx.save();
-    ctx.strokeStyle = "#ff8ca5";
+    ctx.strokeStyle = "#3b82f6";
+    ctx.fillStyle = "rgba(59, 130, 246, 0.1)";
     ctx.lineWidth = 1.5 / camera.zoom;
-    ctx.setLineDash([6 / camera.zoom, 4 / camera.zoom]); // dashes scale with zoom
-    ctx.lineDashOffset = 0;
-    ctx.strokeRect(x, y, w, h);
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.rect(x, y, w, h);
+    ctx.fill();
+    ctx.stroke();
+    ctx.restore();
+}
+
+export function drawMultipleObjectSelectionBox(
+    ctx: CanvasRenderingContext2D,
+    start: Vec2,
+    end: Vec2,
+    camera: Camera
+) {
+    const x = start.x - camera.position.x;
+    const y = start.y - camera.position.y;
+    const w = end.x - start.x;
+    const h = end.y - start.y;
+
+    ctx.save();
+    ctx.strokeStyle = "#3b82f6";
+    ctx.fillStyle = "rgba(59, 130, 246, 0.1)";
+    ctx.lineWidth = 1.5 / camera.zoom;
+    ctx.setLineDash([6 / camera.zoom, 4 / camera.zoom]);
+    ctx.beginPath();
+    ctx.rect(x, y, w, h);
+    ctx.fill();
+    ctx.stroke();
     ctx.restore();
 }
 
@@ -108,6 +133,7 @@ export function drawObjects(
     camera: Camera,
     antiAliasing: boolean,
     drawingTextBoxObjectId: string | null,
+    selectedObjectIds: Set<string>,
     textCursor?: { objectId: string; index: number; visible: boolean }
 ) {
     objects.forEach((object) => {
@@ -142,6 +168,11 @@ export function drawObjects(
                     drawingTextBoxObjectId
                 );
                 break;
+        }
+
+        // draw highlight if object is selected
+        if (selectedObjectIds.has(object.id)) {
+            drawSelectionHighlight(ctx, object, camera);
         }
     });
 }

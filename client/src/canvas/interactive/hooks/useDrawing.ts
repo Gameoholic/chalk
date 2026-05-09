@@ -26,9 +26,9 @@ import { screenToWorld } from "../utils/canvasCoords";
 import { findObjectAtCoords as hitTest } from "../utils/canvasHitTesting";
 
 interface useDrawingInteractionsProps {
-    updateObject: (object: WorldObject) => void;
+    updateOrAddObject: (object: WorldObject) => void;
     removeObject: (objectId: string) => void;
-    commitChanges: (
+    commitObjectChanges: (
         updatedObjects?: WorldObject[],
         deletedObjectIds?: string[]
     ) => void;
@@ -38,9 +38,9 @@ interface useDrawingInteractionsProps {
 }
 
 export function useDrawingInteractions({
-    updateObject,
+    updateOrAddObject,
     removeObject,
-    commitChanges,
+    commitObjectChanges,
     setDrawingTextBoxObjectId,
 }: useDrawingInteractionsProps) {
     const canvasContext = useContext(CanvasContext);
@@ -87,7 +87,7 @@ export function useDrawingInteractions({
             points: interaction.current.path,
         };
         interaction.current.latestObject = newPath;
-        updateObject(newPath);
+        updateOrAddObject(newPath);
     }
 
     function handleMouseMoveEraserDraw(
@@ -114,7 +114,7 @@ export function useDrawingInteractions({
             const hoveredObject = findObjectAtCoords(mouseWorldCoords);
             if (hoveredObject) {
                 removeObject(hoveredObject.id);
-                commitChanges(undefined, [hoveredObject.id]);
+                commitObjectChanges(undefined, [hoveredObject.id]);
             }
         } else {
             const newPath: EraserPathObject = {
@@ -124,7 +124,7 @@ export function useDrawingInteractions({
                 points: interaction.current.path,
             };
             interaction.current.latestObject = newPath;
-            updateObject(newPath);
+            updateOrAddObject(newPath);
         }
     }
 
@@ -149,7 +149,7 @@ export function useDrawingInteractions({
             point2: interaction.current.path[1],
         };
         interaction.current.latestObject = newLine;
-        updateObject(newLine);
+        updateOrAddObject(newLine);
     }
 
     function handleMouseMoveRectDraw(
@@ -184,7 +184,7 @@ export function useDrawingInteractions({
             },
         };
         interaction.current.latestObject = newRect;
-        updateObject(newRect);
+        updateOrAddObject(newRect);
     }
 
     function handleMouseMoveEllipseDraw(
@@ -219,7 +219,7 @@ export function useDrawingInteractions({
             },
         };
         interaction.current.latestObject = newEllipse;
-        updateObject(newEllipse);
+        updateOrAddObject(newEllipse);
     }
 
     function handleMouseMoveTextDraw(
@@ -262,7 +262,7 @@ export function useDrawingInteractions({
             },
         };
         interaction.current.latestObject = newText;
-        updateObject(newText);
+        updateOrAddObject(newText);
         setDrawingTextBoxObjectId(interaction.current.objectId);
     }
 

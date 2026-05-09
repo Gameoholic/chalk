@@ -5,16 +5,17 @@ import { WorldObject } from "../../types/canvas";
 import { CanvasContext } from "../../types/context/CanvasContext";
 import ObjectContextMenu from "./components/ObjectContextMenu";
 import { useTextEditing } from "./hooks/useTextEditing";
-import { useDrawingInteractions } from "./hooks/useDrawingInteractions";
+import { useDrawingInteractions } from "./hooks/useDrawing";
 import {
     CameraDragInteraction,
     DrawingInteraction,
     useHandleMouseEvents,
 } from "./hooks/useMouseEvents";
 import { useCamera } from "./hooks/useCamera";
+import { useMultipleObjectSelection } from "./hooks/useObjectSelection";
 
 interface CanvasInteractiveProps {
-    commitChanges: (
+    commitObjectChanges: (
         updatedOrNewObjects?: WorldObject[],
         deletedObjectIds?: string[]
     ) => void;
@@ -25,7 +26,7 @@ interface CanvasInteractiveProps {
  * Handles all user interactions, mouse events, drawing.
  */
 function CanvasInteractive({
-    commitChanges,
+    commitObjectChanges,
     commitCamera,
 }: CanvasInteractiveProps) {
     const canvasContext = useContext(CanvasContext);
@@ -62,7 +63,7 @@ function CanvasInteractive({
     }
 
     // User released left click so object should be committed to database
-    function local_commitCahgnes(
+    function _commitObjectChanges(
         updatedObjects?: WorldObject[],
         deletedObjectIds?: string[]
     ) {
@@ -75,53 +76,8 @@ function CanvasInteractive({
             );
         }
         // Explicitly tells CanvasEditor what to delete, bypassing state closure bugs caused by relying only on CanvasContext states
-        commitChanges(updatedObjects, deletedObjectIds);
+        commitObjectChanges(updatedObjects, deletedObjectIds);
     }
-
-    const {
-        editingText,
-        drawingTextBoxObjectId,
-        setDrawingTextBoxObjectId,
-        openTextEditor,
-    } = useTextEditing(updateOrAddObject, local_commitCahgnes);
-
-    // Handle drawing interactions hook
-    const {
-        handleDrawingInteraction_MouseMove,
-        handleDrawingInteraction_MouseUp,
-    } = useDrawingInteractions({
-        updateObject: updateOrAddObject,
-        removeObject,
-        commitChanges,
-        setDrawingTextBoxObjectId,
-    });
-
-    // Handle camera drag interactions hook
-    const {
-        handleCameraDragInteraction_MouseMove,
-        handleCameraDragInteraction_MouseUp,
-        handleCamera_Wheel,
-    } = useCamera({
-        commitCamera,
-    });
-
-    // Handle mouse events hook
-    const {
-        handleMouseDown,
-        handleMouseMove,
-        handleMouseUp,
-        handleWheel,
-        handleContextMenu,
-    } = useHandleMouseEvents({
-        handleDrawingInteraction_MouseMove,
-        handleDrawingInteraction_MouseUp,
-        handleCameraDragInteraction_MouseMove,
-        handleCameraDragInteraction_MouseUp,
-        handleCamera_Wheel,
-        handleEditObject,
-    });
-
-    function handleEditObject(object: WorldObject) {}
 
     // Server-synced objects and local unsaved objects and locally deleted objects, render all
     const allObjects = useMemo(() => {
@@ -139,6 +95,61 @@ function CanvasInteractive({
         canvasContext.local_unsavedObjects,
         canvasContext.local_deletedObjectIds,
     ]);
+
+    // Handle text editing
+    const {
+        editingText,
+        drawingTextBoxObjectId,
+        setDrawingTextBoxObjectId,
+        openTextEditor,
+    } = useTextEditing(updateOrAddObject, _commitObjectChanges);
+
+    // Handle drawing interactions hook
+    const {
+        handleDrawingInteraction_MouseMove,
+        handleDrawingInteraction_MouseUp,
+    } = useDrawingInteractions({
+        updateOrAddObject,
+        removeObject,
+        commitObjectChanges,
+        setDrawingTextBoxObjectId,
+    });
+
+    // Handle camera drag interactions hook
+    const {
+        handleCameraDragInteraction_MouseMove,
+        handleCameraDragInteraction_MouseUp,
+        handleCamera_Wheel,
+    } = useCamera({
+        commitCamera,
+    });
+
+    // Handle object selection hook
+    const {
+        handleMultipleObjectSelectionInteraction_MouseMove,
+        handleMultipleObjectSelectionInteraction_MouseUp,
+        selectedObjectIds,
+        multipleObjectSelectionBox,
+        handleSingleObjectSelected,
+    } = useMultipleObjectSelection();
+
+    // Handle mouse events hook - main method which will handle the interactions from before
+    const {
+        handleMouseDown,
+        handleMouseMove,
+        handleMouseUp,
+        handleWheel,
+        handleContextMenu,
+    } = useHandleMouseEvents({
+        handleDrawingInteraction_MouseMove,
+        handleDrawingInteraction_MouseUp,
+        handleCameraDragInteraction_MouseMove,
+        handleCameraDragInteraction_MouseUp,
+        handleCamera_Wheel,
+        handleSingleObjectSelected,
+        handleMultipleObjectSelectionInteraction_MouseMove,
+        handleMultipleObjectSelectionInteraction_MouseUp,
+    });
 
     return (
         <div ref={observe} className="h-full w-full touch-none">
@@ -160,6 +171,8 @@ function CanvasInteractive({
                         : undefined
                 }
                 drawingTextBoxObjectId={drawingTextBoxObjectId}
+                multipleObjectSelectionBox={multipleObjectSelectionBox}
+                selectedObjectIds={selectedObjectIds}
             />
 
             {/* {contextMenu && (

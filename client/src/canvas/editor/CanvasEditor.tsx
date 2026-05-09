@@ -173,7 +173,7 @@ function CanvasEditor({
             <div className="h-full w-full" data-tour-id="canvas">
                 <CanvasInteractive
                     key={canvasContext.local_currentBoardId}
-                    commitChanges={onObjectsCommit}
+                    commitObjectChanges={onObjectsCommit}
                     commitCamera={onCameraCommit}
                 />
             </div>

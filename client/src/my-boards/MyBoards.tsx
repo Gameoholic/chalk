@@ -558,7 +558,7 @@ function Board({
                             objects={
                                 new Map(boardData.objects.map((o) => [o.id, o]))
                             }
-                            selectedObjectId={null}
+                            selectedObjectIds={new Set()}
                             camera={{
                                 position: boardData.lastCameraPosition,
                                 size: {

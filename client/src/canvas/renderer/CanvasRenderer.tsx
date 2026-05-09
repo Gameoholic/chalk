@@ -1,9 +1,12 @@
 import React, { useContext } from "react";
 import CanvasDOMRenderer from "./CanvasDOMRenderer";
-import { Camera, WorldObject } from "../../types/canvas";
+import { Camera, Vec2, WorldObject } from "../../types/canvas";
 import { AntiAliasingContext } from "../../types/context/AntiAliasingContext";
 import { drawGrid } from "./utils/drawGrid";
-import { drawObjects, drawSelectionHighlight } from "./utils/drawObjects";
+import {
+    drawObjects,
+    drawMultipleObjectSelectionBox,
+} from "./utils/drawObjects";
 
 interface CanvasRendererProps {
     objects: Map<string, WorldObject>;
@@ -19,6 +22,8 @@ interface CanvasRendererProps {
     onTouchStart?: React.TouchEventHandler<HTMLCanvasElement>;
     onTouchMove?: React.TouchEventHandler<HTMLCanvasElement>;
     onTouchEnd?: React.TouchEventHandler<HTMLCanvasElement>;
+    selectedObjectIds: Set<string>;
+    multipleObjectSelectionBox?: { start: Vec2; end: Vec2 } | null;
 }
 
 // Only renders passed objects and processes passed camera position and zoom
@@ -29,6 +34,8 @@ function CanvasRenderer({
     camera,
     textCursor,
     drawingTextBoxObjectId,
+    selectedObjectIds,
+    multipleObjectSelectionBox,
     ...handlers
 }: CanvasRendererProps) {
     const antiAliasing = useContext(AntiAliasingContext).value;
@@ -44,13 +51,18 @@ function CanvasRenderer({
             camera,
             antiAliasing,
             drawingTextBoxObjectId,
+            selectedObjectIds,
             textCursor
         );
 
-        // if (selectedObjectId) {
-        //     const selected = objects.get(selectedObjectId);
-        //     if (selected) drawSelectionHighlight(ctx, selected, camera);
-        // }
+        if (multipleObjectSelectionBox) {
+            drawMultipleObjectSelectionBox(
+                ctx,
+                multipleObjectSelectionBox.start,
+                multipleObjectSelectionBox.end,
+                camera
+            );
+        }
     };
 
     return (
