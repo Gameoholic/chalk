@@ -131,6 +131,8 @@ function CanvasInteractive({
         selectedObjectIds,
         multipleObjectSelectionBox,
         handleSingleObjectSelected,
+        handleAdditionalSingleObjectSelected,
+        handleDeselectAllObjects,
     } = useMultipleObjectSelection();
 
     // Handle mouse events hook - main method which will handle the interactions from before
@@ -147,6 +149,8 @@ function CanvasInteractive({
         handleCameraDragInteraction_MouseUp,
         handleCamera_Wheel,
         handleSingleObjectSelected,
+        handleAdditionalSingleObjectSelected,
+        handleDeselectAllObjects,
         handleMultipleObjectSelectionInteraction_MouseMove,
         handleMultipleObjectSelectionInteraction_MouseUp,
     });

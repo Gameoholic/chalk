@@ -1,36 +1,9 @@
 import React, { useContext, useEffect, useRef, useState } from "react";
-import { v4 as uuidv4 } from "uuid";
-import {
-    CameraDragInteraction,
-    DrawingInteraction,
-    MultipleObjectSelectionInteraction,
-} from "./useMouseEvents";
+import { MultipleObjectSelectionInteraction } from "./useMouseEvents";
 import { CanvasContext } from "../../../types/context/CanvasContext";
-import {
-    EllipseTool,
-    EraserTool,
-    LineTool,
-    PencilTool,
-    RectTool,
-    TextTool,
-    Tool,
-} from "../../../types/tool";
-import {
-    Camera,
-    EllipseObject,
-    EraserPathObject,
-    LineObject,
-    PathObject,
-    RectObject,
-    TextObject,
-    Vec2,
-    WorldObject,
-} from "../../../types/canvas";
+import { Vec2, WorldObject } from "../../../types/canvas";
 import { screenToWorld } from "../utils/canvasCoords";
-import {
-    getBoundingBox,
-    findObjectAtCoords as hitTest,
-} from "../utils/canvasHitTesting";
+import { getBoundingBox } from "../utils/canvasHitTesting";
 
 // interface useMultipleObjectSelectionProps {
 
@@ -116,17 +89,28 @@ export function useMultipleObjectSelection() {
                 .map((obj) => obj.id)
         );
 
-        setSelectedObjectIds(ids);
+        // select all objects including the already selected ones
+        setSelectedObjectIds((prev) => new Set([...prev, ...ids]));
     }
 
     function handleSingleObjectSelected(object: WorldObject) {
         setSelectedObjectIds(new Set([object.id]));
     }
 
+    function handleAdditionalSingleObjectSelected(object: WorldObject) {
+        setSelectedObjectIds((prev) => new Set([...prev, object.id]));
+    }
+
+    function handleDeselectAllObjects() {
+        setSelectedObjectIds(new Set());
+    }
+
     return {
         handleMultipleObjectSelectionInteraction_MouseMove,
         handleMultipleObjectSelectionInteraction_MouseUp,
         handleSingleObjectSelected,
+        handleAdditionalSingleObjectSelected,
+        handleDeselectAllObjects,
         selectedObjectIds,
         multipleObjectSelectionBox,
     };

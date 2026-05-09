@@ -78,6 +78,8 @@ interface useHandleMouseEventsProps {
     ) => void;
     handleCamera_Wheel: (e: React.WheelEvent<HTMLCanvasElement>) => void;
     handleSingleObjectSelected: (object: WorldObject) => void;
+    handleAdditionalSingleObjectSelected: (object: WorldObject) => void;
+    handleDeselectAllObjects: () => void;
 }
 
 /**
@@ -92,6 +94,8 @@ export function useHandleMouseEvents({
     handleMultipleObjectSelectionInteraction_MouseUp,
     handleCamera_Wheel,
     handleSingleObjectSelected,
+    handleAdditionalSingleObjectSelected,
+    handleDeselectAllObjects,
 }: useHandleMouseEventsProps) {
     const canvasContext = useContext(CanvasContext);
     const tool: Tool = canvasContext.local_tool;
@@ -121,8 +125,19 @@ export function useHandleMouseEvents({
     }
 
     const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-        // If holding shift + left mouse button regardless of tool, edit them
+        // If clicking/holding shift + left click with any tool
         if (e.button === LEFT_MOUSE_BUTTON && e.shiftKey) {
+            // Check if clicked an object
+            const mouseWorldCoords: Vec2 = screenToWorld(e, camera);
+            const clickedObject = findObjectAtCoords(mouseWorldCoords);
+
+            // If clicked an object with shift key, select that object in addition to the already selected objects
+            if (clickedObject) {
+                handleAdditionalSingleObjectSelected(clickedObject);
+                return;
+            }
+
+            // If an object wasn't clicked, proceed as though we're holding down left mouse button, multiple object selection
             currentInteraction.current = {
                 type: "multiple-object-selection",
                 boxStart: null,
@@ -135,12 +150,19 @@ export function useHandleMouseEvents({
             return;
         }
 
-        // If left click was pressed regardless of tool over an object, edit it
+        // If left clicking on an object with any tool, edit it
         if (e.button === LEFT_MOUSE_BUTTON) {
             const mouseWorldCoords: Vec2 = screenToWorld(e, camera);
             const clickedObject = findObjectAtCoords(mouseWorldCoords);
             if (clickedObject) {
                 handleSingleObjectSelected(clickedObject);
+                return;
+            }
+
+            // The user didn't left click on an object.
+            // If using the select tool, deselect all objects
+            if (tool.type === "select") {
+                handleDeselectAllObjects();
                 return;
             }
         }
