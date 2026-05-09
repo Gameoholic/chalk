@@ -3,7 +3,6 @@ import useDimensions from "react-cool-dimensions";
 import CanvasRenderer from "../renderer/CanvasRenderer";
 import { WorldObject } from "../../types/canvas";
 import { CanvasContext } from "../../types/context/CanvasContext";
-import ObjectContextMenu from "./components/ObjectContextMenu";
 import { useTextEditing } from "./hooks/useTextEditing";
 import { useDrawingInteractions } from "./hooks/useDrawing";
 import {
@@ -13,6 +12,7 @@ import {
 } from "./hooks/useMouseEvents";
 import { useCamera } from "./hooks/useCamera";
 import { useMultipleObjectSelection } from "./hooks/useObjectSelection";
+import { EditObjectToolbar } from "./components/EditObjectToolbar";
 
 interface CanvasInteractiveProps {
     commitObjectChanges: (
@@ -155,6 +155,14 @@ function CanvasInteractive({
         handleMultipleObjectSelectionInteraction_MouseUp,
     });
 
+    const selectedObjects = useMemo(
+        () =>
+            [...selectedObjectIds]
+                .map((id) => allObjects.get(id))
+                .filter(Boolean) as WorldObject[],
+        [selectedObjectIds, allObjects]
+    );
+
     return (
         <div ref={observe} className="h-full w-full touch-none">
             <CanvasRenderer
@@ -179,23 +187,16 @@ function CanvasInteractive({
                 selectedObjectIds={selectedObjectIds}
             />
 
-            {/* {contextMenu && (
-                <ObjectContextMenu
-                    object={contextMenu.object}
-                    screenX={contextMenu.screenX}
-                    screenY={contextMenu.screenY}
+            {selectedObjects.length > 0 && (
+                <EditObjectToolbar
+                    selectedObjects={selectedObjects}
+                    camera={canvasContext.local_camera}
                     onUpdate={(updated) => {
-                        updateOrAddObject(updated);
-                        commitChanges([updated], undefined);
+                        updated.forEach(updateOrAddObject);
+                        _commitObjectChanges(updated, undefined);
                     }}
-                    onDelete={() => {
-                        removeObject(contextMenu.object.id);
-                        commitChanges(undefined, [contextMenu.object.id]);
-                        setContextMenu(null);
-                    }}
-                    onClose={() => setContextMenu(null)}
                 />
-            )} */}
+            )}
         </div>
     );
 }
