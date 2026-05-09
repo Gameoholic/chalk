@@ -89,12 +89,7 @@ export function useMultipleObjectSelection() {
     }
 
     function handleSingleObjectSelected(object: WorldObject) {
-        if (selectedObjectIds.has(object.id)) {
-            // if already selected, deselect it
-            setSelectedObjectIds(new Set());
-        } else {
-            setSelectedObjectIds(new Set([object.id]));
-        }
+        setSelectedObjectIds(new Set([object.id]));
     }
 
     // This is for shift clicking objects
