@@ -254,7 +254,12 @@ function ToolButtonsSection({
                         key={toolType}
                         onClick={() => onToolClick(toolType as ToolType)}
                         className="rounded p-2 transition"
-                        title={displayName}
+                        title={
+                            toolType === "text"
+                                ? `Currently Disabled`
+                                : displayName
+                        } // TEMPORARILY DISABLE TEXT TOOL
+                        disabled={toolType === "text"} // TEMPORARILY DISABLE TEXT TOOL
                         style={{
                             backgroundColor: active
                                 ? "var(--accent)"
