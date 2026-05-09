@@ -25,13 +25,18 @@ import {
 } from "../../../types/tool";
 import { screenToWorld } from "../utils/canvasCoords";
 import { findObjectAtCoords as hitTest } from "../utils/canvasHitTesting";
+import { object } from "zod";
 
 const LEFT_MOUSE_BUTTON = 0;
 const MIDDLE_MOUSE_BUTTON = 1;
 const RIGHT_MOUSE_BUTTON = 2;
 
 export interface Interaction {
-    type: "camera-drag" | "drawing" | "multiple-object-selection";
+    type:
+        | "camera-drag"
+        | "drawing"
+        | "multiple-object-selection-box"
+        | "selected-object-drag";
 }
 export interface CameraDragInteraction extends Interaction {
     type: "camera-drag";
@@ -45,10 +50,17 @@ export interface DrawingInteraction extends Interaction {
     latestObject?: WorldObject;
 }
 
-export interface MultipleObjectSelectionInteraction extends Interaction {
-    type: "multiple-object-selection";
+export interface MultipleObjectSelectionBoxInteraction extends Interaction {
+    type: "multiple-object-selection-box";
     boxStart: Vec2 | null;
     boxEnd: Vec2 | null;
+}
+
+export interface SelectedObjectDragInteraction extends Interaction {
+    type: "selected-object-drag";
+    startMousePos: Vec2;
+    // originalObjects never changes for the duration of the interaction. The original, untranslated objects.
+    originalObjects: WorldObject[];
 }
 
 interface useHandleMouseEventsProps {
@@ -68,18 +80,28 @@ interface useHandleMouseEventsProps {
         e: React.MouseEvent<HTMLCanvasElement>,
         interaction: React.RefObject<CameraDragInteraction>
     ) => void;
-    handleMultipleObjectSelectionInteraction_MouseMove: (
+    handleMultipleObjectSelectionBoxInteraction_MouseMove: (
         e: React.MouseEvent<HTMLCanvasElement>,
-        interaction: React.RefObject<MultipleObjectSelectionInteraction>
+        interaction: React.RefObject<MultipleObjectSelectionBoxInteraction>
     ) => void;
-    handleMultipleObjectSelectionInteraction_MouseUp: (
+    handleMultipleObjectSelectionBoxInteraction_MouseUp: (
         e: React.MouseEvent<HTMLCanvasElement>,
-        interaction: React.RefObject<MultipleObjectSelectionInteraction>
+        interaction: React.RefObject<MultipleObjectSelectionBoxInteraction>
+    ) => void;
+    handleSelectedObjectDragInteraction_MouseMove: (
+        e: React.MouseEvent<HTMLCanvasElement>,
+        interaction: React.RefObject<SelectedObjectDragInteraction>
+    ) => void;
+    handleSelectedObjectDragInteraction_MouseUp: (
+        e: React.MouseEvent<HTMLCanvasElement>,
+        interaction: React.RefObject<SelectedObjectDragInteraction>
     ) => void;
     handleCamera_Wheel: (e: React.WheelEvent<HTMLCanvasElement>) => void;
     handleSingleObjectSelected: (object: WorldObject) => void;
     handleAdditionalSingleObjectSelected: (object: WorldObject) => void;
     handleDeselectAllObjects: () => void;
+    selectedObjectIds: Set<string>;
+    selectedObjects: WorldObject[];
 }
 
 /**
@@ -90,12 +112,16 @@ export function useHandleMouseEvents({
     handleDrawingInteraction_MouseUp,
     handleCameraDragInteraction_MouseMove,
     handleCameraDragInteraction_MouseUp,
-    handleMultipleObjectSelectionInteraction_MouseMove,
-    handleMultipleObjectSelectionInteraction_MouseUp,
+    handleMultipleObjectSelectionBoxInteraction_MouseMove,
+    handleMultipleObjectSelectionBoxInteraction_MouseUp,
+    handleSelectedObjectDragInteraction_MouseMove,
+    handleSelectedObjectDragInteraction_MouseUp,
     handleCamera_Wheel,
     handleSingleObjectSelected,
     handleAdditionalSingleObjectSelected,
     handleDeselectAllObjects,
+    selectedObjectIds,
+    selectedObjects,
 }: useHandleMouseEventsProps) {
     const canvasContext = useContext(CanvasContext);
     const tool: Tool = canvasContext.local_tool;
@@ -104,7 +130,8 @@ export function useHandleMouseEvents({
     const currentInteraction = useRef<
         | DrawingInteraction
         | CameraDragInteraction
-        | MultipleObjectSelectionInteraction
+        | MultipleObjectSelectionBoxInteraction
+        | SelectedObjectDragInteraction
         | null
     >(null);
 
@@ -139,22 +166,32 @@ export function useHandleMouseEvents({
 
             // If an object wasn't clicked, proceed as though we're holding down left mouse button, multiple object selection
             currentInteraction.current = {
-                type: "multiple-object-selection",
+                type: "multiple-object-selection-box",
                 boxStart: null,
                 boxEnd: null,
             };
-            handleMultipleObjectSelectionInteraction_MouseMove(
+            handleMultipleObjectSelectionBoxInteraction_MouseMove(
                 e,
-                currentInteraction as React.RefObject<MultipleObjectSelectionInteraction>
+                currentInteraction as React.RefObject<MultipleObjectSelectionBoxInteraction>
             );
             return;
         }
 
-        // If left clicking on an object with select tool, edit it
+        // If left clicking on an object with select tool, select it
         if (e.button === LEFT_MOUSE_BUTTON && tool.type === "select") {
             const mouseWorldCoords: Vec2 = screenToWorld(e, camera);
             const clickedObject = findObjectAtCoords(mouseWorldCoords);
             if (clickedObject) {
+                // HOWEVER, exception: If this object is already selected, then we start an OBJECT DRAG interaction instead
+                if (selectedObjectIds.has(clickedObject.id)) {
+                    currentInteraction.current = {
+                        type: "selected-object-drag",
+                        startMousePos: mouseWorldCoords,
+                        originalObjects: selectedObjects,
+                    };
+                    return;
+                }
+                // Otherwise, select it
                 handleSingleObjectSelected(clickedObject);
                 return;
             }
@@ -213,10 +250,19 @@ export function useHandleMouseEvents({
             );
             return;
         }
-        if (currentInteraction.current?.type === "multiple-object-selection") {
-            handleMultipleObjectSelectionInteraction_MouseMove(
+        if (
+            currentInteraction.current?.type === "multiple-object-selection-box"
+        ) {
+            handleMultipleObjectSelectionBoxInteraction_MouseMove(
                 e,
-                currentInteraction as React.RefObject<MultipleObjectSelectionInteraction>
+                currentInteraction as React.RefObject<MultipleObjectSelectionBoxInteraction>
+            );
+            return;
+        }
+        if (currentInteraction.current?.type === "selected-object-drag") {
+            handleSelectedObjectDragInteraction_MouseMove(
+                e,
+                currentInteraction as React.RefObject<SelectedObjectDragInteraction>
             );
             return;
         }
@@ -235,10 +281,18 @@ export function useHandleMouseEvents({
                 currentInteraction as React.RefObject<CameraDragInteraction>
             );
         }
-        if (currentInteraction.current?.type === "multiple-object-selection") {
-            handleMultipleObjectSelectionInteraction_MouseUp(
+        if (
+            currentInteraction.current?.type === "multiple-object-selection-box"
+        ) {
+            handleMultipleObjectSelectionBoxInteraction_MouseUp(
                 e,
-                currentInteraction as React.RefObject<MultipleObjectSelectionInteraction>
+                currentInteraction as React.RefObject<MultipleObjectSelectionBoxInteraction>
+            );
+        }
+        if (currentInteraction.current?.type === "selected-object-drag") {
+            handleSelectedObjectDragInteraction_MouseUp(
+                e,
+                currentInteraction as React.RefObject<SelectedObjectDragInteraction>
             );
         }
         currentInteraction.current = null;

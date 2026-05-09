@@ -1,18 +1,28 @@
 import React, { useContext, useEffect, useRef, useState } from "react";
-import { MultipleObjectSelectionInteraction } from "./useMouseEvents";
+import {
+    MultipleObjectSelectionBoxInteraction,
+    SelectedObjectDragInteraction,
+} from "./useMouseEvents";
 import { CanvasContext } from "../../../types/context/CanvasContext";
 import { Vec2, WorldObject } from "../../../types/canvas";
 import { screenToWorld } from "../utils/canvasCoords";
 import { findObjectsInArea, getBoundingBox } from "../utils/canvasHitTesting";
 
-// interface useMultipleObjectSelectionProps {
-
-// }
+interface UseObjectSelectionProps {
+    updateOrAddObject: (object: WorldObject) => void;
+    commitObjectChanges: (
+        updatedOrNewObjects?: WorldObject[],
+        deletedObjectIds?: string[]
+    ) => void;
+}
 
 /**
  * Object selection interactions
  */
-export function useObjectSelection() {
+export function useObjectSelection({
+    updateOrAddObject,
+    commitObjectChanges,
+}: UseObjectSelectionProps) {
     const canvasContext = useContext(CanvasContext);
     const camera = canvasContext.local_camera;
 
@@ -25,9 +35,9 @@ export function useObjectSelection() {
             end: Vec2;
         } | null>(null);
 
-    function handleMultipleObjectSelectionInteraction_MouseMove(
+    function handleMultipleObjectSelectionBoxInteraction_MouseMove(
         e: React.MouseEvent<HTMLCanvasElement>,
-        interaction: React.RefObject<MultipleObjectSelectionInteraction>
+        interaction: React.RefObject<MultipleObjectSelectionBoxInteraction>
     ) {
         const mouseWorldCoords: Vec2 = screenToWorld(e, camera);
 
@@ -41,9 +51,9 @@ export function useObjectSelection() {
         });
     }
 
-    function handleMultipleObjectSelectionInteraction_MouseUp(
+    function handleMultipleObjectSelectionBoxInteraction_MouseUp(
         e: React.MouseEvent<HTMLCanvasElement>,
-        interaction: React.RefObject<MultipleObjectSelectionInteraction>
+        interaction: React.RefObject<MultipleObjectSelectionBoxInteraction>
     ) {
         setMultipleObjectSelectionBox(null);
 
@@ -88,6 +98,77 @@ export function useObjectSelection() {
         );
     }
 
+    function handleSelectedObjectDragInteraction_MouseMove(
+        e: React.MouseEvent<HTMLCanvasElement>,
+        interaction: React.RefObject<SelectedObjectDragInteraction>
+    ) {
+        const currentMouseWorldPos = screenToWorld(e, camera);
+        const dx = currentMouseWorldPos.x - interaction.current.startMousePos.x;
+        const dy = currentMouseWorldPos.y - interaction.current.startMousePos.y;
+
+        // We translate based on the ORIGINAL position of the object, so originalObjects never changes for the duration of the interaction.
+        interaction.current.originalObjects.forEach((obj) => {
+            updateOrAddObject(translateObject(obj, dx, dy));
+        });
+    }
+
+    function handleSelectedObjectDragInteraction_MouseUp(
+        e: React.MouseEvent<HTMLCanvasElement>,
+        interaction: React.RefObject<SelectedObjectDragInteraction>
+    ) {
+        const currentMouseWorldPos = screenToWorld(e, camera);
+        const dx = currentMouseWorldPos.x - interaction.current.startMousePos.x;
+        const dy = currentMouseWorldPos.y - interaction.current.startMousePos.y;
+
+        const updated = interaction.current.originalObjects.map((obj) =>
+            translateObject(obj, dx, dy)
+        );
+        commitObjectChanges(updated, undefined);
+    }
+
+    function translateObject(
+        obj: WorldObject,
+        dx: number,
+        dy: number
+    ): WorldObject {
+        switch (obj.type) {
+            case "path":
+            case "eraser-path":
+                return {
+                    ...obj,
+                    points: obj.points.map((p) => ({
+                        x: p.x + dx,
+                        y: p.y + dy,
+                    })),
+                };
+            case "line":
+                return {
+                    ...obj,
+                    point1: { x: obj.point1.x + dx, y: obj.point1.y + dy },
+                    point2: { x: obj.point2.x + dx, y: obj.point2.y + dy },
+                };
+            case "rect":
+            case "ellipse":
+                return {
+                    ...obj,
+                    position: {
+                        x: obj.position.x + dx,
+                        y: obj.position.y + dy,
+                    },
+                };
+            case "text":
+                return {
+                    ...obj,
+                    boxPosition: {
+                        x: obj.boxPosition.x + dx,
+                        y: obj.boxPosition.y + dy,
+                    },
+                };
+            default:
+                return obj;
+        }
+    }
+
     function handleSingleObjectSelected(object: WorldObject) {
         setSelectedObjectIds(new Set([object.id]));
     }
@@ -111,8 +192,10 @@ export function useObjectSelection() {
     }
 
     return {
-        handleMultipleObjectSelectionInteraction_MouseMove,
-        handleMultipleObjectSelectionInteraction_MouseUp,
+        handleMultipleObjectSelectionBoxInteraction_MouseMove,
+        handleMultipleObjectSelectionBoxInteraction_MouseUp,
+        handleSelectedObjectDragInteraction_MouseMove,
+        handleSelectedObjectDragInteraction_MouseUp,
         handleSingleObjectSelected,
         handleAdditionalSingleObjectSelected,
         handleDeselectAllObjects,

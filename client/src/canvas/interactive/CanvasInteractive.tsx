@@ -111,7 +111,7 @@ function CanvasInteractive({
     } = useDrawingInteractions({
         updateOrAddObject,
         removeObject,
-        commitObjectChanges,
+        commitObjectChanges: _commitObjectChanges,
         setDrawingTextBoxObjectId,
     });
 
@@ -126,14 +126,27 @@ function CanvasInteractive({
 
     // Handle object selection hook
     const {
-        handleMultipleObjectSelectionInteraction_MouseMove,
-        handleMultipleObjectSelectionInteraction_MouseUp,
+        handleMultipleObjectSelectionBoxInteraction_MouseMove,
+        handleMultipleObjectSelectionBoxInteraction_MouseUp,
+        handleSelectedObjectDragInteraction_MouseMove,
+        handleSelectedObjectDragInteraction_MouseUp,
         selectedObjectIds,
         multipleObjectSelectionBox,
         handleSingleObjectSelected,
         handleAdditionalSingleObjectSelected,
         handleDeselectAllObjects,
-    } = useObjectSelection();
+    } = useObjectSelection({
+        updateOrAddObject,
+        commitObjectChanges: _commitObjectChanges,
+    });
+
+    const selectedObjects = useMemo(
+        () =>
+            [...selectedObjectIds]
+                .map((id) => allObjects.get(id))
+                .filter(Boolean) as WorldObject[],
+        [selectedObjectIds, allObjects]
+    );
 
     // Handle mouse events hook - main method which will handle the interactions from before
     const {
@@ -151,17 +164,13 @@ function CanvasInteractive({
         handleSingleObjectSelected,
         handleAdditionalSingleObjectSelected,
         handleDeselectAllObjects,
-        handleMultipleObjectSelectionInteraction_MouseMove,
-        handleMultipleObjectSelectionInteraction_MouseUp,
+        handleMultipleObjectSelectionBoxInteraction_MouseMove,
+        handleMultipleObjectSelectionBoxInteraction_MouseUp,
+        handleSelectedObjectDragInteraction_MouseMove,
+        handleSelectedObjectDragInteraction_MouseUp,
+        selectedObjectIds,
+        selectedObjects,
     });
-
-    const selectedObjects = useMemo(
-        () =>
-            [...selectedObjectIds]
-                .map((id) => allObjects.get(id))
-                .filter(Boolean) as WorldObject[],
-        [selectedObjectIds, allObjects]
-    );
 
     // Delete selected objects keyboard shortcut
     useEffect(() => {
