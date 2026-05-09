@@ -169,6 +169,8 @@ export function useHandleMouseEvents({
 
         // If holding down left mouse with any DRAWING tool:
         if (e.button === LEFT_MOUSE_BUTTON && tool.type !== "select") {
+            handleDeselectAllObjects();
+
             currentInteraction.current = {
                 type: "drawing",
                 objectId: uuidv4(),
