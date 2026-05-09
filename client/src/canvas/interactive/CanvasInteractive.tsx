@@ -1,4 +1,4 @@
-import React, { useContext, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import useDimensions from "react-cool-dimensions";
 import CanvasRenderer from "../renderer/CanvasRenderer";
 import { WorldObject } from "../../types/canvas";
@@ -162,6 +162,25 @@ function CanvasInteractive({
                 .filter(Boolean) as WorldObject[],
         [selectedObjectIds, allObjects]
     );
+
+    // Delete selected objects keyboard shortcut
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (
+                e.key === "Delete" &&
+                selectedObjects.length > 0 &&
+                !editingText
+            ) {
+                selectedObjects.map((obj) => obj.id).forEach(removeObject);
+                _commitObjectChanges(
+                    undefined,
+                    selectedObjects.map((obj) => obj.id)
+                );
+            }
+        };
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [selectedObjects]);
 
     return (
         <div ref={observe} className="h-full w-full touch-none">
