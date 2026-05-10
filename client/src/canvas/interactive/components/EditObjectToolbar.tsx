@@ -90,6 +90,17 @@ export function EditObjectToolbar({
             document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+    // Delete selected objects keyboard shortcut
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "Delete" && selectedObjects.length > 0) {
+                onDelete(selectedObjects.map((obj) => obj.id));
+            }
+        };
+        window.addEventListener("keydown", handleKeyDown);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [selectedObjects]);
+
     if (selectedObjects.length === 0) return null;
 
     const sharedProps = getSharedProperties(selectedObjects);

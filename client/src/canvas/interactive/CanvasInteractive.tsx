@@ -172,25 +172,6 @@ function CanvasInteractive({
         selectedObjects,
     });
 
-    // Delete selected objects keyboard shortcut
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (
-                e.key === "Delete" &&
-                selectedObjects.length > 0 &&
-                !editingText
-            ) {
-                selectedObjects.map((obj) => obj.id).forEach(removeObject);
-                _commitObjectChanges(
-                    undefined,
-                    selectedObjects.map((obj) => obj.id)
-                );
-            }
-        };
-        window.addEventListener("keydown", handleKeyDown);
-        return () => window.removeEventListener("keydown", handleKeyDown);
-    }, [selectedObjects]);
-
     return (
         <div ref={observe} className="h-full w-full touch-none">
             <CanvasRenderer
