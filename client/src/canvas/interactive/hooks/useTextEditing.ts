@@ -19,8 +19,13 @@ export function useTextEditing({
 }: UseTextEditingProps) {
     const canvasContext = useContext(CanvasContext);
 
+    const getCurrentTextObjectRef = useRef(getCurrentTextObject);
+    useEffect(() => {
+        getCurrentTextObjectRef.current = getCurrentTextObject;
+    });
+
     const [editingText, setEditingText] = useState<{
-        object: TextObject;
+        objectId: string;
         cursorVisible: boolean;
     } | null>(null);
     // textbox state is separate to editingText, since it can be triggered via a drawingInteraction before the text editor itself opens
@@ -36,15 +41,16 @@ export function useTextEditing({
                 prev ? { ...prev, cursorVisible: !prev.cursorVisible } : prev
             );
         }, 500);
-        setEditingText({ object, cursorVisible: true });
+        setEditingText({ objectId: object.id, cursorVisible: true });
         setDrawingTextBoxObjectId(object.id);
     }
 
     function closeTextEditor() {
         clearInterval(cursorBlinkIntervalRef.current);
-        if (editingText) {
-            updateOrAddObject(editingText.object);
-            commitChanges([editingText.object], undefined);
+        const current = getCurrentTextObjectRef.current(); // stale closure fix
+        if (editingText && current) {
+            updateOrAddObject(current);
+            commitChanges([current], undefined);
         }
         setEditingText(null);
         setDrawingTextBoxObjectId(null);
@@ -64,7 +70,7 @@ export function useTextEditing({
                 e as any,
                 canvasContext.local_camera
             );
-            const current = getCurrentTextObject(); // fix stale colsure problem by using an explicit getter
+            const current = getCurrentTextObjectRef.current(); // fix stale colsure problem by using an explicit getter
             if (!current) return;
             const { boxPosition, boxSize } = current;
 
@@ -93,8 +99,10 @@ export function useTextEditing({
                 prev ? { ...prev, cursorVisible: true } : prev
             );
 
-            const text = editingText.object.text;
-            const cursorIndex = editingText.object.text.length;
+            const current = getCurrentTextObjectRef.current(); // stale closure fix
+            if (!current) return;
+            const text = current.text;
+            const cursorIndex = current.text.length;
 
             if (e.key === "Escape") {
                 closeTextEditor();
@@ -136,12 +144,12 @@ export function useTextEditing({
             }
 
             const updatedObject = {
-                ...editingText.object,
+                ...current,
                 text: newText,
-                boxSize: measureTextBox(newText, editingText.object),
+                boxSize: measureTextBox(newText, current),
             };
 
-            setEditingText({ object: updatedObject, cursorVisible: true });
+            setEditingText({ objectId: current.id, cursorVisible: true });
             updateOrAddObject(updatedObject);
         };
 

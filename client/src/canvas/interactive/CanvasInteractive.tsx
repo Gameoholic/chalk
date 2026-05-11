@@ -98,7 +98,7 @@ function CanvasInteractive({
 
     function getCurrentTextObject(): TextObject | null {
         return editingText
-            ? (allObjects.get(editingText.object.id) as TextObject | null)
+            ? (allObjects.get(editingText.objectId) as TextObject | null)
             : null;
     }
 
@@ -197,8 +197,8 @@ function CanvasInteractive({
                 textCursor={
                     editingText
                         ? {
-                              objectId: editingText.object.id,
-                              index: editingText.object.text.length,
+                              objectId: editingText.objectId,
+                              index: getCurrentTextObject()?.text.length ?? 0,
                               visible: editingText.cursorVisible,
                           }
                         : undefined
