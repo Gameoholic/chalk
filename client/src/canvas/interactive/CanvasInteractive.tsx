@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useMemo, useState } from "react";
 import useDimensions from "react-cool-dimensions";
 import CanvasRenderer from "../renderer/CanvasRenderer";
-import { WorldObject } from "../../types/canvas";
+import { TextObject, WorldObject } from "../../types/canvas";
 import { CanvasContext } from "../../types/context/CanvasContext";
 import { useTextEditing } from "./hooks/useTextEditing";
 import { useDrawing } from "./hooks/useDrawing";
@@ -96,13 +96,23 @@ function CanvasInteractive({
         canvasContext.local_deletedObjectIds,
     ]);
 
+    function getCurrentTextObject(): TextObject | null {
+        return editingText
+            ? (allObjects.get(editingText.object.id) as TextObject | null)
+            : null;
+    }
+
     // Handle text editing
     const {
         editingText,
         drawingTextBoxObjectId,
         setDrawingTextBoxObjectId,
         openTextEditor,
-    } = useTextEditing(updateOrAddObject, _commitObjectChanges);
+    } = useTextEditing({
+        updateOrAddObject,
+        commitChanges: _commitObjectChanges,
+        getCurrentTextObject,
+    });
 
     // Handle drawing interactions hook
     const {

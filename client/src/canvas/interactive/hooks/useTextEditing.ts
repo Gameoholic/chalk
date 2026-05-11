@@ -1,13 +1,24 @@
-import { useEffect, useRef, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import { TextObject, Vec2, WorldObject } from "../../../types/canvas";
+import { screenToWorld } from "../utils/canvasCoords";
+import { CanvasContext } from "../../../types/context/CanvasContext";
 
-export function useTextEditing(
-    updateOrAddObject: (object: WorldObject) => void,
+interface UseTextEditingProps {
+    updateOrAddObject: (object: WorldObject) => void;
     commitChanges: (
         updatedObjects?: WorldObject[],
         deletedObjectIds?: string[]
-    ) => void
-) {
+    ) => void;
+    getCurrentTextObject: () => TextObject | null;
+}
+
+export function useTextEditing({
+    updateOrAddObject,
+    commitChanges,
+    getCurrentTextObject,
+}: UseTextEditingProps) {
+    const canvasContext = useContext(CanvasContext);
+
     const [editingText, setEditingText] = useState<{
         object: TextObject;
         cursorVisible: boolean;
@@ -48,8 +59,24 @@ export function useTextEditing(
     useEffect(() => {
         if (!editingText) return;
 
-        const handleMouseDown = () => {
-            closeTextEditor();
+        const handleMouseDown = (e: MouseEvent) => {
+            const mouseWorld = screenToWorld(
+                e as any,
+                canvasContext.local_camera
+            );
+            const current = getCurrentTextObject(); // fix stale colsure problem by using an explicit getter
+            if (!current) return;
+            const { boxPosition, boxSize } = current;
+
+            const insideBox =
+                mouseWorld.x >= boxPosition.x &&
+                mouseWorld.x <= boxPosition.x + boxSize.x &&
+                mouseWorld.y >= boxPosition.y &&
+                mouseWorld.y <= boxPosition.y + boxSize.y;
+
+            if (!insideBox) {
+                closeTextEditor();
+            }
         };
 
         const handleKeyDown = (e: KeyboardEvent) => {
