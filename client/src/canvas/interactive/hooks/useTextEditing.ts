@@ -19,6 +19,7 @@ export function useTextEditing({
 }: UseTextEditingProps) {
     const canvasContext = useContext(CanvasContext);
 
+    // live pointer to the latest object, otherwise whenever we get the object it'll only reflect the stale value captured at useEffect
     const getCurrentTextObjectRef = useRef(getCurrentTextObject);
     useEffect(() => {
         getCurrentTextObjectRef.current = getCurrentTextObject;
