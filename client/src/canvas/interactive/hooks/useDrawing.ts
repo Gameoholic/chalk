@@ -37,7 +37,7 @@ interface useDrawingInteractionsProps {
     >;
 }
 
-export function useDrawingInteractions({
+export function useDrawing({
     updateOrAddObject,
     removeObject,
     commitObjectChanges,

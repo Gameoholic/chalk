@@ -4,11 +4,11 @@ import CanvasRenderer from "../renderer/CanvasRenderer";
 import { WorldObject } from "../../types/canvas";
 import { CanvasContext } from "../../types/context/CanvasContext";
 import { useTextEditing } from "./hooks/useTextEditing";
-import { useDrawingInteractions } from "./hooks/useDrawing";
+import { useDrawing } from "./hooks/useDrawing";
 import {
     CameraDragInteraction,
     DrawingInteraction,
-    useHandleMouseEvents,
+    useMouseEvents,
 } from "./hooks/useMouseEvents";
 import { useCamera } from "./hooks/useCamera";
 import { useObjectSelection } from "./hooks/useObjectSelection";
@@ -108,7 +108,7 @@ function CanvasInteractive({
     const {
         handleDrawingInteraction_MouseMove,
         handleDrawingInteraction_MouseUp,
-    } = useDrawingInteractions({
+    } = useDrawing({
         updateOrAddObject,
         removeObject,
         commitObjectChanges: _commitObjectChanges,
@@ -155,7 +155,7 @@ function CanvasInteractive({
         handleMouseUp,
         handleWheel,
         handleContextMenu,
-    } = useHandleMouseEvents({
+    } = useMouseEvents({
         handleDrawingInteraction_MouseMove,
         handleDrawingInteraction_MouseUp,
         handleCameraDragInteraction_MouseMove,

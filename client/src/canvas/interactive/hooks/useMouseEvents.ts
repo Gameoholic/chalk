@@ -63,7 +63,7 @@ export interface SelectedObjectDragInteraction extends Interaction {
     originalObjects: WorldObject[];
 }
 
-interface useHandleMouseEventsProps {
+interface useMouseEventsProps {
     handleDrawingInteraction_MouseMove: (
         e: React.MouseEvent<HTMLCanvasElement>,
         interaction: React.RefObject<DrawingInteraction>
@@ -107,7 +107,7 @@ interface useHandleMouseEventsProps {
 /**
  * Delegates mouse events into events
  */
-export function useHandleMouseEvents({
+export function useMouseEvents({
     handleDrawingInteraction_MouseMove,
     handleDrawingInteraction_MouseUp,
     handleCameraDragInteraction_MouseMove,
@@ -122,7 +122,7 @@ export function useHandleMouseEvents({
     handleDeselectAllObjects,
     selectedObjectIds,
     selectedObjects,
-}: useHandleMouseEventsProps) {
+}: useMouseEventsProps) {
     const canvasContext = useContext(CanvasContext);
     const tool: Tool = canvasContext.local_tool;
     const camera: Camera = canvasContext.local_camera;
