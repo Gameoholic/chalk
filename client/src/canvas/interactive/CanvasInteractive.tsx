@@ -113,6 +113,7 @@ function CanvasInteractive({
         removeObject,
         commitObjectChanges: _commitObjectChanges,
         setDrawingTextBoxObjectId,
+        openTextEditor,
     });
 
     // Handle camera drag interactions hook

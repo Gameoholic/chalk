@@ -34,6 +34,7 @@ export function useTextEditing(
             commitChanges([editingText.object], undefined);
         }
         setEditingText(null);
+        setDrawingTextBoxObjectId(null);
     }
 
     useEffect(() => {
