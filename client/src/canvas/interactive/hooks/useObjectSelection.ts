@@ -4,7 +4,7 @@ import {
     SelectedObjectDragInteraction,
 } from "./useMouseEvents";
 import { CanvasContext } from "../../../types/context/CanvasContext";
-import { Vec2, WorldObject } from "../../../types/canvas";
+import { TextObject, Vec2, WorldObject } from "../../../types/canvas";
 import { screenToWorld } from "../utils/canvasCoords";
 import { findObjectsInArea, getBoundingBox } from "../utils/canvasHitTesting";
 
@@ -14,6 +14,7 @@ interface UseObjectSelectionProps {
         updatedOrNewObjects?: WorldObject[],
         deletedObjectIds?: string[]
     ) => void;
+    openTextEditorForSelectedObject: (object: TextObject) => void;
 }
 
 /**
@@ -22,6 +23,7 @@ interface UseObjectSelectionProps {
 export function useObjectSelection({
     updateOrAddObject,
     commitObjectChanges,
+    openTextEditorForSelectedObject,
 }: UseObjectSelectionProps) {
     const canvasContext = useContext(CanvasContext);
     const camera = canvasContext.local_camera;
@@ -171,6 +173,9 @@ export function useObjectSelection({
 
     function handleSingleObjectSelected(object: WorldObject) {
         setSelectedObjectIds(new Set([object.id]));
+        if (object.type === "text") {
+            openTextEditorForSelectedObject(object as TextObject);
+        }
     }
 
     // This is for shift clicking objects

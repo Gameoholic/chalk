@@ -12,6 +12,7 @@ export function useTextEditing(
         object: TextObject;
         cursorVisible: boolean;
     } | null>(null);
+    // textbox state is separate to editingText, since it can be triggered via a drawingInteraction before the text editor itself opens
     const [drawingTextBoxObjectId, setDrawingTextBoxObjectId] = useState<
         string | null
     >(null);
@@ -25,6 +26,7 @@ export function useTextEditing(
             );
         }, 500);
         setEditingText({ object, cursorVisible: true });
+        setDrawingTextBoxObjectId(object.id);
     }
 
     function closeTextEditor() {
@@ -117,10 +119,16 @@ export function useTextEditing(
         };
 
         window.addEventListener("keydown", handleKeyDown);
-        window.addEventListener("mousedown", handleMouseDown);
+
+        // Delay the mousedown event, because when clicking to select object this function is called,
+        // and then mouse up and then this fires, so the text editor opens and then closes immediately.
+        const timeoutId = window.setTimeout(() => {
+            window.addEventListener("mousedown", handleMouseDown);
+        }, 0);
         return () => {
             window.removeEventListener("keydown", handleKeyDown);
             window.removeEventListener("mousedown", handleMouseDown);
+            window.clearTimeout(timeoutId);
         };
     }, [editingText]);
 

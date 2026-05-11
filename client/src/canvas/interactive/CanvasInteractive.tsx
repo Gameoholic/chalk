@@ -137,6 +137,7 @@ function CanvasInteractive({
         handleAdditionalSingleObjectSelected,
         handleDeselectAllObjects,
     } = useObjectSelection({
+        openTextEditorForSelectedObject: openTextEditor,
         updateOrAddObject,
         commitObjectChanges: _commitObjectChanges,
     });
