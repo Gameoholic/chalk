@@ -79,26 +79,11 @@ function CanvasInteractive({
         commitObjectChanges(updatedObjects, deletedObjectIds);
     }
 
-    // Server-synced objects and local unsaved objects and locally deleted objects, render all
-    const allObjects = useMemo(() => {
-        const map = new Map<string, WorldObject>();
-        canvasContext
-            .getCurrentBoard()
-            .objects.forEach((obj) => map.set(obj.id, obj));
-        canvasContext.local_unsavedObjects.forEach((obj) =>
-            map.set(obj.id, obj)
-        );
-        canvasContext.local_deletedObjectIds.forEach((id) => map.delete(id));
-        return map;
-    }, [
-        canvasContext.getCurrentBoard().objects,
-        canvasContext.local_unsavedObjects,
-        canvasContext.local_deletedObjectIds,
-    ]);
-
     function getCurrentTextObject(): TextObject | null {
         return editingText
-            ? (allObjects.get(editingText.objectId) as TextObject | null)
+            ? (canvasContext.allObjects.get(
+                  editingText.objectId
+              ) as TextObject | null)
             : null;
     }
 
@@ -155,9 +140,9 @@ function CanvasInteractive({
     const selectedObjects = useMemo(
         () =>
             [...selectedObjectIds]
-                .map((id) => allObjects.get(id))
+                .map((id) => canvasContext.allObjects.get(id))
                 .filter(Boolean) as WorldObject[],
-        [selectedObjectIds, allObjects]
+        [selectedObjectIds, canvasContext.allObjects]
     );
 
     // Handle mouse events hook - main method which will handle the interactions from before
@@ -188,7 +173,7 @@ function CanvasInteractive({
         <div ref={observe} className="h-full w-full touch-none">
             <CanvasRenderer
                 camera={canvasContext.local_camera}
-                objects={allObjects}
+                objects={canvasContext.allObjects}
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
