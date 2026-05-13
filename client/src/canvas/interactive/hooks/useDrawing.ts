@@ -107,7 +107,7 @@ export function useDrawing({
 
         // hikakin todo fix - what about local_deletedObjects? we should have more centralized way of getting all UPDATED object states...
         function findObjectAtCoords(coords: Vec2): WorldObject | null {
-            return hitTest([...canvasContext.getAllObjects().values()], coords);
+            return hitTest([...canvasContext.allObjects.values()], coords);
         }
 
         if (eraserTool.eraserMode === "object") {

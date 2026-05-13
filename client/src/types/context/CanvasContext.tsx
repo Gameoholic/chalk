@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { BoardData } from "../data";
 import { Camera, Vec2, WorldObject } from "../canvas";
 import { SessionContext } from "./SessionContext";
@@ -43,8 +43,8 @@ interface CanvasContextType {
     getCurrentBoard: () => BoardData;
     updateCurrentBoard: (boardData: BoardData) => void;
 
-    // Get all objects including client and server changes
-    getAllObjects: () => Map<string, WorldObject>;
+    // Get all objects including client and server changes (useMemo internally)
+    allObjects: Map<string, WorldObject>;
 }
 
 export const CanvasContext = createContext<CanvasContextType>(null!);
@@ -99,13 +99,17 @@ export function CanvasContextProvider({
     const [local_tool, setLocalTool] = useState<Tool>(defaultTool);
 
     // Server-synced objects and local unsaved objects and locally deleted objects. Basically, most updated objects "state"
-    function getAllObjects(): Map<string, WorldObject> {
+    const allObjects = useMemo(() => {
         const map = new Map<string, WorldObject>();
         getCurrentBoard().objects.forEach((obj) => map.set(obj.id, obj));
         local_unsavedObjects.forEach((obj) => map.set(obj.id, obj));
         local_deletedObjectIds.forEach((id) => map.delete(id));
         return map;
-    }
+    }, [
+        getCurrentBoard().objects,
+        local_unsavedObjects,
+        local_deletedObjectIds,
+    ]);
 
     // --- Server-Side Sync Logic ---
     function updateCurrentBoard(boardData: BoardData) {
@@ -180,7 +184,7 @@ export function CanvasContextProvider({
                 onCurrentBoardSaved,
                 getCurrentBoard,
                 updateCurrentBoard,
-                getAllObjects,
+                allObjects,
             }}
         >
             {children}
