@@ -42,6 +42,9 @@ interface CanvasContextType {
     ) => void;
     getCurrentBoard: () => BoardData;
     updateCurrentBoard: (boardData: BoardData) => void;
+
+    // Get all objects including client and server changes
+    getAllObjects: () => Map<string, WorldObject>;
 }
 
 export const CanvasContext = createContext<CanvasContextType>(null!);
@@ -94,6 +97,15 @@ export function CanvasContextProvider({
     });
 
     const [local_tool, setLocalTool] = useState<Tool>(defaultTool);
+
+    // Server-synced objects and local unsaved objects and locally deleted objects. Basically, most updated objects "state"
+    function getAllObjects(): Map<string, WorldObject> {
+        const map = new Map<string, WorldObject>();
+        getCurrentBoard().objects.forEach((obj) => map.set(obj.id, obj));
+        local_unsavedObjects.forEach((obj) => map.set(obj.id, obj));
+        local_deletedObjectIds.forEach((id) => map.delete(id));
+        return map;
+    }
 
     // --- Server-Side Sync Logic ---
     function updateCurrentBoard(boardData: BoardData) {
@@ -168,6 +180,7 @@ export function CanvasContextProvider({
                 onCurrentBoardSaved,
                 getCurrentBoard,
                 updateCurrentBoard,
+                getAllObjects,
             }}
         >
             {children}
