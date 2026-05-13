@@ -62,10 +62,7 @@ export function useObjectSelection({
         if (!interaction.current.boxStart || !interaction.current.boxEnd)
             return;
 
-        const allObjects = [
-            ...canvasContext.getCurrentBoard().objects,
-            ...canvasContext.local_unsavedObjects,
-        ]; // hikakin todo fix - we should have more centralized way of getting all UPDATED object states...
+        const allObjects = [...canvasContext.allObjects.values()];
 
         const selectionMin: Vec2 = {
             x: Math.min(

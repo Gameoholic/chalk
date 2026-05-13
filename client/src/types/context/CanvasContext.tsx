@@ -98,7 +98,7 @@ export function CanvasContextProvider({
 
     const [local_tool, setLocalTool] = useState<Tool>(defaultTool);
 
-    // Server-synced objects and local unsaved objects and locally deleted objects. Basically, most updated objects "state"
+    // Server-synced objects and local unsaved objects and locally deleted objects. Basically, most recent objects "state"
     const allObjects = useMemo(() => {
         const map = new Map<string, WorldObject>();
         getCurrentBoard().objects.forEach((obj) => map.set(obj.id, obj));

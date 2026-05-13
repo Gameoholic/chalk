@@ -105,7 +105,6 @@ export function useDrawing({
         const mouseWorldCoords: Vec2 = screenToWorld(e, camera);
         interaction.current.path.push(mouseWorldCoords);
 
-        // hikakin todo fix - what about local_deletedObjects? we should have more centralized way of getting all UPDATED object states...
         function findObjectAtCoords(coords: Vec2): WorldObject | null {
             return hitTest([...canvasContext.allObjects.values()], coords);
         }
