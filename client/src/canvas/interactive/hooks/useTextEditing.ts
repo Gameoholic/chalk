@@ -67,6 +67,11 @@ export function useTextEditing({
         if (!editingText) return;
 
         const handleMouseDown = (e: MouseEvent) => {
+            // If clicked toolbar, don't close text editor
+            if ((e.target as Element)?.closest("[data-edit-object-toolbar]")) {
+                return;
+            }
+
             const mouseWorld = screenToWorld(
                 e as any,
                 canvasContext.local_camera
@@ -81,6 +86,7 @@ export function useTextEditing({
                 mouseWorld.y >= boxPosition.y &&
                 mouseWorld.y <= boxPosition.y + boxSize.y;
 
+            // If click happened outside the textbox, close text editor
             if (!insideBox) {
                 closeTextEditor();
             }

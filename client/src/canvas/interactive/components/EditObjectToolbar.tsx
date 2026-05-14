@@ -192,6 +192,7 @@ export function EditObjectToolbar({
 
     return (
         <div
+            data-edit-object-toolbar
             style={{
                 position: "absolute",
                 left: centerX,
