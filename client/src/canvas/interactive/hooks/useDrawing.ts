@@ -35,7 +35,7 @@ interface useDrawingInteractionsProps {
     setDrawingTextBoxObjectId: React.Dispatch<
         React.SetStateAction<string | null>
     >;
-    openTextEditor: (object: TextObject) => void;
+    selectTextObjectForEditing: (object: TextObject) => void;
 }
 
 export function useDrawing({
@@ -43,7 +43,7 @@ export function useDrawing({
     removeObject,
     commitObjectChanges,
     setDrawingTextBoxObjectId,
-    openTextEditor,
+    selectTextObjectForEditing,
 }: useDrawingInteractionsProps) {
     const canvasContext = useContext(CanvasContext);
     const camera = canvasContext.local_camera;
@@ -72,7 +72,9 @@ export function useDrawing({
         interaction: React.RefObject<DrawingInteraction>
     ) {
         if (interaction.current?.tool.type === "text") {
-            openTextEditor(interaction.current.latestObject as TextObject);
+            selectTextObjectForEditing(
+                interaction.current.latestObject as TextObject
+            );
         }
     }
 

@@ -99,27 +99,6 @@ function CanvasInteractive({
         getCurrentTextObject,
     });
 
-    // Handle drawing interactions hook
-    const {
-        handleDrawingInteraction_MouseMove,
-        handleDrawingInteraction_MouseUp,
-    } = useDrawing({
-        updateOrAddObject,
-        removeObject,
-        commitObjectChanges: _commitObjectChanges,
-        setDrawingTextBoxObjectId,
-        openTextEditor,
-    });
-
-    // Handle camera drag interactions hook
-    const {
-        handleCameraDragInteraction_MouseMove,
-        handleCameraDragInteraction_MouseUp,
-        handleCamera_Wheel,
-    } = useCamera({
-        commitCamera,
-    });
-
     // Handle object selection hook
     const {
         handleMultipleObjectSelectionBoxInteraction_MouseMove,
@@ -135,6 +114,27 @@ function CanvasInteractive({
         openTextEditorForSelectedObject: openTextEditor,
         updateOrAddObject,
         commitObjectChanges: _commitObjectChanges,
+    });
+
+    // Handle drawing interactions hook
+    const {
+        handleDrawingInteraction_MouseMove,
+        handleDrawingInteraction_MouseUp,
+    } = useDrawing({
+        updateOrAddObject,
+        removeObject,
+        commitObjectChanges: _commitObjectChanges,
+        setDrawingTextBoxObjectId,
+        selectTextObjectForEditing: handleSingleObjectSelected,
+    });
+
+    // Handle camera drag interactions hook
+    const {
+        handleCameraDragInteraction_MouseMove,
+        handleCameraDragInteraction_MouseUp,
+        handleCamera_Wheel,
+    } = useCamera({
+        commitCamera,
     });
 
     const selectedObjects = useMemo(
