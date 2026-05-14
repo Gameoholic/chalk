@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, { useContext, useMemo, useState } from "react";
 import useDimensions from "react-cool-dimensions";
 import CanvasRenderer from "../renderer/CanvasRenderer";
 import { TextObject, WorldObject } from "../../types/canvas";
@@ -79,25 +79,10 @@ function CanvasInteractive({
         commitObjectChanges(updatedObjects, deletedObjectIds);
     }
 
-    function getCurrentTextObject(): TextObject | null {
-        return editingText
-            ? (canvasContext.allObjects.get(
-                  editingText.objectId
-              ) as TextObject | null)
-            : null;
-    }
-
-    // Handle text editing
-    const {
-        editingText,
-        drawingTextBoxObjectId,
-        setDrawingTextBoxObjectId,
-        openTextEditor,
-    } = useTextEditing({
-        updateOrAddObject,
-        commitChanges: _commitObjectChanges,
-        getCurrentTextObject,
-    });
+    // drawingTextBoxObjectId tracks the textbox being drag-created; cleared once drawing finishes and object becomes selected
+    const [drawingTextBoxObjectId, setDrawingTextBoxObjectId] = useState<
+        string | null
+    >(null);
 
     // Handle object selection hook
     const {
@@ -111,9 +96,31 @@ function CanvasInteractive({
         handleAdditionalSingleObjectSelected,
         handleDeselectAllObjects,
     } = useObjectSelection({
-        openTextEditorForSelectedObject: openTextEditor,
         updateOrAddObject,
         commitObjectChanges: _commitObjectChanges,
+    });
+
+    const selectedObjects = useMemo(
+        () =>
+            [...selectedObjectIds]
+                .map((id) => canvasContext.allObjects.get(id))
+                .filter(Boolean) as WorldObject[],
+        [selectedObjectIds, canvasContext.allObjects]
+    );
+
+    // Derive editing state from selection — single selected TextObject = editing
+    const editingTextObject = useMemo<TextObject | null>(() => {
+        if (selectedObjects.length !== 1) return null;
+        const only = selectedObjects[0];
+        return only.type === "text" ? (only as TextObject) : null;
+    }, [selectedObjects]);
+
+    // Handle text editing
+    const { cursorVisible } = useTextEditing({
+        editingTextObject,
+        updateOrAddObject,
+        commitChanges: _commitObjectChanges,
+        handleDeselectAllObjects,
     });
 
     // Handle drawing interactions hook
@@ -125,7 +132,10 @@ function CanvasInteractive({
         removeObject,
         commitObjectChanges: _commitObjectChanges,
         setDrawingTextBoxObjectId,
-        selectTextObjectForEditing: handleSingleObjectSelected,
+        selectTextObjectForEditing: (object) => {
+            handleSingleObjectSelected(object);
+            setDrawingTextBoxObjectId(null);
+        },
     });
 
     // Handle camera drag interactions hook
@@ -136,14 +146,6 @@ function CanvasInteractive({
     } = useCamera({
         commitCamera,
     });
-
-    const selectedObjects = useMemo(
-        () =>
-            [...selectedObjectIds]
-                .map((id) => canvasContext.allObjects.get(id))
-                .filter(Boolean) as WorldObject[],
-        [selectedObjectIds, canvasContext.allObjects]
-    );
 
     // Handle mouse events hook - main method which will handle the interactions from before
     const {
@@ -180,11 +182,11 @@ function CanvasInteractive({
                 onWheel={handleWheel}
                 onContextMenu={handleContextMenu}
                 textCursor={
-                    editingText
+                    editingTextObject
                         ? {
-                              objectId: editingText.objectId,
-                              index: getCurrentTextObject()?.text.length ?? 0,
-                              visible: editingText.cursorVisible,
+                              objectId: editingTextObject.id,
+                              index: editingTextObject.text.length,
+                              visible: cursorVisible,
                           }
                         : undefined
                 }

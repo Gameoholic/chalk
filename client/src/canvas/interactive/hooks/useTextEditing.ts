@@ -1,118 +1,75 @@
-import { useContext, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { TextObject, Vec2, WorldObject } from "../../../types/canvas";
-import { screenToWorld } from "../utils/canvasCoords";
-import { CanvasContext } from "../../../types/context/CanvasContext";
 
 interface UseTextEditingProps {
+    editingTextObject: TextObject | null;
     updateOrAddObject: (object: WorldObject) => void;
     commitChanges: (
         updatedObjects?: WorldObject[],
         deletedObjectIds?: string[]
     ) => void;
-    getCurrentTextObject: () => TextObject | null;
+    handleDeselectAllObjects: () => void;
 }
 
 export function useTextEditing({
+    editingTextObject,
     updateOrAddObject,
     commitChanges,
-    getCurrentTextObject,
+    handleDeselectAllObjects,
 }: UseTextEditingProps) {
-    const canvasContext = useContext(CanvasContext);
-
-    // live pointer to the latest object, otherwise whenever we get the object it'll only reflect the stale value captured at useEffect
-    const getCurrentTextObjectRef = useRef(getCurrentTextObject);
-    useEffect(() => {
-        getCurrentTextObjectRef.current = getCurrentTextObject;
-    });
-
-    const [editingText, setEditingText] = useState<{
-        objectId: string;
-        cursorVisible: boolean;
-    } | null>(null);
-    // textbox state is separate to editingText, since it can be triggered via a drawingInteraction before the text editor itself opens
-    const [drawingTextBoxObjectId, setDrawingTextBoxObjectId] = useState<
-        string | null
-    >(null);
+    const [cursorVisible, setCursorVisible] = useState(true);
     const cursorBlinkIntervalRef = useRef<number | undefined>(undefined);
 
-    function openTextEditor(object: TextObject) {
-        clearInterval(cursorBlinkIntervalRef.current);
-        cursorBlinkIntervalRef.current = window.setInterval(() => {
-            setEditingText((prev) =>
-                prev ? { ...prev, cursorVisible: !prev.cursorVisible } : prev
-            );
-        }, 500);
-        setEditingText({ objectId: object.id, cursorVisible: true });
-        setDrawingTextBoxObjectId(object.id);
-    }
+    // Latest-ref so the keydown listener always reads the freshest object
+    // even when the parent re-derives editingTextObject between effect runs.
+    const editingTextObjectRef = useRef<TextObject | null>(editingTextObject);
+    useEffect(() => {
+        editingTextObjectRef.current = editingTextObject;
+    });
 
-    function closeTextEditor() {
-        clearInterval(cursorBlinkIntervalRef.current);
-        const current = getCurrentTextObjectRef.current(); // stale closure fix
-        if (editingText && current) {
-            updateOrAddObject(current);
-            commitChanges([current], undefined);
+    // When editing ends (or switches to a different object), commit the
+    // last-known state of the object we were just editing.
+    const previousEditingTextObjectRef = useRef<TextObject | null>(null);
+    useEffect(() => {
+        const prev = previousEditingTextObjectRef.current;
+        if (prev && prev.id !== editingTextObject?.id) {
+            commitChanges([prev], undefined);
         }
-        setEditingText(null);
-        setDrawingTextBoxObjectId(null);
-    }
+        previousEditingTextObjectRef.current = editingTextObject;
+    }, [editingTextObject]);
 
+    // Cursor blink — runs only while an object is being edited
     useEffect(() => {
-        return () => {
+        if (!editingTextObject) {
             clearInterval(cursorBlinkIntervalRef.current);
-        };
-    }, []);
+            return;
+        }
+        setCursorVisible(true);
+        cursorBlinkIntervalRef.current = window.setInterval(() => {
+            setCursorVisible((v) => !v);
+        }, 500);
+        return () => clearInterval(cursorBlinkIntervalRef.current);
+    }, [editingTextObject?.id]);
 
+    // Keyboard input — re-subscribes when the edited object's id changes
     useEffect(() => {
-        if (!editingText) return;
-
-        const handleMouseDown = (e: MouseEvent) => {
-            // If clicked toolbar, don't close text editor
-            if ((e.target as Element)?.closest("[data-edit-object-toolbar]")) {
-                return;
-            }
-
-            const mouseWorld = screenToWorld(
-                e as any,
-                canvasContext.local_camera
-            );
-            const current = getCurrentTextObjectRef.current(); // fix stale colsure problem by using an explicit getter
-            if (!current) return;
-            const { boxPosition, boxSize } = current;
-
-            const insideBox =
-                mouseWorld.x >= boxPosition.x &&
-                mouseWorld.x <= boxPosition.x + boxSize.x &&
-                mouseWorld.y >= boxPosition.y &&
-                mouseWorld.y <= boxPosition.y + boxSize.y;
-
-            // If click happened outside the textbox, close text editor
-            if (!insideBox) {
-                closeTextEditor();
-            }
-        };
+        if (!editingTextObject) return;
 
         const handleKeyDown = (e: KeyboardEvent) => {
-            // Reset blink so cursor is always visible right after a keypress
+            // Reset blink so cursor stays visible right after a keypress
             clearInterval(cursorBlinkIntervalRef.current);
+            setCursorVisible(true);
             cursorBlinkIntervalRef.current = window.setInterval(() => {
-                setEditingText((prev) =>
-                    prev
-                        ? { ...prev, cursorVisible: !prev.cursorVisible }
-                        : prev
-                );
+                setCursorVisible((v) => !v);
             }, 500);
-            setEditingText((prev) =>
-                prev ? { ...prev, cursorVisible: true } : prev
-            );
 
-            const current = getCurrentTextObjectRef.current(); // stale closure fix
+            const current = editingTextObjectRef.current;
             if (!current) return;
             const text = current.text;
             const cursorIndex = current.text.length;
 
             if (e.key === "Escape") {
-                closeTextEditor();
+                handleDeselectAllObjects();
                 return;
             }
 
@@ -156,23 +113,12 @@ export function useTextEditing({
                 boxSize: measureTextBox(newText, current),
             };
 
-            setEditingText({ objectId: current.id, cursorVisible: true });
             updateOrAddObject(updatedObject);
         };
 
         window.addEventListener("keydown", handleKeyDown);
-
-        // Delay the mousedown event, because when clicking to select object this function is called,
-        // and then mouse up and then this fires, so the text editor opens and then closes immediately.
-        const timeoutId = window.setTimeout(() => {
-            window.addEventListener("mousedown", handleMouseDown);
-        }, 0);
-        return () => {
-            window.removeEventListener("keydown", handleKeyDown);
-            window.removeEventListener("mousedown", handleMouseDown);
-            window.clearTimeout(timeoutId);
-        };
-    }, [editingText]);
+        return () => window.removeEventListener("keydown", handleKeyDown);
+    }, [editingTextObject?.id]);
 
     function measureTextBox(text: string, obj: TextObject): Vec2 {
         const canvas = document.createElement("canvas");
@@ -197,7 +143,6 @@ export function useTextEditing({
         const requiredW = longestLine + 16;
         const requiredH = lines.length * lineHeightPx + 8;
 
-        // Expand if needed, but never shrink box
         return {
             x: Math.max(requiredW, obj.boxSize.x),
             y: Math.max(requiredH, obj.boxSize.y),
@@ -205,11 +150,7 @@ export function useTextEditing({
     }
 
     return {
-        editingText,
-        drawingTextBoxObjectId,
-        setDrawingTextBoxObjectId,
-        openTextEditor,
-        closeTextEditor,
+        cursorVisible,
         measureTextBox,
     };
 }
