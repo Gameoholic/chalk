@@ -99,3 +99,41 @@ export function findObjectsInArea(
         );
     });
 }
+
+// checks if mouse world coordinates select one of the object's corners (only text for now.)
+export function hitTestCorner(
+    mouseWorld: Vec2,
+    object: WorldObject,
+    cameraZoom: number
+): "tl" | "tr" | "bl" | "br" | null {
+    if (object.type !== "text") return null;
+
+    // 10 screen pixels converted to world units
+    const tolerance = 10 / cameraZoom;
+
+    const { boxPosition, boxSize } = object;
+    const corners: Array<{
+        name: "tl" | "tr" | "bl" | "br";
+        x: number;
+        y: number;
+    }> = [
+        { name: "tl", x: boxPosition.x, y: boxPosition.y },
+        { name: "tr", x: boxPosition.x + boxSize.x, y: boxPosition.y },
+        { name: "bl", x: boxPosition.x, y: boxPosition.y + boxSize.y },
+        {
+            name: "br",
+            x: boxPosition.x + boxSize.x,
+            y: boxPosition.y + boxSize.y,
+        },
+    ];
+
+    for (const corner of corners) {
+        if (
+            Math.abs(mouseWorld.x - corner.x) <= tolerance &&
+            Math.abs(mouseWorld.y - corner.y) <= tolerance
+        ) {
+            return corner.name;
+        }
+    }
+    return null;
+}

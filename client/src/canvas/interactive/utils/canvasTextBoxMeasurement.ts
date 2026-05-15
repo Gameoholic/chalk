@@ -1,6 +1,6 @@
 import { TextObject, Vec2 } from "../../../types/canvas";
 
-export function measureTextBox(text: string, obj: TextObject): Vec2 {
+export function getMinTextBoxSize(text: string, obj: TextObject): Vec2 {
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d")!;
     const style = [
@@ -23,8 +23,14 @@ export function measureTextBox(text: string, obj: TextObject): Vec2 {
     const requiredW = longestLine + 16;
     const requiredH = lines.length * lineHeightPx + 8;
 
+    return { x: requiredW, y: requiredH };
+}
+
+// never shrink below min textbox size
+export function measureTextBox(text: string, obj: TextObject): Vec2 {
+    const min = getMinTextBoxSize(text, obj);
     return {
-        x: Math.max(requiredW, obj.boxSize.x),
-        y: Math.max(requiredH, obj.boxSize.y),
+        x: Math.max(min.x, obj.boxSize.x),
+        y: Math.max(min.y, obj.boxSize.y),
     };
 }

@@ -24,6 +24,8 @@ interface CanvasRendererProps {
     onTouchEnd?: React.TouchEventHandler<HTMLCanvasElement>;
     selectedObjectIds: Set<string>;
     multipleObjectSelectionBox?: { start: Vec2; end: Vec2 } | null;
+    // CSS cursor (for resizing object corners, etc.)
+    cursor?: string;
 }
 
 // Only renders passed objects and processes passed camera position and zoom
@@ -36,6 +38,7 @@ function CanvasRenderer({
     drawingTextBoxObjectId,
     selectedObjectIds,
     multipleObjectSelectionBox,
+    cursor,
     ...handlers
 }: CanvasRendererProps) {
     const antiAliasing = useContext(AntiAliasingContext).value;
@@ -91,7 +94,12 @@ function CanvasRenderer({
                 width={camera.size.x}
                 height={camera.size.y}
                 zoom={camera.zoom}
-                style={{ position: "absolute", top: 0, left: 0 }}
+                style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    cursor: cursor ?? "default",
+                }}
                 {...handlers}
             />
         </div>

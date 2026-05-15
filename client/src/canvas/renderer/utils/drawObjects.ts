@@ -78,6 +78,43 @@ function getObjectBoundingBox(
     }
 }
 
+function drawTextResizeHandles(
+    ctx: CanvasRenderingContext2D,
+    object: TextObject,
+    camera: Camera
+) {
+    const halfHandle = 4 / camera.zoom;
+    const corners: Vec2[] = [
+        { x: object.boxPosition.x, y: object.boxPosition.y },
+        { x: object.boxPosition.x + object.boxSize.x, y: object.boxPosition.y },
+        { x: object.boxPosition.x, y: object.boxPosition.y + object.boxSize.y },
+        {
+            x: object.boxPosition.x + object.boxSize.x,
+            y: object.boxPosition.y + object.boxSize.y,
+        },
+    ];
+
+    ctx.save();
+    ctx.fillStyle = "#ffffff";
+    ctx.strokeStyle = "#3b82f6";
+    ctx.lineWidth = 1.5 / camera.zoom;
+    ctx.setLineDash([]);
+    corners.forEach((corner) => {
+        const cx = corner.x - camera.position.x;
+        const cy = corner.y - camera.position.y;
+        ctx.beginPath();
+        ctx.rect(
+            cx - halfHandle,
+            cy - halfHandle,
+            halfHandle * 2,
+            halfHandle * 2
+        );
+        ctx.fill();
+        ctx.stroke();
+    });
+    ctx.restore();
+}
+
 export function drawSelectionHighlight(
     ctx: CanvasRenderingContext2D,
     obj: WorldObject,
@@ -173,6 +210,11 @@ export function drawObjects(
         // draw highlight if object is selected
         if (selectedObjectIds.has(object.id)) {
             drawSelectionHighlight(ctx, object, camera);
+        }
+
+        // draw corners on text object if selected
+        if (selectedObjectIds.has(object.id) && object.type === "text") {
+            drawTextResizeHandles(ctx, object, camera);
         }
     });
 }

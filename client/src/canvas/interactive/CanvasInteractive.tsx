@@ -90,6 +90,8 @@ function CanvasInteractive({
         handleMultipleObjectSelectionBoxInteraction_MouseUp,
         handleSelectedObjectDragInteraction_MouseMove,
         handleSelectedObjectDragInteraction_MouseUp,
+        handleSelectedObjectResizeInteraction_MouseMove,
+        handleSelectedObjectResizeInteraction_MouseUp,
         selectedObjectIds,
         multipleObjectSelectionBox,
         handleSingleObjectSelected,
@@ -154,6 +156,8 @@ function CanvasInteractive({
         handleMouseUp,
         handleWheel,
         handleContextMenu,
+        // what to display as the cursor mouse (resize text object corners)
+        cursor,
     } = useMouseEvents({
         handleDrawingInteraction_MouseMove,
         handleDrawingInteraction_MouseUp,
@@ -167,6 +171,8 @@ function CanvasInteractive({
         handleMultipleObjectSelectionBoxInteraction_MouseUp,
         handleSelectedObjectDragInteraction_MouseMove,
         handleSelectedObjectDragInteraction_MouseUp,
+        handleSelectedObjectResizeInteraction_MouseMove,
+        handleSelectedObjectResizeInteraction_MouseUp,
         selectedObjectIds,
         selectedObjects,
     });
@@ -193,6 +199,7 @@ function CanvasInteractive({
                 drawingTextBoxObjectId={drawingTextBoxObjectId}
                 multipleObjectSelectionBox={multipleObjectSelectionBox}
                 selectedObjectIds={selectedObjectIds}
+                cursor={cursor}
             />
 
             {selectedObjects.length > 0 && (

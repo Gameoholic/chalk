@@ -2,11 +2,13 @@ import React, { useContext, useEffect, useRef, useState } from "react";
 import {
     MultipleObjectSelectionBoxInteraction,
     SelectedObjectDragInteraction,
+    SelectedObjectResizeInteraction,
 } from "./useMouseEvents";
 import { CanvasContext } from "../../../types/context/CanvasContext";
-import { Vec2, WorldObject } from "../../../types/canvas";
+import { TextObject, Vec2, WorldObject } from "../../../types/canvas";
 import { screenToWorld } from "../utils/canvasCoords";
 import { findObjectsInArea, getBoundingBox } from "../utils/canvasHitTesting";
+import { getMinTextBoxSize } from "../utils/canvasTextBoxMeasurement";
 
 interface UseObjectSelectionProps {
     updateOrAddObject: (object: WorldObject) => void;
@@ -123,6 +125,77 @@ export function useObjectSelection({
         commitObjectChanges(updated, undefined);
     }
 
+    function handleSelectedObjectResizeInteraction_MouseMove(
+        e: React.MouseEvent<HTMLCanvasElement>,
+        interaction: React.RefObject<SelectedObjectResizeInteraction>
+    ) {
+        const currentMouseWorldPos = screenToWorld(e, camera);
+        const dx = currentMouseWorldPos.x - interaction.current.startMousePos.x;
+        const dy = currentMouseWorldPos.y - interaction.current.startMousePos.y;
+
+        const original = interaction.current.originalObject;
+        if (original.type !== "text") return; // only text supported for resizing for now.
+
+        const text = original as TextObject;
+        const minSize = getMinTextBoxSize(text.text, text);
+
+        let newX = text.boxPosition.x;
+        let newY = text.boxPosition.y;
+        let newW = text.boxSize.x;
+        let newH = text.boxSize.y;
+
+        const corner = interaction.current.corner;
+        if (corner === "br") {
+            newW = text.boxSize.x + dx;
+            newH = text.boxSize.y + dy;
+        } else if (corner === "tr") {
+            newW = text.boxSize.x + dx;
+            newH = text.boxSize.y - dy;
+            newY = text.boxPosition.y + dy;
+        } else if (corner === "bl") {
+            newW = text.boxSize.x - dx;
+            newH = text.boxSize.y + dy;
+            newX = text.boxPosition.x + dx;
+        } else if (corner === "tl") {
+            newW = text.boxSize.x - dx;
+            newH = text.boxSize.y - dy;
+            newX = text.boxPosition.x + dx;
+            newY = text.boxPosition.y + dy;
+        }
+
+        // clamp dimensions
+        if (newW < minSize.x) {
+            newW = minSize.x;
+            if (corner === "tl" || corner === "bl") {
+                newX = text.boxPosition.x + text.boxSize.x - newW;
+            }
+        }
+        if (newH < minSize.y) {
+            newH = minSize.y;
+            if (corner === "tl" || corner === "tr") {
+                newY = text.boxPosition.y + text.boxSize.y - newH;
+            }
+        }
+
+        updateOrAddObject({
+            ...text,
+            boxPosition: { x: newX, y: newY },
+            boxSize: { x: newW, y: newH },
+        });
+    }
+
+    function handleSelectedObjectResizeInteraction_MouseUp(
+        e: React.MouseEvent<HTMLCanvasElement>,
+        interaction: React.RefObject<SelectedObjectResizeInteraction>
+    ) {
+        const latest = canvasContext.allObjects.get(
+            interaction.current.objectId
+        );
+        if (latest) {
+            commitObjectChanges([latest], undefined);
+        }
+    }
+
     function translateObject(
         obj: WorldObject,
         dx: number,
@@ -193,6 +266,8 @@ export function useObjectSelection({
         handleMultipleObjectSelectionBoxInteraction_MouseUp,
         handleSelectedObjectDragInteraction_MouseMove,
         handleSelectedObjectDragInteraction_MouseUp,
+        handleSelectedObjectResizeInteraction_MouseMove,
+        handleSelectedObjectResizeInteraction_MouseUp,
         handleSingleObjectSelected,
         handleAdditionalSingleObjectSelected,
         handleDeselectAllObjects,

@@ -24,7 +24,10 @@ import {
     ToolType,
 } from "../../../types/tool";
 import { screenToWorld } from "../utils/canvasCoords";
-import { findObjectAtCoords as hitTest } from "../utils/canvasHitTesting";
+import {
+    findObjectAtCoords as hitTest,
+    hitTestCorner,
+} from "../utils/canvasHitTesting";
 import { object } from "zod";
 
 const LEFT_MOUSE_BUTTON = 0;
@@ -36,7 +39,8 @@ export interface Interaction {
         | "camera-drag"
         | "drawing"
         | "multiple-object-selection-box"
-        | "selected-object-drag";
+        | "selected-object-drag"
+        | "selected-object-resize";
 }
 export interface CameraDragInteraction extends Interaction {
     type: "camera-drag";
@@ -61,6 +65,14 @@ export interface SelectedObjectDragInteraction extends Interaction {
     startMousePos: Vec2;
     // originalObjects never changes for the duration of the interaction. The original, untranslated objects.
     originalObjects: WorldObject[];
+}
+
+export interface SelectedObjectResizeInteraction extends Interaction {
+    type: "selected-object-resize";
+    objectId: string;
+    corner: "tl" | "tr" | "bl" | "br";
+    startMousePos: Vec2;
+    originalObject: WorldObject;
 }
 
 interface useMouseEventsProps {
@@ -96,12 +108,26 @@ interface useMouseEventsProps {
         e: React.MouseEvent<HTMLCanvasElement>,
         interaction: React.RefObject<SelectedObjectDragInteraction>
     ) => void;
+    handleSelectedObjectResizeInteraction_MouseMove: (
+        e: React.MouseEvent<HTMLCanvasElement>,
+        interaction: React.RefObject<SelectedObjectResizeInteraction>
+    ) => void;
+    handleSelectedObjectResizeInteraction_MouseUp: (
+        e: React.MouseEvent<HTMLCanvasElement>,
+        interaction: React.RefObject<SelectedObjectResizeInteraction>
+    ) => void;
     handleCamera_Wheel: (e: React.WheelEvent<HTMLCanvasElement>) => void;
     handleSingleObjectSelected: (object: WorldObject) => void;
     handleAdditionalSingleObjectSelected: (object: WorldObject) => void;
     handleDeselectAllObjects: () => void;
     selectedObjectIds: Set<string>;
     selectedObjects: WorldObject[];
+}
+
+// Maps a corner name to the CSS resize cursor string for that corner's drag axis.
+function cornerToCursor(corner: "tl" | "tr" | "bl" | "br"): string {
+    if (corner === "tl" || corner === "br") return "nwse-resize";
+    return "nesw-resize";
 }
 
 /**
@@ -116,6 +142,8 @@ export function useMouseEvents({
     handleMultipleObjectSelectionBoxInteraction_MouseUp,
     handleSelectedObjectDragInteraction_MouseMove,
     handleSelectedObjectDragInteraction_MouseUp,
+    handleSelectedObjectResizeInteraction_MouseMove,
+    handleSelectedObjectResizeInteraction_MouseUp,
     handleCamera_Wheel,
     handleSingleObjectSelected,
     handleAdditionalSingleObjectSelected,
@@ -127,11 +155,15 @@ export function useMouseEvents({
     const tool: Tool = canvasContext.local_tool;
     const camera: Camera = canvasContext.local_camera;
 
+    // what to show as the cursor (when resizing text object corners for example)
+    const [cursor, setCursor] = useState<string>("default");
+
     const currentInteraction = useRef<
         | DrawingInteraction
         | CameraDragInteraction
         | MultipleObjectSelectionBoxInteraction
         | SelectedObjectDragInteraction
+        | SelectedObjectResizeInteraction
         | null
     >(null);
 
@@ -170,10 +202,31 @@ export function useMouseEvents({
             return;
         }
 
-        // If left clicking on an object with select tool, select it
+        // If left clicking on an object with select tool, we probably want to select it
         if (e.button === LEFT_MOUSE_BUTTON && tool.type === "select") {
             const mouseWorldCoords: Vec2 = screenToWorld(e, camera);
+
+            // Check if holding one of the object's corners, in which case we start a resize interaction instead
+            for (const obj of selectedObjects) {
+                const corner = hitTestCorner(
+                    mouseWorldCoords,
+                    obj,
+                    camera.zoom
+                );
+                if (corner) {
+                    currentInteraction.current = {
+                        type: "selected-object-resize",
+                        objectId: obj.id,
+                        corner,
+                        startMousePos: mouseWorldCoords,
+                        originalObject: obj,
+                    };
+                    return;
+                }
+            }
+
             const clickedObject = findObjectAtCoords(mouseWorldCoords);
+            // If clicked on an object:
             if (clickedObject) {
                 // HOWEVER, exception: If this object is already selected, then we start an OBJECT DRAG interaction instead
                 if (selectedObjectIds.has(clickedObject.id)) {
@@ -259,6 +312,32 @@ export function useMouseEvents({
             );
             return;
         }
+        if (currentInteraction.current?.type === "selected-object-resize") {
+            setCursor(cornerToCursor(currentInteraction.current.corner));
+            handleSelectedObjectResizeInteraction_MouseMove(
+                e,
+                currentInteraction as React.RefObject<SelectedObjectResizeInteraction>
+            );
+            return;
+        }
+
+        // If there is no active interaction - if we're in select tool and hovering over one of an object's corners - set the matching cursor
+        if (tool.type === "select") {
+            const mouseWorldCoords = screenToWorld(e, camera);
+            let found: "tl" | "tr" | "bl" | "br" | null = null;
+            for (const obj of selectedObjects) {
+                const corner = hitTestCorner(
+                    mouseWorldCoords,
+                    obj,
+                    camera.zoom
+                );
+                if (corner) {
+                    found = corner;
+                    break;
+                }
+            }
+            setCursor(found ? cornerToCursor(found) : "default");
+        }
     };
 
     const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -288,6 +367,12 @@ export function useMouseEvents({
                 currentInteraction as React.RefObject<SelectedObjectDragInteraction>
             );
         }
+        if (currentInteraction.current?.type === "selected-object-resize") {
+            handleSelectedObjectResizeInteraction_MouseUp(
+                e,
+                currentInteraction as React.RefObject<SelectedObjectResizeInteraction>
+            );
+        }
         currentInteraction.current = null;
     };
 
@@ -303,5 +388,6 @@ export function useMouseEvents({
         handleMouseUp,
         handleWheel,
         handleContextMenu,
+        cursor,
     };
 }
