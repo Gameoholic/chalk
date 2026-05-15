@@ -151,6 +151,5 @@ export function useTextEditing({
 
     return {
         cursorVisible,
-        measureTextBox,
     };
 }
