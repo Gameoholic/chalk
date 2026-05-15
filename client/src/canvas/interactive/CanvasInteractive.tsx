@@ -121,6 +121,7 @@ function CanvasInteractive({
     const { cursorVisible } = useTextEditing({
         editingTextObject,
         updateOrAddObject,
+        removeObject,
         commitChanges: _commitObjectChanges,
         deselectAllObjects: handleDeselectAllObjects,
     });

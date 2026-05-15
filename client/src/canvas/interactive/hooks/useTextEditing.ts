@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { TextObject, Vec2, WorldObject } from "../../../types/canvas";
 import { measureTextBox } from "../utils/canvasTextBoxMeasurement";
+import { CanvasContext } from "../../../types/context/CanvasContext";
 
 interface UseTextEditingProps {
     // null if not currently editing a text object
     editingTextObject: TextObject | null;
     updateOrAddObject: (object: WorldObject) => void;
+    removeObject: (objectId: string) => void;
     commitChanges: (
         updatedObjects?: WorldObject[],
         deletedObjectIds?: string[]
@@ -16,6 +18,7 @@ interface UseTextEditingProps {
 export function useTextEditing({
     editingTextObject,
     updateOrAddObject,
+    removeObject,
     commitChanges,
     deselectAllObjects,
 }: UseTextEditingProps) {
@@ -32,8 +35,15 @@ export function useTextEditing({
     const previousEditingTextObjectRef = useRef<TextObject | null>(null);
     useEffect(() => {
         const prev = previousEditingTextObjectRef.current;
+        // if the selected text object changed (either deselected or changed selection to another text object)
         if (prev && prev.id !== editingTextObject?.id) {
-            commitChanges([prev], undefined);
+            // if text is empty, remove the object
+            if (prev.text.trim().length === 0) {
+                removeObject(prev.id);
+                commitChanges(undefined, [prev.id]);
+            } else {
+                commitChanges([prev], undefined);
+            }
         }
         previousEditingTextObjectRef.current = editingTextObject;
     }, [editingTextObject]);
