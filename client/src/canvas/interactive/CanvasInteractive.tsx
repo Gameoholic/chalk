@@ -120,7 +120,7 @@ function CanvasInteractive({
         editingTextObject,
         updateOrAddObject,
         commitChanges: _commitObjectChanges,
-        handleDeselectAllObjects,
+        deselectAllObjects: handleDeselectAllObjects,
     });
 
     // Handle drawing interactions hook

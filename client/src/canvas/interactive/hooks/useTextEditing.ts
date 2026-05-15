@@ -8,14 +8,14 @@ interface UseTextEditingProps {
         updatedObjects?: WorldObject[],
         deletedObjectIds?: string[]
     ) => void;
-    handleDeselectAllObjects: () => void;
+    deselectAllObjects: () => void;
 }
 
 export function useTextEditing({
     editingTextObject,
     updateOrAddObject,
     commitChanges,
-    handleDeselectAllObjects,
+    deselectAllObjects,
 }: UseTextEditingProps) {
     const [cursorVisible, setCursorVisible] = useState(true);
     const cursorBlinkIntervalRef = useRef<number | undefined>(undefined);
@@ -69,7 +69,7 @@ export function useTextEditing({
             const cursorIndex = current.text.length;
 
             if (e.key === "Escape") {
-                handleDeselectAllObjects();
+                deselectAllObjects();
                 return;
             }
 
