@@ -1,8 +1,9 @@
 import React, { useRef, useState, useEffect } from "react";
 import { Trash2 } from "lucide-react";
-import { Camera, WorldObject } from "../../../types/canvas";
+import { Camera, TextObject, WorldObject } from "../../../types/canvas";
 import { getBoundingBox } from "../utils/canvasHitTesting";
 import ColorPicker from "../../../components/ColorPicker";
+import { measureTextBox } from "../utils/canvasTextBoxMeasurement";
 
 type EditableProperty =
     | "color"
@@ -75,6 +76,22 @@ export function EditObjectToolbar({
 }: EditObjectToolbarProps) {
     const [showColorPicker, setShowColorPicker] = useState(false);
     const pickerRef = useRef<HTMLDivElement>(null);
+    // use to avoid slider properties (like text size) "pop" and move during editing
+    const [pinnedPosition, setPinnedPosition] = useState<{
+        centerX: number;
+        topY: number;
+    } | null>(null);
+
+    useEffect(() => {
+        const onUp = () => {
+            // Fix: when mouse up fires the toolbar position changes to the middle of the object, so if we changed the text size for example, it'll affect the slider
+            // therefore it'll change the text size, which we don't want
+            // this is a fix for pinnedPosition
+            setTimeout(() => setPinnedPosition(null), 0);
+        };
+        window.addEventListener("mouseup", onUp);
+        return () => window.removeEventListener("mouseup", onUp);
+    }, []);
 
     useEffect(() => {
         const handleClickOutside = (e: MouseEvent) => {
@@ -110,11 +127,26 @@ export function EditObjectToolbar({
     const screenMinX = (bb.min.x - camera.position.x) * camera.zoom;
     const screenMinY = (bb.min.y - camera.position.y) * camera.zoom;
     const screenMaxX = (bb.max.x - camera.position.x) * camera.zoom;
-    const centerX = (screenMinX + screenMaxX) / 2;
-    const topY = screenMinY;
+    const liveCenterX = (screenMinX + screenMaxX) / 2;
+    const liveTopY = screenMinY;
+
+    const renderCenterX = pinnedPosition?.centerX ?? liveCenterX;
+    const renderTopY = pinnedPosition?.topY ?? liveTopY;
 
     function applyToAll(patch: Partial<Record<string, any>>) {
-        const updated = selectedObjects.map((obj) => ({ ...obj, ...patch }));
+        const updated = selectedObjects.map((obj) => {
+            const next = { ...obj, ...patch };
+
+            // If editing text, update the text box size to match the changes
+            if (next.type === "text") {
+                const textNext = next as TextObject;
+                return {
+                    ...textNext,
+                    boxSize: measureTextBox(textNext.text, textNext),
+                };
+            }
+            return next;
+        });
         onUpdate(updated as WorldObject[]);
     }
 
@@ -193,10 +225,13 @@ export function EditObjectToolbar({
     return (
         <div
             data-edit-object-toolbar
+            onMouseDown={() =>
+                setPinnedPosition({ centerX: liveCenterX, topY: liveTopY })
+            }
             style={{
                 position: "absolute",
-                left: centerX,
-                top: topY - 56,
+                left: renderCenterX,
+                top: renderTopY - 56,
                 transform: "translateX(-50%)",
                 display: "flex",
                 alignItems: "center",
