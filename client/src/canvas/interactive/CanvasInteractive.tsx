@@ -79,7 +79,7 @@ function CanvasInteractive({
         commitObjectChanges(updatedObjects, deletedObjectIds);
     }
 
-    // drawingTextBoxObjectId tracks the textbox being drag-created; cleared once drawing finishes and object becomes selected
+    // drawingTextBoxObjectId tracks the textbox being drag-created, cleared once drawing finishes and object becomes selected
     const [drawingTextBoxObjectId, setDrawingTextBoxObjectId] = useState<
         string | null
     >(null);
@@ -108,7 +108,7 @@ function CanvasInteractive({
         [selectedObjectIds, canvasContext.allObjects]
     );
 
-    // Derive editing state from selection — single selected TextObject = editing
+    // Derive text editing state from selection. single selected TextObject = editing it (will signal useTextEditing hook to open text editor), null if not editing text
     const editingTextObject = useMemo<TextObject | null>(() => {
         if (selectedObjects.length !== 1) return null;
         const only = selectedObjects[0];

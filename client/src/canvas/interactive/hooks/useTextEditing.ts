@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { TextObject, Vec2, WorldObject } from "../../../types/canvas";
 
 interface UseTextEditingProps {
+    // null if not currently editing a text object
     editingTextObject: TextObject | null;
     updateOrAddObject: (object: WorldObject) => void;
     commitChanges: (
@@ -21,14 +22,12 @@ export function useTextEditing({
     const cursorBlinkIntervalRef = useRef<number | undefined>(undefined);
 
     // Latest-ref so the keydown listener always reads the freshest object
-    // even when the parent re-derives editingTextObject between effect runs.
     const editingTextObjectRef = useRef<TextObject | null>(editingTextObject);
     useEffect(() => {
         editingTextObjectRef.current = editingTextObject;
     });
 
-    // When editing ends (or switches to a different object), commit the
-    // last-known state of the object we were just editing.
+    // When text editing ends, commit the object
     const previousEditingTextObjectRef = useRef<TextObject | null>(null);
     useEffect(() => {
         const prev = previousEditingTextObjectRef.current;
@@ -38,7 +37,7 @@ export function useTextEditing({
         previousEditingTextObjectRef.current = editingTextObject;
     }, [editingTextObject]);
 
-    // Cursor blink — runs only while an object is being edited
+    // Cursor blink
     useEffect(() => {
         if (!editingTextObject) {
             clearInterval(cursorBlinkIntervalRef.current);
@@ -51,7 +50,7 @@ export function useTextEditing({
         return () => clearInterval(cursorBlinkIntervalRef.current);
     }, [editingTextObject?.id]);
 
-    // Keyboard input — re-subscribes when the edited object's id changes
+    // Keyboard input
     useEffect(() => {
         if (!editingTextObject) return;
 
