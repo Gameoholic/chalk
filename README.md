@@ -22,10 +22,6 @@ Try it here:
 - [ ] Invite collaborators to board (with link)
 - [ ] Manage board's collaborators (kick, see last access timestamp)
 
-#### 🖌️ Canvas
-- [ ] Edit specific objects (color, stroke, move..)
-- [ ] Delete specific objects
-
 #### 🎨 Visual & Polish & QOL
 - [ ] Add "connection lost" display to user
 - [ ] Offer to redownload page if error is taking too long to retry
@@ -61,7 +57,6 @@ Try it here:
 - [ ] Divide boards into 'zones' - only load necessary zones
 - [ ] Auto-share of objects with websockets is dynamic - if server is lagging, slow down rate, otherwise, speed it up
 - [ ] Pagination for my boards
-- [ ] Don't update board's last camera properties every frame. Do it at the same time as object save. (in fact, put their logic in the same function)
 
 #### 🐞 Bugs
 - [ ] If skipping tour, menu will stay open forever
