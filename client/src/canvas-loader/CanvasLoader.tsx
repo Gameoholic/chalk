@@ -17,7 +17,7 @@ import WelcomeScreen from "./WelcomeScreen.tsx";
 import TourOverlay from "./TourOverlay.tsx";
 import LoadingScreen from "./LoadingScreen";
 import LoadingError from "./LoadingError";
-import { PencilTool } from "../types/tool";
+import { PencilTool, SelectTool } from "../types/tool";
 
 type LoadDataResult =
     | {
@@ -138,10 +138,8 @@ function AfterSuccessfulAuth({ initialBoardId }: { initialBoardId: string }) {
                     defaultCachedStroke={1}
                     defaultTool={
                         {
-                            type: "pencil",
-                            color: "#000000FF",
-                            stroke: 1,
-                        } as PencilTool
+                            type: "select",
+                        } as SelectTool
                     }
                 >
                     <CanvasEditorDiv
