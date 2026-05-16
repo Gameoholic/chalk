@@ -8,7 +8,6 @@ import {
     LineTool,
     PencilTool,
     RectTool,
-    TextTool,
     Tool,
 } from "../../../types/tool";
 import {
@@ -227,7 +226,14 @@ export function useDrawing({
         e: React.MouseEvent<HTMLCanvasElement>,
         interaction: React.RefObject<DrawingInteraction>
     ) {
-        const textTool = interaction.current.tool as TextTool;
+        const TEXT_DEFAULTS = {
+            color: "#000000",
+            bold: false,
+            italic: false,
+            fontFamily: "sans-serif",
+            fontSize: 16,
+            lineHeight: 1.2,
+        } as const;
 
         const mouseWorldCoords: Vec2 = screenToWorld(e, camera);
         if (interaction.current.path.length === 0) {
@@ -242,12 +248,7 @@ export function useDrawing({
             id: interaction.current.objectId,
             type: "text",
             text: "",
-            color: textTool.color,
-            bold: textTool.bold,
-            italic: textTool.italic,
-            fontFamily: textTool.fontFamily,
-            fontSize: textTool.fontSize,
-            lineHeight: textTool.lineHeight,
+            ...TEXT_DEFAULTS,
             boxPosition: interaction.current.path[0],
             boxSize: {
                 x: Math.max(

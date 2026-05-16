@@ -48,13 +48,8 @@ export interface EllipseTool extends ColorTool {
     hollowStroke: number;
 }
 
-export interface TextTool extends ColorTool {
+export interface TextTool extends BaseTool {
     type: "text";
-    fontSize: number;
-    fontFamily: string;
-    lineHeight: number; // multiplier, e.g. 1.2 = 120% of fontSize
-    bold: boolean;
-    italic: boolean;
 }
 
 export type Tool =
