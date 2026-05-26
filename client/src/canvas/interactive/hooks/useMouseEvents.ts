@@ -40,7 +40,8 @@ export interface Interaction {
         | "drawing"
         | "multiple-object-selection-box"
         | "selected-object-drag"
-        | "selected-object-resize";
+        | "selected-object-resize"
+        | "text-cursor-drag";
 }
 export interface CameraDragInteraction extends Interaction {
     type: "camera-drag";
@@ -73,6 +74,10 @@ export interface SelectedObjectResizeInteraction extends Interaction {
     corner: "tl" | "tr" | "bl" | "br";
     startMousePos: Vec2;
     originalObject: WorldObject;
+}
+
+export interface TextCursorDragInteraction extends Interaction {
+    type: "text-cursor-drag";
 }
 
 interface useMouseEventsProps {
@@ -122,6 +127,10 @@ interface useMouseEventsProps {
     handleDeselectAllObjects: () => void;
     selectedObjectIds: Set<string>;
     selectedObjects: WorldObject[];
+    editingTextObjectId: string | null;
+    onTextCursorMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => void;
+    onTextCursorMouseMove: (e: React.MouseEvent<HTMLCanvasElement>) => void;
+    onTextObjectDoubleClick: (objectId: string, worldPos: { x: number; y: number }) => void;
 }
 
 // Maps a corner name to the CSS resize cursor string for that corner's drag axis.
@@ -150,6 +159,10 @@ export function useMouseEvents({
     handleDeselectAllObjects,
     selectedObjectIds,
     selectedObjects,
+    editingTextObjectId,
+    onTextCursorMouseDown,
+    onTextCursorMouseMove,
+    onTextObjectDoubleClick,
 }: useMouseEventsProps) {
     const canvasContext = useContext(CanvasContext);
     const tool: Tool = canvasContext.local_tool;
@@ -164,6 +177,7 @@ export function useMouseEvents({
         | MultipleObjectSelectionBoxInteraction
         | SelectedObjectDragInteraction
         | SelectedObjectResizeInteraction
+        | TextCursorDragInteraction
         | null
     >(null);
 
@@ -228,8 +242,15 @@ export function useMouseEvents({
             const clickedObject = findObjectAtCoords(mouseWorldCoords);
             // If clicked on an object:
             if (clickedObject) {
-                // HOWEVER, exception: If this object is already selected, then we start an OBJECT DRAG interaction instead
+                // HOWEVER, exception: If this object is already selected...
                 if (selectedObjectIds.has(clickedObject.id)) {
+                    // If it's the currently editing text object, route to text cursor positioning
+                    if (editingTextObjectId && clickedObject.id === editingTextObjectId) {
+                        onTextCursorMouseDown(e);
+                        currentInteraction.current = { type: "text-cursor-drag" };
+                        return;
+                    }
+                    // Otherwise start an object drag interaction
                     currentInteraction.current = {
                         type: "selected-object-drag",
                         startMousePos: mouseWorldCoords,
@@ -320,6 +341,10 @@ export function useMouseEvents({
             );
             return;
         }
+        if (currentInteraction.current?.type === "text-cursor-drag") {
+            onTextCursorMouseMove(e);
+            return;
+        }
 
         // If there is no active interaction - if we're in select tool and hovering over one of an object's corners - set the matching cursor
         if (tool.type === "select") {
@@ -382,12 +407,22 @@ export function useMouseEvents({
         handleCamera_Wheel(e);
     };
 
+    const handleDoubleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
+        if (tool.type !== "select") return;
+        const mouseWorldCoords = screenToWorld(e, camera);
+        const clickedObject = findObjectAtCoords(mouseWorldCoords);
+        if (clickedObject?.type === "text") {
+            onTextObjectDoubleClick(clickedObject.id, mouseWorldCoords);
+        }
+    };
+
     return {
         handleMouseDown,
         handleMouseMove,
         handleMouseUp,
         handleWheel,
         handleContextMenu,
-        cursor,
+        handleDoubleClick,
+        cursor: editingTextObjectId ? "text" : cursor,
     };
 }

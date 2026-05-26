@@ -11,13 +11,14 @@ import {
 interface CanvasRendererProps {
     objects: Map<string, WorldObject>;
     camera: Camera;
-    textCursor?: { objectId: string; index: number; visible: boolean };
+    textCursor?: { objectId: string; index: number; visible: boolean; selectionStart?: number; selectionEnd?: number };
     drawingTextBoxObjectId: string | null;
     onMouseDown?: React.MouseEventHandler<HTMLCanvasElement>;
     onMouseMove?: React.MouseEventHandler<HTMLCanvasElement>;
     onMouseUp?: React.MouseEventHandler<HTMLCanvasElement>;
     onWheel?: React.WheelEventHandler<HTMLCanvasElement>;
     onContextMenu?: React.MouseEventHandler<HTMLCanvasElement>;
+    onDoubleClick?: React.MouseEventHandler<HTMLCanvasElement>;
     // Mobile support:
     onTouchStart?: React.TouchEventHandler<HTMLCanvasElement>;
     onTouchMove?: React.TouchEventHandler<HTMLCanvasElement>;

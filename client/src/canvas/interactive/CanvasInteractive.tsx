@@ -1,4 +1,4 @@
-import React, { useContext, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useState } from "react";
 import useDimensions from "react-cool-dimensions";
 import CanvasRenderer from "../renderer/CanvasRenderer";
 import { TextObject, WorldObject } from "../../types/canvas";
@@ -110,16 +110,34 @@ function CanvasInteractive({
         [selectedObjectIds, canvasContext.allObjects]
     );
 
-    // Derive text editing state from selection. single selected TextObject = editing it (will signal useTextEditing hook to open text editor), null if not editing text
+    // Explicit editing state — only set on double-click (or after drawing a new text box).
+    // A selected text object can be moved/resized without entering editing mode.
+    const [editingTextObjectId, setEditingTextObjectId] = useState<string | null>(null);
+    const [textEntryWorldPos, setTextEntryWorldPos] = useState<{ x: number; y: number } | null>(null);
+
+    // Exit editing mode if the editing object is no longer selected
+    useEffect(() => {
+        if (editingTextObjectId && !selectedObjectIds.has(editingTextObjectId)) {
+            setEditingTextObjectId(null);
+        }
+    }, [selectedObjectIds]);
+
     const editingTextObject = useMemo<TextObject | null>(() => {
-        if (selectedObjects.length !== 1) return null;
-        const only = selectedObjects[0];
-        return only.type === "text" ? (only as TextObject) : null;
-    }, [selectedObjects]);
+        if (!editingTextObjectId) return null;
+        const obj = canvasContext.allObjects.get(editingTextObjectId);
+        return obj?.type === "text" ? (obj as TextObject) : null;
+    }, [editingTextObjectId, canvasContext.allObjects]);
 
     // Handle text editing
-    const { cursorVisible } = useTextEditing({
+    const {
+        cursorVisible,
+        cursorIndex,
+        selectionAnchor,
+        handleTextMouseDown,
+        handleTextMouseMove,
+    } = useTextEditing({
         editingTextObject,
+        entryWorldPos: textEntryWorldPos,
         updateOrAddObject,
         removeObject,
         commitChanges: _commitObjectChanges,
@@ -138,6 +156,8 @@ function CanvasInteractive({
         selectTextObjectForEditing: (object) => {
             handleSingleObjectSelected(object);
             setDrawingTextBoxObjectId(null);
+            setTextEntryWorldPos(null);
+            setEditingTextObjectId(object.id);
         },
     });
 
@@ -157,6 +177,7 @@ function CanvasInteractive({
         handleMouseUp,
         handleWheel,
         handleContextMenu,
+        handleDoubleClick,
         // what to display as the cursor mouse (resize text object corners)
         cursor,
     } = useMouseEvents({
@@ -176,6 +197,13 @@ function CanvasInteractive({
         handleSelectedObjectResizeInteraction_MouseUp,
         selectedObjectIds,
         selectedObjects,
+        editingTextObjectId: editingTextObject?.id ?? null,
+        onTextCursorMouseDown: handleTextMouseDown,
+        onTextCursorMouseMove: handleTextMouseMove,
+        onTextObjectDoubleClick: (id, worldPos) => {
+            setTextEntryWorldPos(worldPos);
+            setEditingTextObjectId(id);
+        },
     });
 
     return (
@@ -188,12 +216,21 @@ function CanvasInteractive({
                 onMouseUp={handleMouseUp}
                 onWheel={handleWheel}
                 onContextMenu={handleContextMenu}
+                onDoubleClick={handleDoubleClick}
                 textCursor={
                     editingTextObject
                         ? {
                               objectId: editingTextObject.id,
-                              index: editingTextObject.text.length,
+                              index: cursorIndex,
                               visible: cursorVisible,
+                              selectionStart:
+                                  selectionAnchor !== null
+                                      ? Math.min(selectionAnchor, cursorIndex)
+                                      : undefined,
+                              selectionEnd:
+                                  selectionAnchor !== null
+                                      ? Math.max(selectionAnchor, cursorIndex)
+                                      : undefined,
                           }
                         : undefined
                 }

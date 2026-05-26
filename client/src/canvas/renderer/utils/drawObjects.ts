@@ -171,7 +171,7 @@ export function drawObjects(
     antiAliasing: boolean,
     drawingTextBoxObjectId: string | null,
     selectedObjectIds: Set<string>,
-    textCursor?: { objectId: string; index: number; visible: boolean }
+    textCursor?: { objectId: string; index: number; visible: boolean; selectionStart?: number; selectionEnd?: number }
 ) {
     objects.forEach((object) => {
         switch (object.type) {
@@ -200,9 +200,12 @@ export function drawObjects(
                         ? {
                               index: textCursor.index,
                               visible: textCursor.visible,
+                              selectionStart: textCursor.selectionStart,
+                              selectionEnd: textCursor.selectionEnd,
                           }
                         : undefined,
-                    drawingTextBoxObjectId
+                    drawingTextBoxObjectId,
+                    selectedObjectIds.has(object.id)
                 );
                 break;
         }
@@ -315,15 +318,16 @@ function drawText(
     object: TextObject,
     camera: Camera,
     antiAliasing: boolean,
-    cursor?: { index: number; visible: boolean },
-    drawingTextBoxObjectId?: string | null
+    cursor?: { index: number; visible: boolean; selectionStart?: number; selectionEnd?: number },
+    drawingTextBoxObjectId?: string | null,
+    isSelected?: boolean
 ) {
     const x = object.boxPosition.x - camera.position.x;
     const y = object.boxPosition.y - camera.position.y;
 
     // Draw dashed box outline when text is being edited, or textbox is being drawn
     // cursor is only defined as long as text is being actively edited
-    if (cursor || drawingTextBoxObjectId === object.id) {
+    if (cursor || drawingTextBoxObjectId === object.id || isSelected) {
         ctx.save();
         ctx.strokeStyle = object.color;
         ctx.lineWidth = getStrokeSize(1, ctx, antiAliasing);
@@ -347,9 +351,40 @@ function drawText(
     ctx.fillStyle = object.color;
     ctx.textBaseline = "top";
 
-    // Word-wrap the text into the box
     const lineHeightPx = object.fontSize * object.lineHeight;
     const maxWidth = object.boxSize.x - 8;
+
+    // Selection highlight (drawn before text so text renders on top)
+    if (
+        cursor &&
+        cursor.selectionStart !== undefined &&
+        cursor.selectionEnd !== undefined &&
+        cursor.selectionStart !== cursor.selectionEnd
+    ) {
+        const selStart = Math.min(cursor.selectionStart, cursor.selectionEnd);
+        const selEnd = Math.max(cursor.selectionStart, cursor.selectionEnd);
+        const lines = computeLines(object.text, ctx, maxWidth);
+        ctx.fillStyle = "rgba(59, 130, 246, 0.3)";
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const lineCharEnd =
+                i < lines.length - 1
+                    ? lines[i + 1].startIndex
+                    : object.text.length;
+            if (selEnd <= line.startIndex || selStart >= lineCharEnd) continue;
+            const lineSelStart = Math.max(0, selStart - line.startIndex);
+            const lineSelEnd = Math.min(line.text.length, selEnd - line.startIndex);
+            const selX =
+                x + 4 + ctx.measureText(line.text.slice(0, lineSelStart)).width;
+            const selW = ctx.measureText(
+                line.text.slice(lineSelStart, lineSelEnd)
+            ).width;
+            ctx.fillRect(selX, y + 4 + i * lineHeightPx, selW, lineHeightPx);
+        }
+        ctx.fillStyle = object.color;
+    }
+
+    // Word-wrap the text into the box
     wrapText(ctx, object.text, x + 4, y + 4, maxWidth, lineHeightPx);
 
     // Draw cursor
