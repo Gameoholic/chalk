@@ -230,7 +230,7 @@ export function useDrawing({
             color: "#000000",
             bold: false,
             italic: false,
-            fontFamily: "sans-serif",
+            fontFamily: "Google Sans Flex",
             fontSize: 16,
             lineHeight: 1.2,
         } as const;

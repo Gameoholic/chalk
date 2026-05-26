@@ -12,7 +12,23 @@ import { FirstTimeVisitorContextProvider } from "../types/context/FirstTimeVisit
 const container = document.getElementById("root");
 if (!container) throw new Error("Root container not found");
 
+const CANVAS_FONTS = [
+    "Patrick Hand",
+    "Inter",
+    "Cairo",
+    "Roboto",
+    "Open Sans",
+    "Google Sans Flex",
+];
+
 function Root() {
+    // pre-load fonts asap
+    useEffect(() => {
+        CANVAS_FONTS.forEach((f) =>
+            document.fonts.load(`16px "${f}"`).catch(() => {})
+        );
+    }, []);
+
     // Get localStorage saved theme
     const savedTheme = localStorage.getItem("theme");
     const theme =

@@ -76,6 +76,8 @@ export function EditObjectToolbar({
 }: EditObjectToolbarProps) {
     const [showColorPicker, setShowColorPicker] = useState(false);
     const pickerRef = useRef<HTMLDivElement>(null);
+    const [showFontPicker, setShowFontPicker] = useState(false);
+    const fontPickerRef = useRef<HTMLDivElement>(null);
     // use to avoid slider properties (like text size) "pop" and move during editing
     const [pinnedPosition, setPinnedPosition] = useState<{
         centerX: number;
@@ -100,6 +102,20 @@ export function EditObjectToolbar({
                 !pickerRef.current.contains(e.target as Node)
             ) {
                 setShowColorPicker(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () =>
+            document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    useEffect(() => {
+        const handleClickOutside = (e: MouseEvent) => {
+            if (
+                fontPickerRef.current &&
+                !fontPickerRef.current.contains(e.target as Node)
+            ) {
+                setShowFontPicker(false);
             }
         };
         document.addEventListener("mousedown", handleClickOutside);
@@ -165,7 +181,14 @@ export function EditObjectToolbar({
     const boldValue = getSharedValue<boolean>(selectedObjects, "bold");
     const italicValue = getSharedValue<boolean>(selectedObjects, "italic");
 
-    const FONT_FAMILIES = ["sans-serif", "serif", "monospace"] as const;
+    const FONTS = [
+        { family: "Patrick Hand", label: "Patrick" },
+        { family: "Inter", label: "Inter" },
+        { family: "Cairo", label: "Cairo" },
+        { family: "Roboto", label: "Roboto" },
+        { family: "Open Sans", label: "Open Sans" },
+        { family: "Google Sans Flex", label: "Google Sans Flex" },
+    ] as const;
 
     const mixedLabelStyle: React.CSSProperties = {
         fontSize: 11,
@@ -432,30 +455,89 @@ export function EditObjectToolbar({
 
             {/* Font family */}
             {sharedProps.has("fontFamily") && (
-                <div style={{ display: "flex", gap: 4 }}>
-                    {FONT_FAMILIES.map((f) => (
-                        <button
-                            key={f}
-                            title={f}
-                            onClick={() => applyToAll({ fontFamily: f })}
+                <div className="relative" ref={fontPickerRef}>
+                    <button
+                        title="Font"
+                        onClick={() => setShowFontPicker((v) => !v)}
+                        style={{
+                            height: 28,
+                            padding: "0 8px",
+                            borderRadius: 6,
+                            fontSize: 12,
+                            fontFamily:
+                                fontFamilyValue === "mixed"
+                                    ? undefined
+                                    : fontFamilyValue,
+                            cursor: "pointer",
+                            backgroundColor: showFontPicker
+                                ? "var(--accent)"
+                                : "transparent",
+                            color: "var(--card-foreground)",
+                            border: "1.5px solid var(--card-foreground)",
+                            whiteSpace: "nowrap",
+                        }}
+                    >
+                        {fontFamilyValue === "mixed"
+                            ? "—"
+                            : (FONTS.find((f) => f.family === fontFamilyValue)
+                                  ?.label ?? fontFamilyValue)}{" "}
+                        ▾
+                    </button>
+                    {showFontPicker && (
+                        <div
                             style={{
-                                padding: "2px 6px",
-                                borderRadius: 6,
-                                fontSize: 11,
-                                fontFamily: f,
-                                cursor: "pointer",
-                                backgroundColor:
-                                    fontFamilyValue !== "mixed" &&
-                                    fontFamilyValue === f
-                                        ? "var(--accent)"
-                                        : "transparent",
-                                color: "var(--card-foreground)",
-                                border: "1.5px solid var(--card-foreground)",
+                                position: "absolute",
+                                top: "calc(100% + 8px)",
+                                left: "50%",
+                                transform: "translateX(-50%)",
+                                backgroundColor: "var(--card)",
+                                borderRadius: 10,
+                                padding: "4px 0",
+                                boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+                                zIndex: 100,
+                                minWidth: 130,
                             }}
                         >
-                            Aa
-                        </button>
-                    ))}
+                            {FONTS.map((f) => (
+                                <button
+                                    key={f.family}
+                                    onClick={() => {
+                                        applyToAll({ fontFamily: f.family });
+                                        setShowFontPicker(false);
+                                    }}
+                                    style={{
+                                        display: "flex",
+                                        alignItems: "center",
+                                        gap: 8,
+                                        width: "100%",
+                                        padding: "5px 12px",
+                                        cursor: "pointer",
+                                        backgroundColor:
+                                            fontFamilyValue === f.family
+                                                ? "var(--accent)"
+                                                : "transparent",
+                                        color: "var(--card-foreground)",
+                                        border: "none",
+                                        textAlign: "left",
+                                    }}
+                                >
+                                    <span
+                                        style={{
+                                            fontFamily: f.family,
+                                            fontSize: 15,
+                                            width: 24,
+                                            flexShrink: 0,
+                                        }}
+                                    >
+                                        Aa
+                                    </span>
+                                    <span style={{ fontSize: 11 }}>
+                                        {f.label}
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </div>
             )}
 
