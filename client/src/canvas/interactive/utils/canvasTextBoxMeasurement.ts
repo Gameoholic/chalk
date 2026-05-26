@@ -1,9 +1,11 @@
 import { TextObject, Vec2 } from "../../../types/canvas";
 
-export function getMinTextBoxSize(text: string, obj: TextObject): Vec2 {
+export function makeCtxForObject(
+    obj: TextObject
+): { ctx: CanvasRenderingContext2D; maxWidth: number } {
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d")!;
-    const style = [
+    ctx.font = [
         obj.italic ? "italic" : "",
         obj.bold ? "bold" : "",
         `${obj.fontSize}px`,
@@ -11,7 +13,11 @@ export function getMinTextBoxSize(text: string, obj: TextObject): Vec2 {
     ]
         .filter(Boolean)
         .join(" ");
-    ctx.font = style;
+    return { ctx, maxWidth: obj.boxSize.x - 8 };
+}
+
+export function getMinTextBoxSize(text: string, obj: TextObject): Vec2 {
+    const { ctx } = makeCtxForObject(obj);
 
     const lines = text.split("\n");
     const longestLine = lines.reduce((max, line) => {

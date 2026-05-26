@@ -1,6 +1,6 @@
 import React, { useContext, useEffect, useRef, useState } from "react";
 import { TextObject, WorldObject } from "../../../types/canvas";
-import { measureTextBox } from "../utils/canvasTextBoxMeasurement";
+import { makeCtxForObject, measureTextBox } from "../utils/canvasTextBoxMeasurement";
 import { CanvasContext } from "../../../types/context/CanvasContext";
 import {
     computeLines,
@@ -20,22 +20,6 @@ interface UseTextEditingProps {
         deletedObjectIds?: string[]
     ) => void;
     deselectAllObjects: () => void;
-}
-
-function makeCtxForObject(
-    obj: TextObject
-): { ctx: CanvasRenderingContext2D; maxWidth: number } {
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d")!;
-    ctx.font = [
-        obj.italic ? "italic" : "",
-        obj.bold ? "bold" : "",
-        `${obj.fontSize}px`,
-        obj.fontFamily,
-    ]
-        .filter(Boolean)
-        .join(" ");
-    return { ctx, maxWidth: obj.boxSize.x - 8 };
 }
 
 // Converts a world-space click position to the nearest character index
