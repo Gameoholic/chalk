@@ -140,7 +140,7 @@ export function useSaveBoard(
     // When objects are ready to be saved to database (user released left click, for example).
     // Generally, only one object will be in objectsBeingUpdatedButNotReadyForSaving when this method is called,
     // but our code should be able to support cases where there's multiple objects at once.
-    function onObjectsCommit(
+    function requestCommitObjectChanges(
         updatedObjects?: WorldObject[],
         deletedObjectIds?: string[]
     ) {
@@ -166,7 +166,7 @@ export function useSaveBoard(
     }
 
     // When camera is ready to be saved to database (camera finished dragging or zoom changed).
-    function onCameraCommit() {
+    function requestCommitCamera() {
         console.log("Requesting to commit camera state to database.");
 
         if (onTourCameraMoved) {
@@ -536,8 +536,8 @@ export function useSaveBoard(
 
     return {
         saveObjectsError,
-        onObjectsCommit,
-        onCameraCommit,
+        requestCommitObjectChanges,
+        requestCommitCamera,
         handleResetBoard,
         handleDeleteBoard,
         requestNavigateToMyBoards,

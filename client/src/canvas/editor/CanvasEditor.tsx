@@ -51,8 +51,8 @@ function CanvasEditor({
 
     const {
         saveObjectsError,
-        onObjectsCommit,
-        onCameraCommit,
+        requestCommitObjectChanges,
+        requestCommitCamera,
         handleResetBoard,
         handleDeleteBoard,
         requestNavigateToMyBoards,
@@ -173,8 +173,8 @@ function CanvasEditor({
             <div className="h-full w-full" data-tour-id="canvas">
                 <CanvasInteractive
                     key={canvasContext.local_currentBoardId}
-                    commitObjectChanges={onObjectsCommit}
-                    commitCamera={onCameraCommit}
+                    commitObjectChanges={requestCommitObjectChanges}
+                    commitCamera={requestCommitCamera}
                 />
             </div>
 
