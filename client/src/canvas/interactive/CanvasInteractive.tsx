@@ -15,19 +15,20 @@ import { useObjectSelection } from "./hooks/useObjectSelection";
 import { EditObjectToolbar } from "./components/EditObjectToolbar";
 
 interface CanvasInteractiveProps {
-    commitObjectChanges: (
-        updatedOrNewObjects?: WorldObject[],
-        deletedObjectIds?: string[]
-    ) => void;
-    commitCamera: () => void;
+    addObjects: (objects: WorldObject[]) => void;
+    editObjects: (objects: WorldObject[]) => void;
+    deleteObjects: (objectIds: string[]) => void;
+    updateCamera: (position: { x: number; y: number }, zoom: number) => void;
 }
 
 /**
  * Handles all user interactions, mouse events, drawing.
  */
 function CanvasInteractive({
-    commitObjectChanges,
-    commitCamera,
+    addObjects,
+    editObjects,
+    deleteObjects,
+    updateCamera,
 }: CanvasInteractiveProps) {
     const canvasContext = useContext(CanvasContext);
 
@@ -76,7 +77,12 @@ function CanvasInteractive({
             );
         }
         // Explicitly tells CanvasEditor what to delete, bypassing state closure bugs caused by relying only on CanvasContext states
-        commitObjectChanges(updatedObjects, deletedObjectIds);
+        if (updatedObjects) {
+            editObjects(updatedObjects);
+        }
+        if (deletedObjectIds) {
+            deleteObjects(deletedObjectIds);
+        }
     }
 
     // drawingTextBoxObjectId tracks the textbox being drag-created, cleared once drawing finishes and object becomes selected
@@ -112,12 +118,20 @@ function CanvasInteractive({
 
     // Explicit editing state — only set on double-click (or after drawing a new text box).
     // A selected text object can be moved/resized without entering editing mode.
-    const [editingTextObjectId, setEditingTextObjectId] = useState<string | null>(null);
-    const [textEntryWorldPos, setTextEntryWorldPos] = useState<{ x: number; y: number } | null>(null);
+    const [editingTextObjectId, setEditingTextObjectId] = useState<
+        string | null
+    >(null);
+    const [textEntryWorldPos, setTextEntryWorldPos] = useState<{
+        x: number;
+        y: number;
+    } | null>(null);
 
     // Exit editing mode if the editing object is no longer selected
     useEffect(() => {
-        if (editingTextObjectId && !selectedObjectIds.has(editingTextObjectId)) {
+        if (
+            editingTextObjectId &&
+            !selectedObjectIds.has(editingTextObjectId)
+        ) {
             setEditingTextObjectId(null);
         }
     }, [selectedObjectIds]);
@@ -167,7 +181,7 @@ function CanvasInteractive({
         handleCameraDragInteraction_MouseUp,
         handleCamera_Wheel,
     } = useCamera({
-        commitCamera,
+        updateCamera,
     });
 
     // Handle mouse events hook - main method which will handle the interactions from before

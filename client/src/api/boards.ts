@@ -52,7 +52,7 @@ export async function createBoard(name: string) {
     return result.data;
 }
 
-export async function updateBoardObjects(
+export async function upsertBoardObjects(
     boardId: string,
     objects: WorldObject[]
 ) {
@@ -63,7 +63,7 @@ export async function updateBoardObjects(
     );
 
     if (!result.success) {
-        console.error("Error executing updateBoardObjects: " + result.error);
+        console.error("Error executing upsertBoardObjects: " + result.error);
         throw Error(result.error);
     }
 

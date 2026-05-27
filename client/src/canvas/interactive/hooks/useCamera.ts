@@ -26,13 +26,13 @@ import { screenToWorld } from "../utils/canvasCoords";
 import { findObjectAtCoords as hitTest } from "../utils/canvasHitTesting";
 
 interface useCameraProps {
-    commitCamera: () => void;
+    updateCamera: (position: { x: number; y: number }, zoom: number) => void;
 }
 
 /**
  * Camera drag interactions and other camera event handling
  */
-export function useCamera({ commitCamera }: useCameraProps) {
+export function useCamera({ updateCamera }: useCameraProps) {
     const canvasContext = useContext(CanvasContext);
     const camera = canvasContext.local_camera;
 
@@ -64,7 +64,10 @@ export function useCamera({ commitCamera }: useCameraProps) {
         e: React.MouseEvent<HTMLCanvasElement>,
         interaction: React.RefObject<CameraDragInteraction>
     ) {
-        commitCamera();
+        updateCamera(
+            canvasContext.local_camera.position,
+            canvasContext.local_camera.zoom
+        );
     }
 
     function handleCamera_Wheel(e: React.WheelEvent<HTMLCanvasElement>) {
@@ -87,15 +90,18 @@ export function useCamera({ commitCamera }: useCameraProps) {
             canvasContext.local_camera.position.y +
             mouseY / canvasContext.local_camera.zoom;
 
+        const newPosition = {
+            x: worldX - mouseX / clampedZoom,
+            y: worldY - mouseY / clampedZoom,
+        };
+
         canvasContext.setLocalCamera({
             ...canvasContext.local_camera,
             zoom: clampedZoom,
-            position: {
-                x: worldX - mouseX / clampedZoom,
-                y: worldY - mouseY / clampedZoom,
-            },
+            position: newPosition,
         });
-        commitCamera();
+
+        updateCamera(newPosition, clampedZoom);
     }
 
     return {

@@ -19,7 +19,10 @@ interface CanvasContextType {
     // Stroke to persist across tool changes, even for tools that don't have a stroke property (e.g. rect).
     local_cachedStroke: number;
     // Text style to use as defaults when creating new text objects.
-    local_cachedTextProps: Pick<TextObject, "color" | "fontSize" | "fontFamily" | "lineHeight" | "bold" | "italic">;
+    local_cachedTextProps: Pick<
+        TextObject,
+        "color" | "fontSize" | "fontFamily" | "lineHeight" | "bold" | "italic"
+    >;
 
     // Local state updaters
     setLocalCurrentBoardId: React.Dispatch<React.SetStateAction<string>>;
@@ -29,7 +32,19 @@ interface CanvasContextType {
     setLocalDeletedObjectIds: React.Dispatch<React.SetStateAction<Set<string>>>;
     setLocalCachedColor: React.Dispatch<React.SetStateAction<string>>;
     setLocalCachedStroke: React.Dispatch<React.SetStateAction<number>>;
-    setLocalCachedTextProps: React.Dispatch<React.SetStateAction<Pick<TextObject, "color" | "fontSize" | "fontFamily" | "lineHeight" | "bold" | "italic">>>;
+    setLocalCachedTextProps: React.Dispatch<
+        React.SetStateAction<
+            Pick<
+                TextObject,
+                | "color"
+                | "fontSize"
+                | "fontFamily"
+                | "lineHeight"
+                | "bold"
+                | "italic"
+            >
+        >
+    >;
 
     // Server-synced-properties methods
     updateCurrentBoardCamera: (
@@ -37,17 +52,20 @@ interface CanvasContextType {
         cameraZoom: number
     ) => void;
     updateCurrentBoardObjects: (objects: WorldObject[]) => void;
-    onCurrentBoardSaved: (
-        savedObjects: WorldObject[],
-        deletedObjectIds: Set<string>,
-        cameraPosition: Vec2,
-        cameraZoom: number
-    ) => void;
+    // onCurrentBoardSaved: (
+    //     savedObjects: WorldObject[],
+    //     deletedObjectIds: Set<string>,
+    //     cameraPosition: Vec2,
+    //     cameraZoom: number
+    // ) => void;
     getCurrentBoard: () => BoardData;
     updateCurrentBoard: (boardData: BoardData) => void;
 
     // Get all objects including client and server changes (useMemo internally)
     allObjects: Map<string, WorldObject>;
+    commitSavedObjects: (objects: WorldObject[]) => void;
+    commitDeletedObjects: (ids: Set<string>) => void;
+    commitSavedCamera: (position: Vec2, zoom: number) => void;
 }
 
 export const CanvasContext = createContext<CanvasContextType>(null!);
@@ -67,7 +85,10 @@ export function CanvasContextProvider({
     defaultTool: Tool;
     defaultCachedColor: string;
     defaultCachedStroke: number;
-    defaultCachedTextProps: Pick<TextObject, "color" | "fontSize" | "fontFamily" | "lineHeight" | "bold" | "italic">;
+    defaultCachedTextProps: Pick<
+        TextObject,
+        "color" | "fontSize" | "fontFamily" | "lineHeight" | "bold" | "italic"
+    >;
 }) {
     const sessionContext = useContext(SessionContext);
     const [local_currentBoardId, setLocalCurrentBoardId] =
@@ -149,24 +170,59 @@ export function CanvasContextProvider({
         });
     }
 
-    function onCurrentBoardSaved(
-        savedObjects: WorldObject[],
-        deletedObjectIds: Set<string>,
-        cameraPosition: Vec2,
-        cameraZoom: number
-    ) {
-        const currentBoardData = getCurrentBoard();
-        const newObjectsMap = new Map(
-            currentBoardData.objects
-                .filter((x) => !deletedObjectIds.has(x.id))
-                .map((x) => [x.id, x])
-        );
-        savedObjects.forEach((x) => newObjectsMap.set(x.id, x));
+    // function onCurrentBoardSaved(
+    //     savedObjects: WorldObject[],
+    //     deletedObjectIds: Set<string>,
+    //     cameraPosition: Vec2,
+    //     cameraZoom: number
+    // ) {
+    //     const currentBoardData = getCurrentBoard();
+    //     const newObjectsMap = new Map(
+    //         currentBoardData.objects
+    //             .filter((x) => !deletedObjectIds.has(x.id))
+    //             .map((x) => [x.id, x])
+    //     );
+    //     savedObjects.forEach((x) => newObjectsMap.set(x.id, x));
+    //     sessionContext.updateBoardById({
+    //         ...currentBoardData,
+    //         objects: Array.from(newObjectsMap.values()),
+    //         lastCameraPosition: cameraPosition,
+    //         lastCameraZoom: cameraZoom,
+    //     });
+    // }
+
+    // TODO; Doest huis work?
+    function commitSavedObjects(objects: WorldObject[]) {
+        // Move objects from unsaved → server-synced
+        const board = getCurrentBoard();
+        const newObjectsMap = new Map(board.objects.map((o) => [o.id, o]));
+        objects.forEach((o) => newObjectsMap.set(o.id, o));
         sessionContext.updateBoardById({
-            ...currentBoardData,
+            ...board,
             objects: Array.from(newObjectsMap.values()),
-            lastCameraPosition: cameraPosition,
-            lastCameraZoom: cameraZoom,
+        });
+        setLocalUnsavedObjects((prev) =>
+            prev.filter((o) => !objects.some((s) => s.id === o.id))
+        );
+    }
+
+    function commitDeletedObjects(ids: Set<string>) {
+        const board = getCurrentBoard();
+        sessionContext.updateBoardById({
+            ...board,
+            objects: board.objects.filter((o) => !ids.has(o.id)),
+        });
+        setLocalDeletedObjectIds(
+            (prev) => new Set([...prev].filter((id) => !ids.has(id)))
+        );
+    }
+
+    function commitSavedCamera(position: Vec2, zoom: number) {
+        const board = getCurrentBoard();
+        sessionContext.updateBoardById({
+            ...board,
+            lastCameraPosition: position,
+            lastCameraZoom: zoom,
         });
     }
 
@@ -191,10 +247,13 @@ export function CanvasContextProvider({
                 setLocalCachedTextProps,
                 updateCurrentBoardCamera,
                 updateCurrentBoardObjects,
-                onCurrentBoardSaved,
+                // onCurrentBoardSaved,
                 getCurrentBoard,
                 updateCurrentBoard,
                 allObjects,
+                commitSavedObjects,
+                commitDeletedObjects,
+                commitSavedCamera,
             }}
         >
             {children}

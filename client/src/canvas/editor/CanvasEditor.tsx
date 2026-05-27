@@ -24,6 +24,7 @@ import { updateUserDisplayName } from "../../api/me";
 import { ShowDebugInfoContext } from "../../types/context/ShowDebugInfoContext";
 import AdvancedOptionsModal from "./components/AdvancedOptionsModal";
 import { useSaveBoard } from "./hooks/useSaveBoard";
+import { Vec2 } from "../../types/canvas";
 
 interface CanvasEditorProps {
     openMyBoards: () => void;
@@ -50,13 +51,34 @@ function CanvasEditor({
     const sessionContext = useContext(SessionContext);
 
     const {
+        hasPendingSaveOperations,
         saveObjectsError,
-        requestCommitObjectChanges,
-        requestCommitCamera,
         handleResetBoard,
         handleDeleteBoard,
         requestNavigateToMyBoards,
+        requestAddObjects,
+        requestEditObjects,
+        requestDeleteObjects,
+        requestUpdateCamera,
+        requestForceSaveBoardNow,
     } = useSaveBoard(openMyBoards, onTourCameraMoved);
+
+    // Prevent refreshing or leaving page if objects are currently being saved / awaiting save
+    useEffect(() => {
+        const preventLeaving = (e: any) => {
+            if (!hasPendingSaveOperations()) {
+                return;
+            }
+            e.preventDefault();
+            e.returnValue = "";
+            requestForceSaveBoardNow();
+        };
+        window.addEventListener("beforeunload", preventLeaving);
+        // Clean up the event listener to avoid memory leaks
+        return () => {
+            window.removeEventListener("beforeunload", preventLeaving);
+        };
+    }, []);
 
     // FPS
     const [fps, setFps] = useState(0);
@@ -167,14 +189,27 @@ function CanvasEditor({
         transition: { duration: 0.5, ease: "easeOut" },
     } as const;
 
+    // ================================================
+    // REQUEST METHODS FROM CanvasInteractive - Called by canvasinteractive whenever
+    // ================================================
+
+    function canvasInteractive_updateCamera(position: Vec2, zoom: number) {
+        requestUpdateCamera(position, zoom);
+    }
+
+    // ================================================
+    // END REQUEST METHODS FROM CanvasInteractive
+    // ================================================
     return (
         <div className="relative h-screen w-screen">
             {/* Canvas */}
             <div className="h-full w-full" data-tour-id="canvas">
                 <CanvasInteractive
                     key={canvasContext.local_currentBoardId}
-                    commitObjectChanges={requestCommitObjectChanges}
-                    commitCamera={requestCommitCamera}
+                    addObjects={requestAddObjects}
+                    editObjects={requestEditObjects}
+                    deleteObjects={requestDeleteObjects}
+                    updateCamera={canvasInteractive_updateCamera}
                 />
             </div>
 

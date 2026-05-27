@@ -75,6 +75,12 @@ export function useDrawing({
                 interaction.current.latestObject as TextObject
             );
         }
+        commitObjectChanges(
+            interaction.current?.latestObject
+                ? [interaction.current.latestObject]
+                : undefined,
+            undefined
+        );
     }
 
     function handleMouseMovePencilDraw(
