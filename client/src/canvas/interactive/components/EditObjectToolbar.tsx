@@ -5,6 +5,7 @@ import { getBoundingBox } from "../utils/canvasHitTesting";
 import ColorPicker from "../../../components/ColorPicker";
 import { measureTextBox } from "../utils/canvasTextBoxMeasurement";
 import { CanvasContext } from "../../../types/context/CanvasContext";
+import { InlineNumberInput } from "../../../components/InlineNumberInput";
 
 type EditableProperty =
     | "color"
@@ -346,19 +347,16 @@ export function EditObjectToolbar({
                             cursor: "pointer",
                         }}
                     />
-                    <span
-                        style={{
-                            fontSize: 11,
-                            color: "var(--card-foreground)",
-                            minWidth: 24,
-                        }}
-                    >
-                        {strokeValue === "mixed" ? (
-                            <span style={mixedLabelStyle}>—</span>
-                        ) : (
-                            `${strokeValue}px`
-                        )}
-                    </span>
+                    {strokeValue === "mixed" ? (
+                        <span style={{ ...mixedLabelStyle, minWidth: 24 }}>—</span>
+                    ) : (
+                        <InlineNumberInput
+                            value={strokeValue}
+                            min={1}
+                            max={20}
+                            onChange={(stroke) => applyToAll({ stroke })}
+                        />
+                    )}
                 </div>
             )}
 
@@ -414,19 +412,16 @@ export function EditObjectToolbar({
                             cursor: "pointer",
                         }}
                     />
-                    <span
-                        style={{
-                            fontSize: 11,
-                            color: "var(--card-foreground)",
-                            minWidth: 24,
-                        }}
-                    >
-                        {hollowStrokeValue === "mixed" ? (
-                            <span style={mixedLabelStyle}>—</span>
-                        ) : (
-                            `${hollowStrokeValue}px`
-                        )}
-                    </span>
+                    {hollowStrokeValue === "mixed" ? (
+                        <span style={{ ...mixedLabelStyle, minWidth: 24 }}>—</span>
+                    ) : (
+                        <InlineNumberInput
+                            value={hollowStrokeValue}
+                            min={1}
+                            max={20}
+                            onChange={(hollowStroke) => applyToAll({ hollowStroke })}
+                        />
+                    )}
                 </div>
             )}
 
@@ -449,19 +444,19 @@ export function EditObjectToolbar({
                             cursor: "pointer",
                         }}
                     />
-                    <span
-                        style={{
-                            fontSize: 11,
-                            color: "var(--card-foreground)",
-                            minWidth: 24,
-                        }}
-                    >
-                        {fontSizeValue === "mixed" ? (
-                            <span style={mixedLabelStyle}>—</span>
-                        ) : (
-                            `${fontSizeValue}px`
-                        )}
-                    </span>
+                    {fontSizeValue === "mixed" ? (
+                        <span style={{ ...mixedLabelStyle, minWidth: 24 }}>—</span>
+                    ) : (
+                        <InlineNumberInput
+                            value={fontSizeValue}
+                            min={8}
+                            max={200}
+                            onChange={(fontSize) => {
+                                applyToAll({ fontSize });
+                                updateTextCache({ fontSize });
+                            }}
+                        />
+                    )}
                 </div>
             )}
 

@@ -17,6 +17,7 @@ import {
     Trash2,
 } from "lucide-react";
 import ColorPicker from "../../../components/ColorPicker";
+import { InlineNumberInput } from "../../../components/InlineNumberInput";
 import { CanvasContext } from "../../../types/context/CanvasContext";
 import {
     EllipseTool,
@@ -400,7 +401,13 @@ function StrokeSection({
                     cursor: isEnabled ? "pointer" : "not-allowed",
                 }}
             />
-            <span className="text-center text-xs">{cachedStroke}px</span>
+            <InlineNumberInput
+                value={cachedStroke}
+                min={1}
+                max={20}
+                onChange={onStrokeChange}
+                style={{ textAlign: "center", display: "block" }}
+            />
         </div>
     );
 }
