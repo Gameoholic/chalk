@@ -136,6 +136,14 @@ function AfterSuccessfulAuth({ initialBoardId }: { initialBoardId: string }) {
                     defaultBoardCameraSize={{ x: 1000, y: 1000 }}
                     defaultCachedColor="#000000FF"
                     defaultCachedStroke={1}
+                    defaultCachedTextProps={{
+                        color: "#000000",
+                        fontSize: 16,
+                        fontFamily: "Google Sans Flex",
+                        lineHeight: 1.2,
+                        bold: false,
+                        italic: false,
+                    }}
                     defaultTool={
                         {
                             type: "select",

@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { BoardData } from "../data";
-import { Camera, Vec2, WorldObject } from "../canvas";
+import { Camera, TextObject, Vec2, WorldObject } from "../canvas";
 import { SessionContext } from "./SessionContext";
 import { Tool } from "../tool";
 
@@ -18,6 +18,8 @@ interface CanvasContextType {
     local_cachedColor: string;
     // Stroke to persist across tool changes, even for tools that don't have a stroke property (e.g. rect).
     local_cachedStroke: number;
+    // Text style to use as defaults when creating new text objects.
+    local_cachedTextProps: Pick<TextObject, "color" | "fontSize" | "fontFamily" | "lineHeight" | "bold" | "italic">;
 
     // Local state updaters
     setLocalCurrentBoardId: React.Dispatch<React.SetStateAction<string>>;
@@ -27,6 +29,7 @@ interface CanvasContextType {
     setLocalDeletedObjectIds: React.Dispatch<React.SetStateAction<Set<string>>>;
     setLocalCachedColor: React.Dispatch<React.SetStateAction<string>>;
     setLocalCachedStroke: React.Dispatch<React.SetStateAction<number>>;
+    setLocalCachedTextProps: React.Dispatch<React.SetStateAction<Pick<TextObject, "color" | "fontSize" | "fontFamily" | "lineHeight" | "bold" | "italic">>>;
 
     // Server-synced-properties methods
     updateCurrentBoardCamera: (
@@ -56,6 +59,7 @@ export function CanvasContextProvider({
     defaultTool,
     defaultCachedColor,
     defaultCachedStroke,
+    defaultCachedTextProps,
 }: {
     children: React.ReactNode;
     defaultBoardId: string;
@@ -63,6 +67,7 @@ export function CanvasContextProvider({
     defaultTool: Tool;
     defaultCachedColor: string;
     defaultCachedStroke: number;
+    defaultCachedTextProps: Pick<TextObject, "color" | "fontSize" | "fontFamily" | "lineHeight" | "bold" | "italic">;
 }) {
     const sessionContext = useContext(SessionContext);
     const [local_currentBoardId, setLocalCurrentBoardId] =
@@ -72,6 +77,9 @@ export function CanvasContextProvider({
         useState<string>(defaultCachedColor);
     const [local_cachedStroke, setLocalCachedStroke] =
         useState<number>(defaultCachedStroke);
+    const [local_cachedTextProps, setLocalCachedTextProps] = useState(
+        defaultCachedTextProps
+    );
 
     function getCurrentBoard(): BoardData {
         const currentBoard = sessionContext.boards.find(
@@ -172,6 +180,7 @@ export function CanvasContextProvider({
                 local_tool: local_tool,
                 local_cachedColor,
                 local_cachedStroke,
+                local_cachedTextProps,
                 setLocalCurrentBoardId,
                 setLocalCamera,
                 setLocalTool,
@@ -179,6 +188,7 @@ export function CanvasContextProvider({
                 setLocalDeletedObjectIds,
                 setLocalCachedColor,
                 setLocalCachedStroke,
+                setLocalCachedTextProps,
                 updateCurrentBoardCamera,
                 updateCurrentBoardObjects,
                 onCurrentBoardSaved,

@@ -1,9 +1,10 @@
-import React, { useRef, useState, useEffect } from "react";
+import React, { useContext, useRef, useState, useEffect } from "react";
 import { Trash2 } from "lucide-react";
 import { Camera, TextObject, WorldObject } from "../../../types/canvas";
 import { getBoundingBox } from "../utils/canvasHitTesting";
 import ColorPicker from "../../../components/ColorPicker";
 import { measureTextBox } from "../utils/canvasTextBoxMeasurement";
+import { CanvasContext } from "../../../types/context/CanvasContext";
 
 type EditableProperty =
     | "color"
@@ -74,6 +75,14 @@ export function EditObjectToolbar({
     onUpdate,
     onDelete,
 }: EditObjectToolbarProps) {
+    const { setLocalCachedTextProps } = useContext(CanvasContext);
+
+    function updateTextCache(patch: Partial<Pick<TextObject, "color" | "fontSize" | "fontFamily" | "lineHeight" | "bold" | "italic">>) {
+        if (selectedObjects.some((obj) => obj.type === "text")) {
+            setLocalCachedTextProps((prev) => ({ ...prev, ...patch }));
+        }
+    }
+
     const [showColorPicker, setShowColorPicker] = useState(false);
     const pickerRef = useRef<HTMLDivElement>(null);
     const [showFontPicker, setShowFontPicker] = useState(false);
@@ -311,6 +320,7 @@ export function EditObjectToolbar({
                                 }
                                 onChange={(color) => {
                                     applyToAll({ color });
+                                    updateTextCache({ color });
                                     setShowColorPicker(false);
                                 }}
                             />
@@ -428,9 +438,11 @@ export function EditObjectToolbar({
                         min="8"
                         max="200"
                         value={fontSizeValue === "mixed" ? 16 : fontSizeValue}
-                        onChange={(e) =>
-                            applyToAll({ fontSize: Number(e.target.value) })
-                        }
+                        onChange={(e) => {
+                            const fontSize = Number(e.target.value);
+                            applyToAll({ fontSize });
+                            updateTextCache({ fontSize });
+                        }}
                         style={{
                             width: 64,
                             accentColor: "var(--accent)",
@@ -503,6 +515,7 @@ export function EditObjectToolbar({
                                     key={f.family}
                                     onClick={() => {
                                         applyToAll({ fontFamily: f.family });
+                                        updateTextCache({ fontFamily: f.family });
                                         setShowFontPicker(false);
                                     }}
                                     style={{
@@ -545,11 +558,11 @@ export function EditObjectToolbar({
             {sharedProps.has("bold") && (
                 <button
                     title="Bold"
-                    onClick={() =>
-                        applyToAll({
-                            bold: boldValue === "mixed" ? true : !boldValue,
-                        })
-                    }
+                    onClick={() => {
+                        const bold = boldValue === "mixed" ? true : !boldValue;
+                        applyToAll({ bold });
+                        updateTextCache({ bold });
+                    }}
                     style={{
                         width: 28,
                         height: 28,
@@ -573,12 +586,12 @@ export function EditObjectToolbar({
             {sharedProps.has("italic") && (
                 <button
                     title="Italic"
-                    onClick={() =>
-                        applyToAll({
-                            italic:
-                                italicValue === "mixed" ? true : !italicValue,
-                        })
-                    }
+                    onClick={() => {
+                        const italic =
+                            italicValue === "mixed" ? true : !italicValue;
+                        applyToAll({ italic });
+                        updateTextCache({ italic });
+                    }}
                     style={{
                         width: 28,
                         height: 28,

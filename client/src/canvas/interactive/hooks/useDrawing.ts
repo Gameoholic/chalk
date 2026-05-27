@@ -226,15 +226,6 @@ export function useDrawing({
         e: React.MouseEvent<HTMLCanvasElement>,
         interaction: React.RefObject<DrawingInteraction>
     ) {
-        const TEXT_DEFAULTS = {
-            color: "#000000",
-            bold: false,
-            italic: false,
-            fontFamily: "Google Sans Flex",
-            fontSize: 16,
-            lineHeight: 1.2,
-        } as const;
-
         const mouseWorldCoords: Vec2 = screenToWorld(e, camera);
         if (interaction.current.path.length === 0) {
             interaction.current.path[0] = mouseWorldCoords;
@@ -248,7 +239,7 @@ export function useDrawing({
             id: interaction.current.objectId,
             type: "text",
             text: "",
-            ...TEXT_DEFAULTS,
+            ...canvasContext.local_cachedTextProps,
             boxPosition: interaction.current.path[0],
             boxSize: {
                 x: Math.max(
