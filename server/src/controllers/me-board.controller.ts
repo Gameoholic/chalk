@@ -353,10 +353,6 @@ export async function upsertWorldObjects(
         return res.status(400).json({ error: "Objects invalid." });
     }
 
-    if (Math.random() < 0.5) {
-        return res.status(400).json({ error: "Random chacne! invalid." });
-    }
-
     const result = await BoardService.upsertWorldObjectsToBoard(
         req.authenticatedUser.id,
         boardId,
