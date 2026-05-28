@@ -55,7 +55,9 @@ export function useSaveBoard(
     function tryToPushChanges() {
         const hasChanges =
             canvasContext.local_unsavedObjects.length > 0 ||
-            canvasContext.local_deletedObjectIds.size > 0;
+            canvasContext.local_deletedObjectIds.size > 0 ||
+            canvasContext.local_cameraPosition !== null ||
+            canvasContext.local_cameraZoom !== null;
 
         if (!hasChanges) {
             console.warn("No changes to push.");
