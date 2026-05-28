@@ -132,6 +132,22 @@ export async function updateBoardCamera(
     return;
 }
 
+export async function updateBoardCameraPosition(
+    boardId: string,
+    cameraPosition: Vec2
+) {
+    console.error("NOt implememnted yet");
+    return;
+}
+
+export async function updateBoardCameraZoom(
+    boardId: string,
+    caemraZoom: number
+) {
+    console.error("NOt implememnted yet");
+    return;
+}
+
 export async function resetBoard(boardId: string) {
     const result = await fetchHelper<undefined>(`me/boards/${boardId}`, "PUT", {
         objects: [],

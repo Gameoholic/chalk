@@ -45,7 +45,7 @@ export function useDrawing({
     selectTextObjectForEditing,
 }: useDrawingInteractionsProps) {
     const canvasContext = useContext(CanvasContext);
-    const camera = canvasContext.local_camera;
+    const camera = canvasContext.updatedCamera;
 
     function handleDrawingInteraction_MouseMove(
         e: React.MouseEvent<HTMLCanvasElement>,

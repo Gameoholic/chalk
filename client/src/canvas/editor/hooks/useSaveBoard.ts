@@ -26,22 +26,6 @@ export function useSaveBoard(
         canvasContextRef.current = canvasContext;
     });
 
-    // All changes to the board that are pending to be saved on the database
-    const changes = useRef({
-        // Objects to "SET" (upsert) on the database - overriding previous changes if they existed (objects mapped to their id's)
-        objectUpsert: new Map<string, WorldObject>(),
-        // Ids of objects to delete
-        objectDelete: new Set<string>(),
-        camera: null as { position: Vec2; zoom: number } | null,
-    });
-
-    // Changes currently being pushed to server
-    const pendingChanges = useRef({
-        objectUpsert: new Map<string, WorldObject>(),
-        objectDelete: new Set<string>(),
-        camera: null as { position: Vec2; zoom: number } | null,
-    });
-
     const cooldownTimerRef = useRef<number | null>(null);
     // Cleanup timer on unmount
     useEffect(() => {
@@ -51,31 +35,108 @@ export function useSaveBoard(
         };
     }, []);
 
+    // Increment every time we make changes to trigger the tryToPushChanges effect
+    const [commitSignal, setCommitSignal] = useState(0);
+
     // ================================================
     // END LOCAL VARIABLES, STATE AND DATA
     // ================================================
 
     // ================================================
-    // LOCAL METHODS, LOGIC AND HELPERS
+    // LOCAL METHODS, LOGIC
     // ================================================
+
+    // Effect 1: (effects run after render, so context states are always fresh)
+    useEffect(() => {
+        if (commitSignal === 0) return; // skip initial
+        tryToPushChanges(); // reads fresh local_ from context, snapshots → pending
+    }, [commitSignal]);
+
     function tryToPushChanges() {
-        console.log("Trying to push changes...");
-        if (!areThereChangesToPush()) {
+        const hasChanges =
+            canvasContext.local_unsavedObjects.length > 0 ||
+            canvasContext.local_deletedObjectIds.size > 0;
+
+        if (!hasChanges) {
             console.warn("No changes to push.");
             return;
         }
-
-        if (areTherePendingChanges()) {
-            console.warn("Waiting on pending requests to complete.");
+        if (
+            canvasContext.pending_cameraPosition !== null ||
+            canvasContext.pending_cameraZoom !== null ||
+            canvasContext.pending_unsavedObjects.length > 0 ||
+            canvasContext.pending_deletedObjectIds.size > 0
+        ) {
+            console.warn("Waiting on existing request.");
             return;
         }
-
-        if (waitingOnCooldownTimer()) {
-            console.warn("Waiting on cooldown timer.");
+        if (cooldownTimerRef.current !== null) {
+            console.warn("Waiting on cooldown.");
             return;
         }
+        console.log("trytopushchanges successful.");
 
-        pushChanges();
+        // Convert all local changes -> pending, which will trigger effect 2 to push to the server
+        canvasContext.moveLocalChangesToPendingChanges();
+    }
+
+    // Effect 2:
+    useEffect(() => {
+        const hasPendingChanges =
+            canvasContext.pending_unsavedObjects.length > 0 ||
+            canvasContext.pending_deletedObjectIds.size > 0 ||
+            canvasContext.pending_cameraPosition !== null ||
+            canvasContext.pending_cameraZoom !== null;
+
+        if (!hasPendingChanges) return;
+
+        pushPendingChanges();
+    }, [
+        canvasContext.pending_unsavedObjects,
+        canvasContext.pending_deletedObjectIds,
+        canvasContext.pending_cameraPosition,
+        canvasContext.pending_cameraZoom,
+    ]);
+
+    async function pushPendingChanges() {
+        startCooldown();
+
+        const upsertObjects = canvasContext.pending_unsavedObjects;
+        const deleteIds = canvasContext.pending_deletedObjectIds;
+        const cameraPosition = canvasContext.pending_cameraPosition;
+        const cameraZoom = canvasContext.pending_cameraZoom;
+
+        console.log(
+            `Pushing: ${upsertObjects.length} upserts, ${deleteIds.size} deletes`
+        );
+
+        try {
+            await pushBoardChangesToServer(canvasContext.local_currentBoardId, {
+                objectUpsert: new Map(upsertObjects.map((o) => [o.id, o])),
+                objectDelete: deleteIds,
+                cameraPosition,
+                cameraZoom,
+            });
+
+            console.log("Successfully pushed changes.");
+
+            if (upsertObjects.length > 0) {
+                canvasContextRef.current.onObjectsSavedToServer(upsertObjects);
+            }
+            if (deleteIds.size > 0) {
+                canvasContextRef.current.onObjectsDeletedOnServer(deleteIds);
+            }
+            if (cameraPosition) {
+                canvasContextRef.current.onCameraPositionSavedOnServer(
+                    cameraPosition
+                );
+            }
+            if (cameraZoom) {
+                canvasContextRef.current.onCameraZoomSavedOnServer(cameraZoom);
+            }
+        } catch (err) {
+            console.error("Failed to push changes!", err);
+        }
     }
 
     function requestForceSaveBoardNow() {
@@ -88,90 +149,8 @@ export function useSaveBoard(
         tryToPushChanges();
     }
 
-    async function pushChanges() {
-        pendingChanges.current = {
-            objectUpsert: new Map(changes.current.objectUpsert),
-            objectDelete: new Set(changes.current.objectDelete),
-            camera: changes.current.camera,
-        };
-
-        clearChanges();
-
-        startCooldown();
-
-        console.log(
-            `Pushing changes: ${pendingChanges.current.objectUpsert.size} upserts, ${pendingChanges.current.objectDelete.size} deletes, camera: ${pendingChanges.current.camera !== null}`
-        );
-
-        try {
-            await pushBoardChangesToServer(
-                canvasContext.local_currentBoardId,
-                pendingChanges.current
-            );
-
-            console.log("Successfully pushed changes.");
-
-            if (pendingChanges.current.objectUpsert.size > 0) {
-                canvasContextRef.current.commitSavedObjects(
-                    Array.from(pendingChanges.current.objectUpsert.values())
-                );
-            }
-            if (pendingChanges.current.objectDelete.size > 0) {
-                canvasContextRef.current.commitDeletedObjects(
-                    pendingChanges.current.objectDelete
-                );
-            }
-            if (pendingChanges.current.camera) {
-                canvasContextRef.current.commitSavedCamera(
-                    pendingChanges.current.camera.position,
-                    pendingChanges.current.camera.zoom
-                );
-            }
-
-            clearPendingChanges();
-        } catch (err) {
-            console.error("Failed to push changes!", err);
-        }
-    }
-
-    // Future note on why we use so many utility functions:
-    // Answer: These little snippets and make the code less readable
-    // For complex code like this, it was hard to read before, even if the logic was simple
-
-    function clearChanges() {
-        changes.current.objectUpsert.clear();
-        changes.current.objectDelete.clear();
-        changes.current.camera = null;
-    }
-
-    function clearPendingChanges() {
-        pendingChanges.current.objectUpsert.clear();
-        pendingChanges.current.objectDelete.clear();
-        pendingChanges.current.camera = null;
-    }
-
-    function areThereChangesToPush() {
-        return (
-            changes.current.objectUpsert.size > 0 ||
-            changes.current.camera !== null ||
-            changes.current.objectDelete.size > 0
-        );
-    }
-
-    function areTherePendingChanges() {
-        return (
-            pendingChanges.current.objectUpsert.size > 0 ||
-            pendingChanges.current.camera !== null ||
-            pendingChanges.current.objectDelete.size > 0
-        );
-    }
-
-    function waitingOnCooldownTimer() {
-        return cooldownTimerRef.current !== null;
-    }
-
     function startCooldown() {
-        if (waitingOnCooldownTimer()) {
+        if (cooldownTimerRef.current !== null) {
             return;
         }
 
@@ -179,46 +158,23 @@ export function useSaveBoard(
             cooldownTimerRef.current = window.setTimeout(() => {
                 console.log("Cooldown finished.");
                 cooldownTimerRef.current = null;
-                tryToPushChanges();
+                setCommitSignal((n) => n + 1); // trigger effect to check if we have changes to push after cooldown. Can't call function directly due to stale closure from inside timeout
             }, env.VITE_SAVE_REQUEST_COOLDOWN);
         }
     }
 
     // ================================================
-    // END LOCAL METHODS, LOGIC AND HELPERS
+    // END LOCAL METHODS, LOGIC
     // ================================================
 
     // ================================================
     // PUBLIC API — these are the only exported methods
     // ================================================
-    function requestAddObjects(objects: WorldObject[]) {
-        objects.forEach((obj) => {
-            changes.current.objectUpsert.set(obj.id, obj);
-            // Sanity check - if the object was marked for deletion somehow first, stop it from being deleted.
-            if (changes.current.objectDelete.has(obj.id)) {
-                changes.current.objectDelete.delete(obj.id);
-            }
-        });
-        tryToPushChanges();
+
+    function requestSaveBoard() {
+        setCommitSignal((n) => n + 1);
     }
 
-    function requestEditObjects(objects: WorldObject[]) {
-        // same logic as add objects, only exists as an alias for readability purposes
-        requestAddObjects(objects);
-    }
-
-    function requestDeleteObjects(objectIds: string[]) {
-        objectIds.forEach((id) => {
-            changes.current.objectUpsert.delete(id);
-            changes.current.objectDelete.add(id);
-        });
-        tryToPushChanges();
-    }
-
-    function requestUpdateCamera(position: Vec2, zoom: number) {
-        changes.current.camera = { position, zoom };
-        tryToPushChanges();
-    }
     // ================================================
     // END PUBLIC API
     // ================================================
@@ -695,23 +651,10 @@ export function useSaveBoard(
     };
 
     function hasPendingSaveOperations() {
-        const cameraPosOnClient =
-            canvasContextRef.current.local_camera.position;
-        const cameraZoomOnClient = canvasContextRef.current.local_camera.zoom;
-        const wasCameraUpdatedSinceLastSave =
-            cameraPosOnClient.x !==
-                canvasContextRef.current.getCurrentBoard().lastCameraPosition
-                    .x ||
-            cameraPosOnClient.y !==
-                canvasContextRef.current.getCurrentBoard().lastCameraPosition
-                    .y ||
-            cameraZoomOnClient !==
-                canvasContextRef.current.getCurrentBoard().lastCameraZoom;
-
         return (
-            areThereChangesToPush() ||
-            areTherePendingChanges() ||
-            wasCameraUpdatedSinceLastSave ||
+            // areThereChangesToPush() ||
+            // areTherePendingChanges() ||
+            // wasCameraUpdatedSinceLastSave ||
             canvasContext.local_unsavedObjects.length !== 0 ||
             canvasContext.local_deletedObjectIds.size !== 0
         );
@@ -733,10 +676,7 @@ export function useSaveBoard(
         handleResetBoard,
         handleDeleteBoard,
         requestNavigateToMyBoards,
-        requestAddObjects,
-        requestEditObjects,
-        requestDeleteObjects,
-        requestUpdateCamera,
         requestForceSaveBoardNow,
+        requestSaveBoard,
     };
 }

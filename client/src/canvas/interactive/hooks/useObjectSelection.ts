@@ -26,7 +26,7 @@ export function useObjectSelection({
     commitObjectChanges,
 }: UseObjectSelectionProps) {
     const canvasContext = useContext(CanvasContext);
-    const camera = canvasContext.local_camera;
+    const camera = canvasContext.updatedCamera;
 
     const [selectedObjectIds, setSelectedObjectIds] = useState<Set<string>>(
         new Set()

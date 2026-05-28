@@ -1,6 +1,8 @@
 import {
     deleteBoardObjects,
     updateBoardCamera,
+    updateBoardCameraPosition,
+    updateBoardCameraZoom,
     upsertBoardObjects,
 } from "../../../api/boards";
 import { Vec2, WorldObject } from "../../../types/canvas";
@@ -8,7 +10,8 @@ import { Vec2, WorldObject } from "../../../types/canvas";
 export type BoardChanges = {
     objectUpsert: Map<string, WorldObject>;
     objectDelete: Set<string>;
-    camera: { position: Vec2; zoom: number } | null;
+    cameraPosition: Vec2 | null;
+    cameraZoom: number | null;
 };
 
 export async function pushBoardChangesToServer(
@@ -26,14 +29,14 @@ export async function pushBoardChangesToServer(
         );
     }
 
-    if (changes.camera) {
+    if (changes.cameraPosition) {
         requests.push(
-            updateBoardCamera(
-                boardId,
-                changes.camera.position,
-                changes.camera.zoom
-            )
+            updateBoardCameraPosition(boardId, changes.cameraPosition)
         );
+    }
+
+    if (changes.cameraZoom) {
+        requests.push(updateBoardCameraZoom(boardId, changes.cameraZoom));
     }
 
     if (changes.objectDelete.size > 0) {

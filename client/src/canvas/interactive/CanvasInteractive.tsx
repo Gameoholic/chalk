@@ -15,30 +15,22 @@ import { useObjectSelection } from "./hooks/useObjectSelection";
 import { EditObjectToolbar } from "./components/EditObjectToolbar";
 
 interface CanvasInteractiveProps {
-    addObjects: (objects: WorldObject[]) => void;
-    editObjects: (objects: WorldObject[]) => void;
-    deleteObjects: (objectIds: string[]) => void;
-    updateCamera: (position: { x: number; y: number }, zoom: number) => void;
+    saveBoard: () => void;
 }
 
 /**
  * Handles all user interactions, mouse events, drawing.
  */
-function CanvasInteractive({
-    addObjects,
-    editObjects,
-    deleteObjects,
-    updateCamera,
-}: CanvasInteractiveProps) {
+function CanvasInteractive({ saveBoard }: CanvasInteractiveProps) {
     const canvasContext = useContext(CanvasContext);
 
     // Automatically set camera size to this component's MAX allocated size
     const { observe } = useDimensions({
         onResize: ({ observe, unobserve, width, height }) => {
-            canvasContext.setLocalCamera((prev) => ({
-                ...prev,
-                size: { x: width, y: height },
-            }));
+            canvasContext.setLocalCameraSize({
+                x: width,
+                y: height,
+            });
             unobserve();
             observe();
         },
@@ -76,13 +68,7 @@ function CanvasInteractive({
                 "Commit changes was called, but there are no changes to commit."
             );
         }
-        // Explicitly tells CanvasEditor what to delete, bypassing state closure bugs caused by relying only on CanvasContext states
-        if (updatedObjects) {
-            editObjects(updatedObjects);
-        }
-        if (deletedObjectIds) {
-            deleteObjects(deletedObjectIds);
-        }
+        saveBoard();
     }
 
     // drawingTextBoxObjectId tracks the textbox being drag-created, cleared once drawing finishes and object becomes selected
@@ -181,7 +167,7 @@ function CanvasInteractive({
         handleCameraDragInteraction_MouseUp,
         handleCamera_Wheel,
     } = useCamera({
-        updateCamera,
+        saveBoard,
     });
 
     // Handle mouse events hook - main method which will handle the interactions from before
@@ -223,7 +209,7 @@ function CanvasInteractive({
     return (
         <div ref={observe} className="h-full w-full touch-none">
             <CanvasRenderer
-                camera={canvasContext.local_camera}
+                camera={canvasContext.updatedCamera}
                 objects={canvasContext.allObjects}
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
@@ -257,7 +243,7 @@ function CanvasInteractive({
             {selectedObjects.length > 0 && (
                 <EditObjectToolbar
                     selectedObjects={selectedObjects}
-                    camera={canvasContext.local_camera}
+                    camera={canvasContext.updatedCamera}
                     onUpdate={(updated) => {
                         updated.forEach(updateOrAddObject);
                         _commitObjectChanges(updated, undefined);

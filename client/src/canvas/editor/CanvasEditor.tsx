@@ -56,11 +56,8 @@ function CanvasEditor({
         handleResetBoard,
         handleDeleteBoard,
         requestNavigateToMyBoards,
-        requestAddObjects,
-        requestEditObjects,
-        requestDeleteObjects,
-        requestUpdateCamera,
         requestForceSaveBoardNow,
+        requestSaveBoard,
     } = useSaveBoard(openMyBoards, onTourCameraMoved);
 
     // Prevent refreshing or leaving page if objects are currently being saved / awaiting save
@@ -152,7 +149,7 @@ function CanvasEditor({
             zoom: startZoom,
             position: startPos,
             size,
-        } = canvasContext.local_camera;
+        } = canvasContext.updatedCamera;
 
         // The world-space point at the center of the viewport — kept locked throughout the animation
         const centerX = size.x / 2;
@@ -167,14 +164,10 @@ function CanvasEditor({
             const zoom = startZoom + (1.0 - startZoom) * ease;
 
             // Derive position from zoom directly — interpolating them separately causes drift
-            canvasContext.setLocalCamera((prev) => ({
-                ...prev,
-                zoom,
-                position: {
-                    x: worldAnchorX - centerX / zoom,
-                    y: worldAnchorY - centerY / zoom,
-                },
-            }));
+            canvasContext.setLocalCameraPosition({
+                x: worldAnchorX - centerX / zoom,
+                y: worldAnchorY - centerY / zoom,
+            });
 
             if (progress < 1) requestAnimationFrame(animate);
         };
@@ -193,8 +186,8 @@ function CanvasEditor({
     // REQUEST METHODS FROM CanvasInteractive - Called by canvasinteractive whenever
     // ================================================
 
-    function canvasInteractive_updateCamera(position: Vec2, zoom: number) {
-        requestUpdateCamera(position, zoom);
+    function canvasInteractive_saveBoard() {
+        requestSaveBoard();
     }
 
     // ================================================
@@ -206,10 +199,7 @@ function CanvasEditor({
             <div className="h-full w-full" data-tour-id="canvas">
                 <CanvasInteractive
                     key={canvasContext.local_currentBoardId}
-                    addObjects={requestAddObjects}
-                    editObjects={requestEditObjects}
-                    deleteObjects={requestDeleteObjects}
-                    updateCamera={canvasInteractive_updateCamera}
+                    saveBoard={canvasInteractive_saveBoard}
                 />
             </div>
 
@@ -361,33 +351,38 @@ function CanvasEditor({
                     >
                         <p className="font-bold">Debug</p>
                         <p>
-                            Camera Pos: {canvasContext.local_camera.position.x},{" "}
-                            {canvasContext.local_camera.position.y}
+                            Camera Pos: {canvasContext.updatedCamera.position.x}
+                            , {canvasContext.updatedCamera.position.y}
                         </p>
                         <p>
                             Camera Zoom:{" "}
-                            {canvasContext.local_camera.zoom.toFixed(2)}
+                            {canvasContext.updatedCamera.zoom.toFixed(2)}
                         </p>
                         <p>FPS: {fps}</p>
+                        <p>Objects: {canvasContext.allObjects.size} total</p>
                         <p>
-                            Objects:{" "}
-                            {canvasContext.getCurrentBoard().objects.length +
-                                canvasContext.local_unsavedObjects.length}{" "}
-                            ({canvasContext.getCurrentBoard().objects.length}{" "}
-                            saved on server +{" "}
-                            {canvasContext.local_unsavedObjects.length} unsaved
-                            + {canvasContext.local_deletedObjectIds.size}{" "}
-                            awaiting deletion)
+                            Server:{" "}
+                            {canvasContext.getCurrentBoard().objects.length} |
+                            Local unsaved:{" "}
+                            {canvasContext.local_unsavedObjects.length} | Local
+                            deleting:{" "}
+                            {canvasContext.local_deletedObjectIds.size}
+                        </p>
+                        <p>
+                            Pending unsaved:{" "}
+                            {canvasContext.pending_unsavedObjects.length} |
+                            Pending deleting:{" "}
+                            {canvasContext.pending_deletedObjectIds.size}
                         </p>
                         <p>
                             Camera:{" "}
-                            {canvasContext.local_camera.position.x !==
+                            {canvasContext.updatedCamera.position.x !==
                                 canvasContext.getCurrentBoard()
                                     .lastCameraPosition.x ||
-                            canvasContext.local_camera.position.y !==
+                            canvasContext.updatedCamera.position.y !==
                                 canvasContext.getCurrentBoard()
                                     .lastCameraPosition.y ||
-                            canvasContext.local_camera.zoom !==
+                            canvasContext.updatedCamera.zoom !==
                                 canvasContext.getCurrentBoard().lastCameraZoom
                                 ? "Unsaved."
                                 : "Saved."}
@@ -405,7 +400,7 @@ function CanvasEditor({
                         data-tour-id="zoom-reset-button"
                     >
                         {Math.round(
-                            canvasContext.local_camera.zoom * 100
+                            canvasContext.updatedCamera.zoom * 100
                         ).toLocaleString("en-US")}
                         {/* display commas instead of periods */}%
                     </button>
