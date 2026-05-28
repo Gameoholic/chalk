@@ -257,13 +257,20 @@ export function useSaveBoard(
     // Prevent refreshing or leaving page if objects are currently being saved / awaiting save
     const hasUnsavedWorkRef = useRef<() => boolean>(() => false);
     const requestForceSaveBoardNowRef = useRef<() => void>(() => {});
+    const saveObjectsErrorRef = useRef<SaveError>(saveObjectsError);
     useEffect(() => {
         hasUnsavedWorkRef.current = hasUnsavedWork;
         requestForceSaveBoardNowRef.current = requestForceSaveBoardNow;
+        saveObjectsErrorRef.current = saveObjectsError;
     });
     useEffect(() => {
         const preventLeaving = (e: BeforeUnloadEvent) => {
-            if (!hasUnsavedWorkRef.current()) return;
+            if (
+                !hasUnsavedWorkRef.current() ||
+                saveObjectsErrorRef.current.retryCooldownSecondsOrStatus ===
+                    "fatal-error"
+            )
+                return;
             e.preventDefault();
             e.returnValue = "";
             requestForceSaveBoardNowRef.current();
@@ -381,7 +388,6 @@ export function useSaveBoard(
     }
 
     return {
-        hasUnsavedWork,
         saveObjectsError,
         handleResetBoard,
         handleDeleteBoard,

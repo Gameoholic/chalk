@@ -51,7 +51,6 @@ function CanvasEditor({
     const sessionContext = useContext(SessionContext);
 
     const {
-        hasUnsavedWork,
         saveObjectsError,
         handleResetBoard,
         handleDeleteBoard,
