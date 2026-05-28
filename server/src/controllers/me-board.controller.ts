@@ -254,7 +254,7 @@ export async function updateBoard(req: AuthenticatedRequest, res: Response) {
     if (boardId === undefined) {
         return res.status(400).json({ error: "Board id required." });
     }
-
+    await new Promise((resolve) => setTimeout(resolve, 3000));
     // Optional parameters to update board with
     const name = req.body.name as string;
     const objects = req.body.objects as WorldObject[]; // todo this check does nothing. so do all these parameter checks in controller. we need to use zod instead.
@@ -351,6 +351,10 @@ export async function upsertWorldObjects(
 
     if (!Array.isArray(objects)) {
         return res.status(400).json({ error: "Objects invalid." });
+    }
+
+    if (Math.random() < 0.5) {
+        return res.status(400).json({ error: "Random chacne! invalid." });
     }
 
     const result = await BoardService.upsertWorldObjectsToBoard(
