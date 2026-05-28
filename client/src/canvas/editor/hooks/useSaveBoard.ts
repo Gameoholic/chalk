@@ -243,6 +243,24 @@ export function useSaveBoard(
         }
     }
 
+    function hasPendingChanges() {
+        return (
+            canvasContext.pending_unsavedObjects.length > 0 ||
+            canvasContext.pending_deletedObjectIds.size > 0 ||
+            canvasContext.pending_cameraPosition !== null ||
+            canvasContext.pending_cameraZoom !== null
+        );
+    }
+
+    function hasLocalChanges() {
+        return (
+            canvasContext.local_unsavedObjects.length > 0 ||
+            canvasContext.local_deletedObjectIds.size > 0 ||
+            canvasContext.local_cameraPosition !== null ||
+            canvasContext.local_cameraZoom !== null
+        );
+    }
+
     // ================================================
     // END LOCAL METHODS, LOGIC
     // ================================================
@@ -263,7 +281,7 @@ export function useSaveBoard(
     const [queued_navigateToMyBoards, setQueued_navigateToMyBoards] =
         useState(false);
     useEffect(() => {
-        if (queued_navigateToMyBoards && !hasPendingSaveOperations()) {
+        if (queued_navigateToMyBoards && !hasUnsavedWork()) {
             openMyBoards();
             setQueued_navigateToMyBoards(false);
         }
@@ -272,7 +290,7 @@ export function useSaveBoard(
     // Used if a save operation is currently undergoing and user requested to reset board
     const [queued_resetBoard, setQueued_ResetBoard] = useState(false);
     useEffect(() => {
-        if (queued_resetBoard && !hasPendingSaveOperations()) {
+        if (queued_resetBoard && !hasUnsavedWork()) {
             handleResetBoard();
             setQueued_ResetBoard(false);
         }
@@ -281,7 +299,7 @@ export function useSaveBoard(
     // Used if a save operation is currently undergoing and user requested to reset board
     const [queued_deleteBoard, setQueued_deleteBoard] = useState(false);
     useEffect(() => {
-        if (queued_deleteBoard && !hasPendingSaveOperations()) {
+        if (queued_deleteBoard && !hasUnsavedWork()) {
             handleDeleteBoard();
             setQueued_deleteBoard(false);
         }
@@ -313,14 +331,8 @@ export function useSaveBoard(
         // window.location.reload();
     };
 
-    function hasPendingSaveOperations() {
-        return (
-            // areThereChangesToPush() ||
-            // areTherePendingChanges() ||
-            // wasCameraUpdatedSinceLastSave ||
-            canvasContext.local_unsavedObjects.length !== 0 ||
-            canvasContext.local_deletedObjectIds.size !== 0
-        );
+    function hasUnsavedWork() {
+        return hasLocalChanges() || hasPendingChanges();
     }
 
     function requestNavigateToMyBoards() {
@@ -334,7 +346,7 @@ export function useSaveBoard(
     }
 
     return {
-        hasPendingSaveOperations,
+        hasPendingSaveOperations: hasUnsavedWork,
         saveObjectsError,
         handleResetBoard,
         handleDeleteBoard,
