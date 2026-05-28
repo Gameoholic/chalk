@@ -32,7 +32,7 @@ interface useCameraProps {
  */
 export function useCamera({ saveBoard }: useCameraProps) {
     const canvasContext = useContext(CanvasContext);
-    const camera = canvasContext.local_camera;
+    const camera = canvasContext.updatedCamera;
     function handleCameraDragInteraction_MouseMove(
         e: React.MouseEvent<HTMLCanvasElement>,
         interaction: React.RefObject<CameraDragInteraction>
@@ -43,13 +43,12 @@ export function useCamera({ saveBoard }: useCameraProps) {
         const dy =
             (e.clientY - interaction.current.lastMousePos.y) /
             canvasContext.updatedCamera.zoom;
-        canvasContext.setLocalCamera((prev) => ({
-            ...(prev ?? canvasContext.updatedCamera),
-            position: {
-                x: (prev ?? canvasContext.updatedCamera).position.x - dx,
-                y: (prev ?? canvasContext.updatedCamera).position.y - dy,
-            },
-        }));
+
+        canvasContext.setLocalCameraPosition({
+            x: canvasContext.updatedCamera.position.x - dx,
+            y: canvasContext.updatedCamera.position.y - dy,
+        });
+
         interaction.current.lastMousePos = {
             x: e.clientX,
             y: e.clientY,
@@ -82,11 +81,8 @@ export function useCamera({ saveBoard }: useCameraProps) {
             x: worldX - mouseX / clampedZoom,
             y: worldY - mouseY / clampedZoom,
         };
-        canvasContext.setLocalCamera({
-            ...canvasContext.updatedCamera,
-            zoom: clampedZoom,
-            position: newPosition,
-        });
+        canvasContext.setLocalCameraPosition(newPosition);
+        canvasContext.setLocalCameraZoom(clampedZoom);
         saveBoard();
     }
     return {
