@@ -333,7 +333,7 @@ export async function updateBoard(req: AuthenticatedRequest, res: Response) {
     }
 }
 
-export async function updateWorldObjects(
+export async function upsertWorldObjects(
     req: AuthenticatedRequest,
     res: Response
 ) {

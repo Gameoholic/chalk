@@ -4,7 +4,7 @@ import {
     create,
     getById,
     updateBoard,
-    updateWorldObjects,
+    upsertWorldObjects,
     deleteWorldObjects,
     deleteById,
 } from "../controllers/me-board.controller.js";
@@ -16,7 +16,7 @@ const router = Router();
 router.delete("/:id", deleteById);
 router.get("/:id", getById);
 router.put("/:id", updateBoard);
-router.post("/:id/objects", updateWorldObjects);
+router.post("/:id/objects", upsertWorldObjects);
 router.delete("/:id/objects", deleteWorldObjects);
 router.get("/", getAll);
 router.post("/", create);
