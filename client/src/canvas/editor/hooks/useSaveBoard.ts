@@ -127,13 +127,11 @@ export function useSaveBoard(
             if (deleteIds.size > 0) {
                 canvasContextRef.current.onObjectsDeletedOnServer(deleteIds);
             }
-            if (cameraPosition) {
-                canvasContextRef.current.onCameraPositionSavedOnServer(
-                    cameraPosition
+            if (cameraPosition || cameraZoom) {
+                canvasContextRef.current.onCameraSavedOnServer(
+                    cameraPosition,
+                    cameraZoom
                 );
-            }
-            if (cameraZoom) {
-                canvasContextRef.current.onCameraZoomSavedOnServer(cameraZoom);
             }
         } catch (err) {
             console.error("Failed to push changes!", err);

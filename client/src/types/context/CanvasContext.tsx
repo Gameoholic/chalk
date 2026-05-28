@@ -73,8 +73,7 @@ interface CanvasContextType {
     updatedCamera: Camera;
     onObjectsSavedToServer: (savedObjects: WorldObject[]) => void;
     onObjectsDeletedOnServer: (deletedIds: Set<string>) => void;
-    onCameraPositionSavedOnServer: (position: Vec2) => void;
-    onCameraZoomSavedOnServer: (zoom: number) => void;
+    onCameraSavedOnServer: (position: Vec2 | null, zoom: number | null) => void;
     moveLocalChangesToPendingChanges: () => void;
 }
 
@@ -278,22 +277,14 @@ export function CanvasContextProvider({
     }
 
     // Updates server-synced camera state after a successful camera save.
-    function onCameraPositionSavedOnServer(position: Vec2) {
+    function onCameraSavedOnServer(position: Vec2 | null, zoom: number | null) {
         const board = getCurrentBoard();
         sessionContext.updateBoardById({
             ...board,
-            lastCameraPosition: position,
+            ...(position && { lastCameraPosition: position }),
+            ...(zoom && { lastCameraZoom: zoom }),
         });
         setPendingCameraPosition(null);
-    }
-
-    // Updates server-synced camera state after a successful camera save.
-    function onCameraZoomSavedOnServer(zoom: number) {
-        const board = getCurrentBoard();
-        sessionContext.updateBoardById({
-            ...board,
-            lastCameraZoom: zoom,
-        });
         setPendingCameraZoom(null);
     }
 
@@ -333,8 +324,7 @@ export function CanvasContextProvider({
                 updatedCamera,
                 onObjectsSavedToServer,
                 onObjectsDeletedOnServer,
-                onCameraPositionSavedOnServer,
-                onCameraZoomSavedOnServer,
+                onCameraSavedOnServer,
                 moveLocalChangesToPendingChanges,
             }}
         >
