@@ -42,7 +42,7 @@ export function useSaveBoard(
     type SaveError =
         | {
               error: string;
-              retryCooldownSecondsOrStatus: number | "retrying" | null;
+              retryCooldownSecondsOrStatus: number | "retrying" | "fatal-error";
           }
         | { error: null; retryCooldownSecondsOrStatus: null };
 
@@ -160,15 +160,16 @@ export function useSaveBoard(
             console.error("Failed to push changes", err);
 
             const message = err instanceof Error ? err.message : String(err);
-            const isFatal = message.includes("test");
+            // TODO: This is not ideal, ideally we make a custom error class for expected errors
+            const isNetworkError = message.includes("NetworkError");
 
-            if (isFatal) {
+            if (isNetworkError) {
+                scheduleRetry();
+            } else {
                 setSaveObjectsError({
                     error: "A fatal error occurred. Please refresh the page.",
-                    retryCooldownSecondsOrStatus: null,
+                    retryCooldownSecondsOrStatus: "fatal-error",
                 });
-            } else {
-                scheduleRetry();
             }
         }
     }

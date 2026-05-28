@@ -6,8 +6,6 @@ import {
     LayoutDashboard,
     Share2,
     Settings2,
-    Loader2,
-    XCircle,
     SlidersHorizontal,
 } from "lucide-react";
 import { updateBoardName } from "../../api/boards";
@@ -25,6 +23,8 @@ import { ShowDebugInfoContext } from "../../types/context/ShowDebugInfoContext";
 import AdvancedOptionsModal from "./components/AdvancedOptionsModal";
 import { useSaveBoard } from "./hooks/useSaveBoard";
 import { Vec2 } from "../../types/canvas";
+import FatalErrorOverlay from "../../components/FatalSaveErrorOverlay";
+import SaveErrorBanner from "../../components/SaveErrorBanner";
 
 interface CanvasEditorProps {
     openMyBoards: () => void;
@@ -203,49 +203,21 @@ function CanvasEditor({
                 />
             </div>
 
-            {/* SAVE ERROR BANNER */}
-            {saveObjectsError.error && (
-                <div className="animate-in fade-in slide-in-from-top-2 pointer-events-none fixed top-6 left-1/2 z-100 -translate-x-1/2">
-                    <div
-                        className="flex flex-col gap-1 rounded-xl px-5 py-3 text-sm font-medium shadow-xl"
-                        style={{
-                            backgroundColor: "var(--error)",
-                            color: "var(--error-foreground)",
-                        }}
-                    >
-                        <div className="flex items-center gap-3">
-                            {saveObjectsError.retryCooldownSecondsOrStatus ===
-                            "retrying" ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                                <XCircle className="h-4 w-4" />
-                            )}
-                            <span>{saveObjectsError.error}</span>
-                        </div>
+            {/* FATAL SAVE ERROR OVERLAY */}
+            {saveObjectsError.retryCooldownSecondsOrStatus ===
+                "fatal-error" && <FatalErrorOverlay />}
 
-                        {typeof saveObjectsError.retryCooldownSecondsOrStatus ===
-                            "number" && (
-                            <span
-                                className="ml-7 text-xs opacity-80"
-                                style={{ color: "var(--error-foreground)" }}
-                            >
-                                Retrying in{" "}
-                                {saveObjectsError.retryCooldownSecondsOrStatus}s
-                            </span>
-                        )}
-
-                        {saveObjectsError.retryCooldownSecondsOrStatus ===
-                            "retrying" && (
-                            <span
-                                className="ml-7 text-xs opacity-80"
-                                style={{ color: "var(--error-foreground)" }}
-                            >
-                                Retrying...
-                            </span>
-                        )}
-                    </div>
-                </div>
-            )}
+            {/* OK/NETWORK SAVE ERROR BANNER */}
+            {saveObjectsError.error &&
+                saveObjectsError.retryCooldownSecondsOrStatus !==
+                    "fatal-error" && (
+                    <SaveErrorBanner
+                        error={saveObjectsError.error}
+                        retryCooldownSecondsOrStatus={
+                            saveObjectsError.retryCooldownSecondsOrStatus
+                        }
+                    />
+                )}
 
             <motion.div {...fadeInAnimation}>
                 {/* Top-left menu container */}
