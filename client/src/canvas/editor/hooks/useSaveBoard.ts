@@ -108,7 +108,7 @@ export function useSaveBoard(
         const cameraZoom = canvasContext.pending_cameraZoom;
 
         console.log(
-            `Pushing: ${upsertObjects.length} upserts, ${deleteIds.size} deletes`
+            `Pushing: ${upsertObjects.length} upserts, ${deleteIds.size} deletes, cameraPosition: ${cameraPosition}, cameraZoom: ${cameraZoom}`
         );
 
         try {
