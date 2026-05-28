@@ -75,7 +75,6 @@ export function useSaveBoard(
             console.warn("Waiting on cooldown.");
             return;
         }
-        console.log("trytopushchanges successful.");
 
         // Convert all local changes -> pending, which will trigger effect 2 to push to the server
         canvasContext.moveLocalChangesToPendingChanges();
@@ -108,7 +107,7 @@ export function useSaveBoard(
         const cameraZoom = canvasContext.pending_cameraZoom;
 
         console.log(
-            `Pushing: ${upsertObjects.length} upserts, ${deleteIds.size} deletes, cameraPosition: ${cameraPosition}, cameraZoom: ${cameraZoom}`
+            `Pushing: ${upsertObjects.length} upserts, ${deleteIds.size} deletes, cameraPosition: ${JSON.stringify(cameraPosition)}, cameraZoom: ${cameraZoom}`
         );
 
         try {
@@ -121,18 +120,12 @@ export function useSaveBoard(
 
             console.log("Successfully pushed changes.");
 
-            if (upsertObjects.length > 0) {
-                canvasContextRef.current.onObjectsSavedToServer(upsertObjects);
-            }
-            if (deleteIds.size > 0) {
-                canvasContextRef.current.onObjectsDeletedOnServer(deleteIds);
-            }
-            if (cameraPosition || cameraZoom) {
-                canvasContextRef.current.onCameraSavedOnServer(
-                    cameraPosition,
-                    cameraZoom
-                );
-            }
+            canvasContextRef.current.onSaveCompleted(
+                upsertObjects,
+                deleteIds,
+                cameraPosition,
+                cameraZoom
+            );
         } catch (err) {
             console.error("Failed to push changes!", err);
         }

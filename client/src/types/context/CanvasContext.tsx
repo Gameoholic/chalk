@@ -71,9 +71,12 @@ interface CanvasContextType {
     allObjects: Map<string, WorldObject>;
     // gets the most recent camera with local and pending changes applied
     updatedCamera: Camera;
-    onObjectsSavedToServer: (savedObjects: WorldObject[]) => void;
-    onObjectsDeletedOnServer: (deletedIds: Set<string>) => void;
-    onCameraSavedOnServer: (position: Vec2 | null, zoom: number | null) => void;
+    onSaveCompleted: (
+        savedObjects: WorldObject[],
+        deletedIds: Set<string>,
+        cameraPosition: Vec2 | null,
+        cameraZoom: number | null
+    ) => void;
     moveLocalChangesToPendingChanges: () => void;
 }
 
@@ -241,49 +244,37 @@ export function CanvasContextProvider({
         setLocalCameraZoom(null);
     }
 
-    // Promotes successfully-saved objects into the server-synced board state
-    // and removes them from the pending buffer.
-    function onObjectsSavedToServer(savedObjects: WorldObject[]) {
-        const savedIds = new Set(savedObjects.map((o) => o.id));
-        // Merge into server-synced layer
+    function onSaveCompleted(
+        savedObjects: WorldObject[],
+        deletedIds: Set<string>,
+        cameraPosition: Vec2 | null,
+        cameraZoom: number | null
+    ) {
         const board = getCurrentBoard();
-        const updatedBoardObjects = new Map(
-            board.objects.map((o) => [o.id, o])
-        );
-        savedObjects.forEach((o) => updatedBoardObjects.set(o.id, o));
+        const savedIds = new Set(savedObjects.map((o) => o.id));
+
+        // Build final object state in one pass
+        const updatedObjects = new Map(board.objects.map((o) => [o.id, o]));
+        savedObjects.forEach((o) => updatedObjects.set(o.id, o));
+        deletedIds.forEach((id) => updatedObjects.delete(id));
+
+        // Single updateBoardById — no clobber
         sessionContext.updateBoardById({
             ...board,
-            objects: Array.from(updatedBoardObjects.values()),
+            objects: Array.from(updatedObjects.values()),
+            ...(cameraPosition !== null && {
+                lastCameraPosition: cameraPosition,
+            }),
+            ...(cameraZoom !== null && { lastCameraZoom: cameraZoom }),
         });
 
-        // Remove from pending — local is untouched (it may have new edits)
+        // Drain all pending buffers
         setPendingUnsavedObjects((prev) =>
             prev.filter((o) => !savedIds.has(o.id))
         );
-    }
-
-    // Removes successfully-deleted objects from server-synced board state
-    // and removes them from the pending delete buffer.
-    function onObjectsDeletedOnServer(deletedIds: Set<string>) {
-        const board = getCurrentBoard();
-        sessionContext.updateBoardById({
-            ...board,
-            objects: board.objects.filter((o) => !deletedIds.has(o.id)),
-        });
-
         setPendingDeletedObjectIds(
             (prev) => new Set([...prev].filter((id) => !deletedIds.has(id)))
         );
-    }
-
-    // Updates server-synced camera state after a successful camera save.
-    function onCameraSavedOnServer(position: Vec2 | null, zoom: number | null) {
-        const board = getCurrentBoard();
-        sessionContext.updateBoardById({
-            ...board,
-            ...(position && { lastCameraPosition: position }),
-            ...(zoom && { lastCameraZoom: zoom }),
-        });
         setPendingCameraPosition(null);
         setPendingCameraZoom(null);
     }
@@ -322,9 +313,7 @@ export function CanvasContextProvider({
                 updateCurrentBoard,
                 allObjects,
                 updatedCamera,
-                onObjectsSavedToServer,
-                onObjectsDeletedOnServer,
-                onCameraSavedOnServer,
+                onSaveCompleted,
                 moveLocalChangesToPendingChanges,
             }}
         >
