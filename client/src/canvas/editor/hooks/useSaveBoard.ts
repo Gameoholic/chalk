@@ -126,6 +126,9 @@ export function useSaveBoard(
                 cameraPosition,
                 cameraZoom
             );
+
+            // Re-trigger in case changes accumulated mid-request
+            setCommitSignal((n) => n + 1);
         } catch (err) {
             console.error("Failed to push changes!", err);
         }
