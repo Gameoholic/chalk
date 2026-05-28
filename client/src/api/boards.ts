@@ -114,37 +114,39 @@ export async function updateBoardLastOpened(boardId: string) {
     return;
 }
 
-export async function updateBoardCamera(
+export async function updateBoardCameraPosition(
     boardId: string,
-    cameraPosition: Vec2,
-    caemraZoom: number
+    cameraPosition: Vec2
 ) {
     const result = await fetchHelper<undefined>(`me/boards/${boardId}`, "PUT", {
         lastCameraPosition: cameraPosition,
-        lastCameraZoom: caemraZoom,
     });
 
     if (!result.success) {
-        console.error("Error executing updateBoardCamera: " + result.error);
+        console.error(
+            "Error executing updateBoardCameraPosition: " + result.error
+        );
         throw Error(result.error);
     }
 
     return;
 }
 
-export async function updateBoardCameraPosition(
-    boardId: string,
-    cameraPosition: Vec2
-) {
-    console.error("NOt implememnted yet");
-    return;
-}
-
 export async function updateBoardCameraZoom(
     boardId: string,
-    caemraZoom: number
+    cameraZoom: number
 ) {
-    console.error("NOt implememnted yet");
+    const result = await fetchHelper<undefined>(`me/boards/${boardId}`, "PUT", {
+        lastCameraZoom: cameraZoom,
+    });
+
+    if (!result.success) {
+        console.error(
+            "Error executing updateBoardCameraZooom: " + result.error
+        );
+        throw Error(result.error);
+    }
+
     return;
 }
 

@@ -1,6 +1,5 @@
 import {
     deleteBoardObjects,
-    updateBoardCamera,
     updateBoardCameraPosition,
     updateBoardCameraZoom,
     upsertBoardObjects,

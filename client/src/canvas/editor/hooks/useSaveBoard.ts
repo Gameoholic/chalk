@@ -4,7 +4,6 @@ import {
     deleteBoard,
     deleteBoardObjects,
     resetBoard,
-    updateBoardCamera,
     upsertBoardObjects,
 } from "../../../api/boards";
 import { Vec2, WorldObject } from "../../../types/canvas";
