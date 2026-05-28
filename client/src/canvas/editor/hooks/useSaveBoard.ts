@@ -26,16 +26,33 @@ export function useSaveBoard(
     });
 
     const cooldownTimerRef = useRef<number | null>(null);
-    // Cleanup timer on unmount
+    // Cleanup timers on unmount
     useEffect(() => {
         return () => {
             if (cooldownTimerRef.current)
                 clearTimeout(cooldownTimerRef.current);
+            if (retryCountdownRef.current)
+                clearInterval(retryCountdownRef.current);
         };
     }, []);
 
     // Increment every time we make changes to trigger the tryToPushChanges effect
     const [commitSignal, setCommitSignal] = useState(0);
+
+    type SaveError =
+        | {
+              error: string;
+              retryCooldownSecondsOrStatus: number | "retrying" | null;
+          }
+        | { error: null; retryCooldownSecondsOrStatus: null };
+
+    const [saveObjectsError, setSaveObjectsError] = useState<SaveError>({
+        error: null,
+        retryCooldownSecondsOrStatus: null,
+    });
+
+    // Interval handle for the retry countdown tick
+    const retryCountdownRef = useRef<number | null>(null);
 
     // ================================================
     // END LOCAL VARIABLES, STATE AND DATA
@@ -120,6 +137,16 @@ export function useSaveBoard(
 
             console.log("Successfully pushed changes.");
 
+            // Clear any active retry state on success
+            if (retryCountdownRef.current !== null) {
+                clearInterval(retryCountdownRef.current);
+                retryCountdownRef.current = null;
+            }
+            setSaveObjectsError({
+                error: null,
+                retryCooldownSecondsOrStatus: null,
+            });
+
             canvasContextRef.current.onSaveCompleted(
                 upsertObjects,
                 deleteIds,
@@ -131,7 +158,64 @@ export function useSaveBoard(
             setCommitSignal((n) => n + 1);
         } catch (err) {
             console.error("Failed to push changes", err);
+
+            const message = err instanceof Error ? err.message : String(err);
+            const isFatal = message.includes("test");
+
+            if (isFatal) {
+                setSaveObjectsError({
+                    error: "A fatal error occurred. Please refresh the page.",
+                    retryCooldownSecondsOrStatus: null,
+                });
+            } else {
+                scheduleRetry();
+            }
         }
+    }
+
+    function scheduleRetry() {
+        // Clear any existing countdown before starting a new one
+        if (retryCountdownRef.current !== null) {
+            clearInterval(retryCountdownRef.current);
+            retryCountdownRef.current = null;
+        }
+
+        const retryDelaySecs = env.VITE_SAVE_RETRY_COOLDOWN;
+        setSaveObjectsError({
+            error: "Failed to save. Check your connection.",
+            retryCooldownSecondsOrStatus: retryDelaySecs,
+        });
+
+        let remaining = retryDelaySecs;
+        retryCountdownRef.current = window.setInterval(() => {
+            remaining -= 1;
+            if (remaining <= 0) {
+                clearInterval(retryCountdownRef.current!);
+                retryCountdownRef.current = null;
+
+                setSaveObjectsError((prev) =>
+                    prev.error !== null
+                        ? {
+                              error: prev.error,
+                              retryCooldownSecondsOrStatus: "retrying",
+                          }
+                        : prev
+                );
+
+                // Absorb any local edits that accumulated during the countdown into the pending batch,
+                // then let Effect 2 detect the pending state change and call pushPendingChanges with fresh state.
+                canvasContextRef.current.mergeLocalIntoPendingChanges();
+            } else {
+                setSaveObjectsError((prev) =>
+                    prev.error !== null
+                        ? {
+                              error: prev.error,
+                              retryCooldownSecondsOrStatus: remaining,
+                          }
+                        : prev
+                );
+            }
+        }, 1000);
     }
 
     function requestForceSaveBoardNow() {

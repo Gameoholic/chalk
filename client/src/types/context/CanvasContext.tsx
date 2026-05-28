@@ -78,6 +78,7 @@ interface CanvasContextType {
         cameraZoom: number | null
     ) => void;
     moveLocalChangesToPendingChanges: () => void;
+    mergeLocalIntoPendingChanges: () => void;
 }
 
 export const CanvasContext = createContext<CanvasContextType>(null!);
@@ -244,6 +245,31 @@ export function CanvasContextProvider({
         setLocalCameraZoom(null);
     }
 
+    // Like moveLocalChangesToPendingChanges, but merges into an existing pending batch
+    // (used when retrying a failed save — pending holds the failed batch, local holds new edits since)
+    function mergeLocalIntoPendingChanges() {
+        // Merge objects: pending base, local wins on ID collision
+        setPendingUnsavedObjects((prev) => {
+            const merged = new Map(prev.map((o) => [o.id, o]));
+            local_unsavedObjects.forEach((o) => merged.set(o.id, o));
+            local_deletedObjectIds.forEach((id) => merged.delete(id));
+            return Array.from(merged.values());
+        });
+        setPendingDeletedObjectIds(
+            (prev) => new Set([...prev, ...local_deletedObjectIds])
+        );
+        // Local camera overwrites pending if present
+        if (local_cameraPosition !== null)
+            setPendingCameraPosition(local_cameraPosition);
+        if (local_cameraZoom !== null) setPendingCameraZoom(local_cameraZoom);
+
+        // Clear local — new edits from here accumulate fresh
+        setLocalUnsavedObjects([]);
+        setLocalDeletedObjectIds(new Set());
+        setLocalCameraPosition(null);
+        setLocalCameraZoom(null);
+    }
+
     function onSaveCompleted(
         savedObjects: WorldObject[],
         deletedIds: Set<string>,
@@ -315,6 +341,7 @@ export function CanvasContextProvider({
                 updatedCamera,
                 onSaveCompleted,
                 moveLocalChangesToPendingChanges,
+                mergeLocalIntoPendingChanges,
             }}
         >
             {children}
