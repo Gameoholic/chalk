@@ -51,7 +51,7 @@ function CanvasEditor({
     const sessionContext = useContext(SessionContext);
 
     const {
-        hasPendingSaveOperations,
+        hasUnsavedWork,
         saveObjectsError,
         handleResetBoard,
         handleDeleteBoard,
@@ -59,23 +59,6 @@ function CanvasEditor({
         requestForceSaveBoardNow,
         requestSaveBoard,
     } = useSaveBoard(openMyBoards, onTourCameraMoved);
-
-    // Prevent refreshing or leaving page if objects are currently being saved / awaiting save
-    useEffect(() => {
-        const preventLeaving = (e: any) => {
-            if (!hasPendingSaveOperations()) {
-                return;
-            }
-            e.preventDefault();
-            e.returnValue = "";
-            requestForceSaveBoardNow();
-        };
-        window.addEventListener("beforeunload", preventLeaving);
-        // Clean up the event listener to avoid memory leaks
-        return () => {
-            window.removeEventListener("beforeunload", preventLeaving);
-        };
-    }, []);
 
     // FPS
     const [fps, setFps] = useState(0);

@@ -1,12 +1,5 @@
-import { RefObject, useContext, useEffect, useRef, useState } from "react";
-import isDeepEqual from "fast-deep-equal";
-import {
-    deleteBoard,
-    deleteBoardObjects,
-    resetBoard,
-    upsertBoardObjects,
-} from "../../../api/boards";
-import { Vec2, WorldObject } from "../../../types/canvas";
+import { useContext, useEffect, useRef, useState } from "react";
+import { deleteBoard, resetBoard } from "../../../api/boards";
 import { CanvasContext } from "../../../types/context/CanvasContext";
 import { env } from "../../../env";
 import { pushBoardChangesToServer } from "../utils/saveBoardToServer";
@@ -261,6 +254,24 @@ export function useSaveBoard(
         );
     }
 
+    // Prevent refreshing or leaving page if objects are currently being saved / awaiting save
+    const hasUnsavedWorkRef = useRef<() => boolean>(() => false);
+    const requestForceSaveBoardNowRef = useRef<() => void>(() => {});
+    useEffect(() => {
+        hasUnsavedWorkRef.current = hasUnsavedWork;
+        requestForceSaveBoardNowRef.current = requestForceSaveBoardNow;
+    });
+    useEffect(() => {
+        const preventLeaving = (e: BeforeUnloadEvent) => {
+            if (!hasUnsavedWorkRef.current()) return;
+            e.preventDefault();
+            e.returnValue = "";
+            requestForceSaveBoardNowRef.current();
+        };
+        window.addEventListener("beforeunload", preventLeaving);
+        return () => window.removeEventListener("beforeunload", preventLeaving);
+    }, []);
+
     // ================================================
     // END LOCAL METHODS, LOGIC
     // ================================================
@@ -285,50 +296,75 @@ export function useSaveBoard(
             openMyBoards();
             setQueued_navigateToMyBoards(false);
         }
-    }, [canvasContext.local_unsavedObjects]);
+    }, [
+        canvasContext.local_unsavedObjects,
+        canvasContext.local_deletedObjectIds,
+        canvasContext.local_cameraPosition,
+        canvasContext.local_cameraZoom,
+        canvasContext.pending_unsavedObjects,
+        canvasContext.pending_deletedObjectIds,
+        canvasContext.pending_cameraPosition,
+        canvasContext.pending_cameraZoom,
+    ]);
 
     // Used if a save operation is currently undergoing and user requested to reset board
     const [queued_resetBoard, setQueued_ResetBoard] = useState(false);
     useEffect(() => {
         if (queued_resetBoard && !hasUnsavedWork()) {
-            handleResetBoard();
             setQueued_ResetBoard(false);
+            handleResetBoard();
         }
-    }, [canvasContext.local_unsavedObjects]);
+    }, [
+        canvasContext.local_unsavedObjects,
+        canvasContext.local_deletedObjectIds,
+        canvasContext.local_cameraPosition,
+        canvasContext.local_cameraZoom,
+        canvasContext.pending_unsavedObjects,
+        canvasContext.pending_deletedObjectIds,
+        canvasContext.pending_cameraPosition,
+        canvasContext.pending_cameraZoom,
+    ]);
 
-    // Used if a save operation is currently undergoing and user requested to reset board
+    // Used if a save operation is currently undergoing and user requested to delete board
     const [queued_deleteBoard, setQueued_deleteBoard] = useState(false);
     useEffect(() => {
         if (queued_deleteBoard && !hasUnsavedWork()) {
-            handleDeleteBoard();
             setQueued_deleteBoard(false);
+            handleDeleteBoard();
         }
-    }, [canvasContext.local_unsavedObjects]);
+    }, [
+        canvasContext.local_unsavedObjects,
+        canvasContext.local_deletedObjectIds,
+        canvasContext.local_cameraPosition,
+        canvasContext.local_cameraZoom,
+        canvasContext.pending_unsavedObjects,
+        canvasContext.pending_deletedObjectIds,
+        canvasContext.pending_cameraPosition,
+        canvasContext.pending_cameraZoom,
+    ]);
 
     const handleResetBoard = async () => {
-        // if (hasPendingSaveOperations()) {
-        //     // Will quicken the ongoing save processes and reset the board as soon as save is done
-        //     setQueued_ResetBoard(true);
-        //     startCooldownTimeout(true);
-        //     return;
-        // }
-        // await resetBoard(canvasContext.local_currentBoardId);
-        // canvasContext.updateCurrentBoardObjects([]);
-        // setSaveObjectsError({ error: null });
-        // objectsBeingSavedOnDatabase.current = [];
-        // canvasContext.local_unsavedObjects = [];
-        // objectsToSaveOnDatabase.current.clear();
+        if (hasUnsavedWork()) {
+            setQueued_ResetBoard(true);
+            requestForceSaveBoardNow();
+            return;
+        }
+        await resetBoard(canvasContext.local_currentBoardId);
+        canvasContext.updateCurrentBoardObjects([]);
+        setSaveObjectsError({
+            error: null,
+            retryCooldownSecondsOrStatus: null,
+        });
     };
 
     const handleDeleteBoard = async () => {
-        // if (hasPendingSaveOperations()) {
-        //     // Will quicken the ongoing save processes and reset the board as soon as save is done
-        //     setQueued_deleteBoard(true);
-        //     startCooldownTimeout(true);
-        //     return;
-        // }
-        // await deleteBoard(canvasContext.local_currentBoardId);
-        // window.location.reload();
+        if (hasUnsavedWork()) {
+            setQueued_deleteBoard(true);
+            requestForceSaveBoardNow();
+            return;
+        }
+        await deleteBoard(canvasContext.local_currentBoardId);
+        window.location.reload();
     };
 
     function hasUnsavedWork() {
@@ -336,17 +372,16 @@ export function useSaveBoard(
     }
 
     function requestNavigateToMyBoards() {
-        // if (!hasPendingSaveOperations()) {
-        //     openMyBoards();
-        // } else {
-        //     // quicken the save process and queue the navigate to my boards until save finishes
-        //     setQueued_navigateToMyBoards(true);
-        //     startCooldownTimeout(true);
-        // }
+        if (!hasUnsavedWork()) {
+            openMyBoards();
+        } else {
+            setQueued_navigateToMyBoards(true);
+            requestForceSaveBoardNow();
+        }
     }
 
     return {
-        hasPendingSaveOperations: hasUnsavedWork,
+        hasUnsavedWork,
         saveObjectsError,
         handleResetBoard,
         handleDeleteBoard,
