@@ -4,9 +4,7 @@ import { WorldObject } from "../canvas";
 
 interface SessionContextType {
     userData: UserData;
-    /**
-     * Important: Boards' objects will only be updated after a successful db save.
-     */
+    // Board SERVER data (no client data)
     boards: BoardData[];
     updateUserData: (userData: UserData) => void;
     updateUserDisplayName: (displayName: string) => void;
