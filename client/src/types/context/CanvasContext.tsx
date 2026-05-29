@@ -79,6 +79,7 @@ interface CanvasContextType {
     ) => void;
     moveLocalChangesToPendingChanges: () => void;
     mergeLocalIntoPendingChanges: () => void;
+    onBoardReset: () => void;
 }
 
 export const CanvasContext = createContext<CanvasContextType>(null!);
@@ -242,6 +243,18 @@ export function CanvasContextProvider({
         sessionContext.updateBoardById({ ...serverBoard, ...updates });
     }
 
+    function onBoardReset() {
+        setUnsavedObjects([]);
+        setUnsavedDeletedObjectIds(new Set());
+        setUnsavedCameraPosition(null);
+        setUnsavedCameraZoom(null);
+        setPendingObjects([]);
+        setPendingDeletedObjectIds(new Set());
+        setPendingCameraPosition(null);
+        setPendingCameraZoom(null);
+        sessionContext.updateBoardById({ ...serverBoard, objects: [] });
+    }
+
     function onSaveCompleted(
         savedObjects: WorldObject[],
         deletedIds: Set<string>,
@@ -324,6 +337,7 @@ export function CanvasContextProvider({
                 onSaveCompleted,
                 moveLocalChangesToPendingChanges,
                 mergeLocalIntoPendingChanges,
+                onBoardReset,
             }}
         >
             {children}

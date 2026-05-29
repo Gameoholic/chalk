@@ -52,8 +52,8 @@ function CanvasEditor({
 
     const {
         saveObjectsError,
-        handleResetBoard,
-        handleDeleteBoard,
+        requestResetBoard,
+        requestDeleteBoard,
         requestNavigateToMyBoards,
         requestForceSaveBoardNow,
         requestSaveBoard,
@@ -370,8 +370,8 @@ function CanvasEditor({
             {showManageThisBoardModal && (
                 <ManageThisBoardModal
                     onRename={handleRenameBoard}
-                    onReset={handleResetBoard}
-                    onDelete={handleDeleteBoard}
+                    onReset={requestResetBoard}
+                    onDelete={requestDeleteBoard}
                     onClose={() => {
                         setShowManageThisBoardModal(false);
                     }}

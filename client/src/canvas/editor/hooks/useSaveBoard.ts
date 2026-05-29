@@ -211,6 +211,7 @@ export function useSaveBoard(
         if (cooldownTimerRef.current !== null) {
             clearTimeout(cooldownTimerRef.current);
             cooldownTimerRef.current = null;
+            console.log("Requested a force save, cancelling cooldown.");
         }
 
         tryToPushChanges();
@@ -309,7 +310,7 @@ export function useSaveBoard(
     useEffect(() => {
         if (queued_deleteBoard && !hasUnsavedWork()) {
             setQueued_deleteBoard(false);
-            handleDeleteBoard();
+            requestDeleteBoard();
         }
     }, [
         canvasContext.unsaved_objects,
@@ -348,7 +349,7 @@ export function useSaveBoard(
         openMyBoards();
     }
 
-    const requestResetBoard = async () => {
+    async function requestResetBoard() {
         if (hasUnsavedWork()) {
             setQueued_ResetBoard(true);
             requestForceSaveBoardNow();
@@ -356,22 +357,22 @@ export function useSaveBoard(
         }
 
         await resetBoard(canvasContext.local_currentBoardId);
-        canvasContext.updateCurrentBoard();
+        canvasContext.onBoardReset();
         setSaveError({
             error: null,
             retryCooldownSecondsOrStatus: null,
         });
-    };
+    }
 
-    const requestDeleteBoard = async () => {
-        // if (hasUnsavedWork()) {
-        //     setQueued_deleteBoard(true);
-        //     requestForceSaveBoardNow();
-        //     return;
-        // }
-        // await deleteBoard(canvasContext.local_currentBoardId);
-        // window.location.reload();
-    };
+    async function requestDeleteBoard() {
+        if (hasUnsavedWork()) {
+            setQueued_deleteBoard(true);
+            requestForceSaveBoardNow();
+            return;
+        }
+        await deleteBoard(canvasContext.local_currentBoardId);
+        window.location.reload();
+    }
 
     function handleOpenMyBoards() {
         openMyBoards();
@@ -384,7 +385,7 @@ export function useSaveBoard(
     return {
         saveObjectsError: saveError,
         requestResetBoard,
-        requestDeleteBoard,,
+        requestDeleteBoard,
         requestNavigateToMyBoards,
         requestForceSaveBoardNow,
         requestSaveBoard,
