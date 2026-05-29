@@ -18,6 +18,7 @@ export function useSaveBoard(
         canvasContextRef.current = canvasContext;
     });
 
+    // Timers
     const cooldownTimerRef = useRef<number | null>(null);
     const retryTimerRef = useRef<number | null>(null);
     useEffect(() => {
@@ -31,13 +32,13 @@ export function useSaveBoard(
     // Increment every time we want to push our changes, to trigger the tryToPushChanges effect
     const [pushSignal, setPushSignal] = useState(0);
 
+    // Save Error
     type SaveError =
         | {
               error: string;
               retryCooldownSecondsOrStatus: number | "retrying" | "fatal-error";
           }
         | { error: null; retryCooldownSecondsOrStatus: null };
-
     const [saveError, setSaveError] = useState<SaveError>({
         error: null,
         retryCooldownSecondsOrStatus: null,
@@ -48,7 +49,7 @@ export function useSaveBoard(
     // ================================================
 
     // ================================================
-    // LOCAL METHODS, LOGIC
+    // MAIN SAVING LOGIC, METHODS, AND EFFECTS
     // ================================================
 
     // Effect 1: (effects run after render, so context states are always fresh)
@@ -77,13 +78,7 @@ export function useSaveBoard(
 
     // Effect 2:
     useEffect(() => {
-        const hasPendingChanges =
-            canvasContext.pending_objects.length > 0 ||
-            canvasContext.pending_deletedObjectIds.size > 0 ||
-            canvasContext.pending_cameraPosition !== null ||
-            canvasContext.pending_cameraZoom !== null;
-
-        if (!hasPendingChanges) return;
+        if (!hasPendingChanges()) return;
 
         pushPendingChanges();
     }, [
@@ -115,7 +110,7 @@ export function useSaveBoard(
 
             console.log("Successfully pushed changes.");
 
-            // Clear any active retry state on success
+            // Cleanup retry timer and error state in case this was a retry attempt
             if (retryTimerRef.current !== null) {
                 clearInterval(retryTimerRef.current);
                 retryTimerRef.current = null;
@@ -149,6 +144,20 @@ export function useSaveBoard(
                     retryCooldownSecondsOrStatus: "fatal-error",
                 });
             }
+        }
+    }
+
+    function startCooldown() {
+        if (cooldownTimerRef.current !== null) {
+            return;
+        }
+
+        if (env.VITE_SAVE_REQUEST_COOLDOWN > 0) {
+            cooldownTimerRef.current = window.setTimeout(() => {
+                console.log("Cooldown finished.");
+                cooldownTimerRef.current = null;
+                setPushSignal((n) => n + 1); // trigger effect to check if we have changes to push after cooldown. Can't call function directly due to stale closure from inside timeout
+            }, env.VITE_SAVE_REQUEST_COOLDOWN);
         }
     }
 
@@ -207,20 +216,6 @@ export function useSaveBoard(
         tryToPushChanges();
     }
 
-    function startCooldown() {
-        if (cooldownTimerRef.current !== null) {
-            return;
-        }
-
-        if (env.VITE_SAVE_REQUEST_COOLDOWN > 0) {
-            cooldownTimerRef.current = window.setTimeout(() => {
-                console.log("Cooldown finished.");
-                cooldownTimerRef.current = null;
-                setPushSignal((n) => n + 1); // trigger effect to check if we have changes to push after cooldown. Can't call function directly due to stale closure from inside timeout
-            }, env.VITE_SAVE_REQUEST_COOLDOWN);
-        }
-    }
-
     function hasPendingChanges() {
         return (
             canvasContext.pending_objects.length > 0 ||
@@ -239,7 +234,15 @@ export function useSaveBoard(
         );
     }
 
-    // Prevent refreshing or leaving page if objects are currently being saved / awaiting save
+    // ================================================
+    // END MAIN SAVING LOGIC, METHODS, AND EFFECTS
+    // ================================================
+
+    // ================================================
+    // OTHER
+    // ================================================
+
+    // Prevent refreshing or leaving page if objects are currently being saved / awaiting save (allow refreshing if fatal error occurred)
     const hasUnsavedWorkRef = useRef<() => boolean>(() => false);
     const requestForceSaveBoardNowRef = useRef<() => void>(() => {});
     const saveObjectsErrorRef = useRef<SaveError>(saveError);
@@ -264,28 +267,12 @@ export function useSaveBoard(
         return () => window.removeEventListener("beforeunload", preventLeaving);
     }, []);
 
-    // ================================================
-    // END LOCAL METHODS, LOGIC
-    // ================================================
-
-    // ================================================
-    // PUBLIC API — these are the only exported methods
-    // ================================================
-
-    function requestSaveBoard() {
-        setPushSignal((n) => n + 1);
-    }
-
-    // ================================================
-    // END PUBLIC API
-    // ================================================
-
     // Used if a save operation is currently undergoing and user asked to go my boards
     const [queued_navigateToMyBoards, setQueued_navigateToMyBoards] =
         useState(false);
     useEffect(() => {
         if (queued_navigateToMyBoards && !hasUnsavedWork()) {
-            openMyBoards();
+            handleOpenMyBoards();
             setQueued_navigateToMyBoards(false);
         }
     }, [
@@ -304,7 +291,7 @@ export function useSaveBoard(
     useEffect(() => {
         if (queued_resetBoard && !hasUnsavedWork()) {
             setQueued_ResetBoard(false);
-            handleResetBoard();
+            requestResetBoard();
         }
     }, [
         canvasContext.unsaved_objects,
@@ -335,21 +322,48 @@ export function useSaveBoard(
         canvasContext.pending_cameraZoom,
     ]);
 
-    const handleResetBoard = async () => {
-        // if (hasUnsavedWork()) {
-        //     setQueued_ResetBoard(true);
-        //     requestForceSaveBoardNow();
-        //     return;
-        // }
-        // await resetBoard(canvasContext.local_currentBoardId);
-        // canvasContext.updateCurrentBoardObjects([]);
-        // setSaveError({
-        //     error: null,
-        //     retryCooldownSecondsOrStatus: null,
-        // });
+    function hasUnsavedWork() {
+        return hasLocalChanges() || hasPendingChanges();
+    }
+
+    // ================================================
+    // END OTHER
+    // ================================================
+
+    // ================================================
+    // PUBLIC API — these are the only exported methods
+    // ================================================
+
+    function requestSaveBoard() {
+        setPushSignal((n) => n + 1);
+    }
+
+    function requestNavigateToMyBoards() {
+        if (hasUnsavedWork()) {
+            setQueued_navigateToMyBoards(true);
+            requestForceSaveBoardNow();
+            return;
+        }
+
+        openMyBoards();
+    }
+
+    const requestResetBoard = async () => {
+        if (hasUnsavedWork()) {
+            setQueued_ResetBoard(true);
+            requestForceSaveBoardNow();
+            return;
+        }
+
+        await resetBoard(canvasContext.local_currentBoardId);
+        canvasContext.updateCurrentBoard();
+        setSaveError({
+            error: null,
+            retryCooldownSecondsOrStatus: null,
+        });
     };
 
-    const handleDeleteBoard = async () => {
+    const requestDeleteBoard = async () => {
         // if (hasUnsavedWork()) {
         //     setQueued_deleteBoard(true);
         //     requestForceSaveBoardNow();
@@ -359,23 +373,18 @@ export function useSaveBoard(
         // window.location.reload();
     };
 
-    function hasUnsavedWork() {
-        return hasLocalChanges() || hasPendingChanges();
+    function handleOpenMyBoards() {
+        openMyBoards();
     }
 
-    function requestNavigateToMyBoards() {
-        if (!hasUnsavedWork()) {
-            openMyBoards();
-        } else {
-            setQueued_navigateToMyBoards(true);
-            requestForceSaveBoardNow();
-        }
-    }
+    // ================================================
+    // END PUBLIC API
+    // ================================================
 
     return {
         saveObjectsError: saveError,
-        handleResetBoard,
-        handleDeleteBoard,
+        requestResetBoard,
+        requestDeleteBoard,,
         requestNavigateToMyBoards,
         requestForceSaveBoardNow,
         requestSaveBoard,
