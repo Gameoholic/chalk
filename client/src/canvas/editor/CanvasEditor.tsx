@@ -325,14 +325,16 @@ function CanvasEditor({
                         </p>
                         <p>
                             Camera:{" "}
-                            {canvasContext.camera.position.x !==
-                                canvasContext.serverBoard.lastCameraPosition
-                                    .x ||
-                            canvasContext.camera.position.y !==
-                                canvasContext.serverBoard.lastCameraPosition
-                                    .y ||
-                            canvasContext.camera.zoom !==
-                                canvasContext.serverBoard.lastCameraZoom
+                            {canvasContext.pending_cameraPosition != null ||
+                            canvasContext.pending_cameraZoom != null
+                                ? canvasContext.unsaved_cameraPosition !=
+                                      null ||
+                                  canvasContext.unsaved_cameraZoom != null
+                                    ? "Pending but changed since."
+                                    : "Pending."
+                                : canvasContext.unsaved_cameraPosition !=
+                                      null ||
+                                  canvasContext.unsaved_cameraZoom != null
                                 ? "Unsaved."
                                 : "Saved."}
                         </p>
