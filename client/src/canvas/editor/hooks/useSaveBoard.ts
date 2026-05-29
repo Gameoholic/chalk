@@ -288,6 +288,7 @@ export function useSaveBoard(
     ]);
 
     // Used if a save operation is currently undergoing and user requested to reset board
+    const resetResolveRef = useRef<(() => void) | null>(null);
     const [queued_resetBoard, setQueued_ResetBoard] = useState(false);
     useEffect(() => {
         if (queued_resetBoard && !hasUnsavedWork()) {
@@ -353,15 +354,24 @@ export function useSaveBoard(
         if (hasUnsavedWork()) {
             setQueued_ResetBoard(true);
             requestForceSaveBoardNow();
-            return;
+            // Return a promise that resolves only after the queued reset actually completes,
+            // so the caller's loading state stays active while waiting for the reset to finish.
+            return new Promise<void>((resolve) => {
+                resetResolveRef.current = resolve;
+            });
         }
 
-        await resetBoard(canvasContext.local_currentBoardId);
-        canvasContext.onBoardReset();
-        setSaveError({
-            error: null,
-            retryCooldownSecondsOrStatus: null,
-        });
+        try {
+            await resetBoard(canvasContext.local_currentBoardId);
+            canvasContext.onBoardReset();
+            setSaveError({
+                error: null,
+                retryCooldownSecondsOrStatus: null,
+            });
+        } finally {
+            resetResolveRef.current?.();
+            resetResolveRef.current = null;
+        }
     }
 
     async function requestDeleteBoard() {
