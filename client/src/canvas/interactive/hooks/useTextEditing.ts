@@ -219,6 +219,61 @@ export function useTextEditing({
                 return;
             }
 
+            // Ctrl/Cmd+C: copy selection
+            if ((e.ctrlKey || e.metaKey) && e.key === "c") {
+                e.preventDefault();
+                if (hasSelection) {
+                    navigator.clipboard.writeText(text.slice(selStart, selEnd));
+                }
+                return;
+            }
+
+            // Ctrl/Cmd+X: cut selection
+            if ((e.ctrlKey || e.metaKey) && e.key === "x") {
+                e.preventDefault();
+                if (!hasSelection) return;
+                navigator.clipboard.writeText(text.slice(selStart, selEnd));
+                const cutText = text.slice(0, selStart) + text.slice(selEnd);
+                setCursorIndex(selStart);
+                cursorIndexRef.current = selStart;
+                setSelectionAnchor(null);
+                selectionAnchorRef.current = null;
+                updateOrAddObject({
+                    ...current,
+                    text: cutText,
+                    boxSize: measureTextBox(cutText, current),
+                });
+                return;
+            }
+
+            // Ctrl/Cmd+V: paste from clipboard
+            if ((e.ctrlKey || e.metaKey) && e.key === "v") {
+                e.preventDefault();
+                navigator.clipboard.readText().then((clipText) => {
+                    const cur = editingTextObjectRef.current;
+                    if (!cur) return;
+                    const t = cur.text;
+                    const c = cursorIndexRef.current;
+                    const a = selectionAnchorRef.current;
+                    const hSel = a !== null && a !== c;
+                    const sStart = hSel ? Math.min(a!, c) : c;
+                    const sEnd = hSel ? Math.max(a!, c) : c;
+                    const normalized = clipText.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+                    const newT = t.slice(0, sStart) + normalized + t.slice(sEnd);
+                    const newC = sStart + normalized.length;
+                    setCursorIndex(newC);
+                    cursorIndexRef.current = newC;
+                    setSelectionAnchor(null);
+                    selectionAnchorRef.current = null;
+                    updateOrAddObject({
+                        ...cur,
+                        text: newT,
+                        boxSize: measureTextBox(newT, cur),
+                    });
+                });
+                return;
+            }
+
             let newText = text;
             let newCursor = cursor;
             let newAnchor = anchor;
