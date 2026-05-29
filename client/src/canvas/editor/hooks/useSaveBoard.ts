@@ -4,10 +4,7 @@ import { CanvasContext } from "../../../types/context/CanvasContext";
 import { env } from "../../../env";
 import { pushBoardChangesToServer } from "../utils/saveBoardToServer";
 
-export function useSaveBoard(
-    openMyBoards: () => void,
-    onTourCameraMoved: (() => void) | undefined
-) {
+export function useSaveBoard(openMyBoards: () => void) {
     // ================================================
     // LOCAL VARIABLES, STATE AND DATA
     // ================================================

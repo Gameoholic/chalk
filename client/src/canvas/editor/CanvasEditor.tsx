@@ -30,7 +30,6 @@ interface CanvasEditorProps {
     openMyBoards: () => void;
     tourMenuOpen?: boolean;
     setTourMenuOpen?: (open: boolean) => void;
-    onTourCameraMoved?: () => void;
     keepMenuOpen?: boolean;
     openLoginOnMount?: boolean;
     onLoginOpened?: () => void;
@@ -41,7 +40,6 @@ function CanvasEditor({
     openMyBoards,
     tourMenuOpen,
     setTourMenuOpen,
-    onTourCameraMoved,
     keepMenuOpen,
     openLoginOnMount,
     onLoginOpened,
@@ -56,7 +54,7 @@ function CanvasEditor({
         requestDeleteBoard,
         requestNavigateToMyBoards,
         requestSaveBoard,
-    } = useSaveBoard(openMyBoards, onTourCameraMoved);
+    } = useSaveBoard(openMyBoards);
 
     // FPS
     const [fps, setFps] = useState(0);

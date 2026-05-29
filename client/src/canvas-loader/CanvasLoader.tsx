@@ -242,7 +242,6 @@ function CanvasEditorDiv({
             }}
             tourMenuOpen={tourMenuOpen}
             setTourMenuOpen={setTourMenuOpen}
-            onTourCameraMoved={onTourCameraMoved}
             keepMenuOpen={keepMenuOpen}
             openLoginOnMount={openLoginOnMount}
             onLoginOpened={onLoginOpened}
