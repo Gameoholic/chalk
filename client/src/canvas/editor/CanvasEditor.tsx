@@ -6,8 +6,6 @@ import {
     LayoutDashboard,
     Share2,
     Settings2,
-    Loader2,
-    XCircle,
     SlidersHorizontal,
 } from "lucide-react";
 import { updateBoardName } from "../../api/boards";
@@ -24,12 +22,14 @@ import { updateUserDisplayName } from "../../api/me";
 import { ShowDebugInfoContext } from "../../types/context/ShowDebugInfoContext";
 import AdvancedOptionsModal from "./components/AdvancedOptionsModal";
 import { useSaveBoard } from "./hooks/useSaveBoard";
+import { Vec2 } from "../../types/canvas";
+import FatalErrorOverlay from "../../components/FatalSaveErrorOverlay";
+import SaveErrorBanner from "../../components/SaveErrorBanner";
 
 interface CanvasEditorProps {
     openMyBoards: () => void;
     tourMenuOpen?: boolean;
     setTourMenuOpen?: (open: boolean) => void;
-    onTourCameraMoved?: () => void;
     keepMenuOpen?: boolean;
     openLoginOnMount?: boolean;
     onLoginOpened?: () => void;
@@ -40,7 +40,6 @@ function CanvasEditor({
     openMyBoards,
     tourMenuOpen,
     setTourMenuOpen,
-    onTourCameraMoved,
     keepMenuOpen,
     openLoginOnMount,
     onLoginOpened,
@@ -50,13 +49,12 @@ function CanvasEditor({
     const sessionContext = useContext(SessionContext);
 
     const {
-        saveObjectsError,
-        requestCommitObjectChanges,
-        requestCommitCamera,
-        handleResetBoard,
-        handleDeleteBoard,
+        saveError,
+        requestResetBoard,
+        requestDeleteBoard,
         requestNavigateToMyBoards,
-    } = useSaveBoard(openMyBoards, onTourCameraMoved);
+        requestSaveBoard,
+    } = useSaveBoard(openMyBoards);
 
     // FPS
     const [fps, setFps] = useState(0);
@@ -109,8 +107,8 @@ function CanvasEditor({
     }, [openLoginOnMount, onLoginOpened]);
 
     const handleRenameBoard = async (newName: string) => {
-        await updateBoardName(canvasContext.getCurrentBoard().id, newName);
-        canvasContext.getCurrentBoard().name = newName;
+        await updateBoardName(canvasContext.serverBoard.id, newName);
+        canvasContext.updateCurrentBoard({ name: newName });
     };
 
     const handleUserLogout = async () => {
@@ -130,7 +128,7 @@ function CanvasEditor({
             zoom: startZoom,
             position: startPos,
             size,
-        } = canvasContext.local_camera;
+        } = canvasContext.camera;
 
         // The world-space point at the center of the viewport — kept locked throughout the animation
         const centerX = size.x / 2;
@@ -145,14 +143,10 @@ function CanvasEditor({
             const zoom = startZoom + (1.0 - startZoom) * ease;
 
             // Derive position from zoom directly — interpolating them separately causes drift
-            canvasContext.setLocalCamera((prev) => ({
-                ...prev,
-                zoom,
-                position: {
-                    x: worldAnchorX - centerX / zoom,
-                    y: worldAnchorY - centerY / zoom,
-                },
-            }));
+            canvasContext.setUnsavedCameraPosition({
+                x: worldAnchorX - centerX / zoom,
+                y: worldAnchorY - centerY / zoom,
+            });
 
             if (progress < 1) requestAnimationFrame(animate);
         };
@@ -167,60 +161,42 @@ function CanvasEditor({
         transition: { duration: 0.5, ease: "easeOut" },
     } as const;
 
+    // ================================================
+    // REQUEST METHODS FROM CanvasInteractive - Called by canvasinteractive whenever
+    // ================================================
+
+    function canvasInteractive_saveBoard() {
+        requestSaveBoard();
+    }
+
+    // ================================================
+    // END REQUEST METHODS FROM CanvasInteractive
+    // ================================================
     return (
         <div className="relative h-screen w-screen">
             {/* Canvas */}
             <div className="h-full w-full" data-tour-id="canvas">
                 <CanvasInteractive
                     key={canvasContext.local_currentBoardId}
-                    commitObjectChanges={requestCommitObjectChanges}
-                    commitCamera={requestCommitCamera}
+                    saveBoard={canvasInteractive_saveBoard}
                 />
             </div>
 
-            {/* SAVE ERROR BANNER */}
-            {saveObjectsError.error && (
-                <div className="animate-in fade-in slide-in-from-top-2 pointer-events-none fixed top-6 left-1/2 z-100 -translate-x-1/2">
-                    <div
-                        className="flex flex-col gap-1 rounded-xl px-5 py-3 text-sm font-medium shadow-xl"
-                        style={{
-                            backgroundColor: "var(--error)",
-                            color: "var(--error-foreground)",
-                        }}
-                    >
-                        <div className="flex items-center gap-3">
-                            {saveObjectsError.retryCooldownSecondsOrStatus ===
-                            "retrying" ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                                <XCircle className="h-4 w-4" />
-                            )}
-                            <span>{saveObjectsError.error}</span>
-                        </div>
-
-                        {typeof saveObjectsError.retryCooldownSecondsOrStatus ===
-                            "number" && (
-                            <span
-                                className="ml-7 text-xs opacity-80"
-                                style={{ color: "var(--error-foreground)" }}
-                            >
-                                Retrying in{" "}
-                                {saveObjectsError.retryCooldownSecondsOrStatus}s
-                            </span>
-                        )}
-
-                        {saveObjectsError.retryCooldownSecondsOrStatus ===
-                            "retrying" && (
-                            <span
-                                className="ml-7 text-xs opacity-80"
-                                style={{ color: "var(--error-foreground)" }}
-                            >
-                                Retrying...
-                            </span>
-                        )}
-                    </div>
-                </div>
+            {/* FATAL SAVE ERROR OVERLAY */}
+            {saveError.retryCooldownSecondsOrStatus === "fatal-error" && (
+                <FatalErrorOverlay />
             )}
+
+            {/* OK/NETWORK SAVE ERROR BANNER */}
+            {saveError.error &&
+                saveError.retryCooldownSecondsOrStatus !== "fatal-error" && (
+                    <SaveErrorBanner
+                        error={saveError.error}
+                        retryCooldownSecondsOrStatus={
+                            saveError.retryCooldownSecondsOrStatus
+                        }
+                    />
+                )}
 
             <motion.div {...fadeInAnimation}>
                 {/* Top-left menu container */}
@@ -326,34 +302,37 @@ function CanvasEditor({
                     >
                         <p className="font-bold">Debug</p>
                         <p>
-                            Camera Pos: {canvasContext.local_camera.position.x},{" "}
-                            {canvasContext.local_camera.position.y}
+                            Camera Pos: {canvasContext.camera.position.x},{" "}
+                            {canvasContext.camera.position.y}
                         </p>
                         <p>
-                            Camera Zoom:{" "}
-                            {canvasContext.local_camera.zoom.toFixed(2)}
+                            Camera Zoom: {canvasContext.camera.zoom.toFixed(2)}
                         </p>
                         <p>FPS: {fps}</p>
+                        <p>Objects: {canvasContext.objects.size} total</p>
                         <p>
-                            Objects:{" "}
-                            {canvasContext.getCurrentBoard().objects.length +
-                                canvasContext.local_unsavedObjects.length}{" "}
-                            ({canvasContext.getCurrentBoard().objects.length}{" "}
-                            saved on server +{" "}
-                            {canvasContext.local_unsavedObjects.length} unsaved
-                            + {canvasContext.local_deletedObjectIds.size}{" "}
-                            awaiting deletion)
+                            Server: {canvasContext.serverBoard.objects.length} |
+                            Local unsaved:{" "}
+                            {canvasContext.unsaved_objects.length} | Local
+                            deleting:{" "}
+                            {canvasContext.unsaved_deletedObjectIds.size}
+                        </p>
+                        <p>
+                            Pending unsaved:{" "}
+                            {canvasContext.pending_objects.length} | Pending
+                            deleting:{" "}
+                            {canvasContext.pending_deletedObjectIds.size}
                         </p>
                         <p>
                             Camera:{" "}
-                            {canvasContext.local_camera.position.x !==
-                                canvasContext.getCurrentBoard()
-                                    .lastCameraPosition.x ||
-                            canvasContext.local_camera.position.y !==
-                                canvasContext.getCurrentBoard()
-                                    .lastCameraPosition.y ||
-                            canvasContext.local_camera.zoom !==
-                                canvasContext.getCurrentBoard().lastCameraZoom
+                            {canvasContext.camera.position.x !==
+                                canvasContext.serverBoard.lastCameraPosition
+                                    .x ||
+                            canvasContext.camera.position.y !==
+                                canvasContext.serverBoard.lastCameraPosition
+                                    .y ||
+                            canvasContext.camera.zoom !==
+                                canvasContext.serverBoard.lastCameraZoom
                                 ? "Unsaved."
                                 : "Saved."}
                         </p>
@@ -370,7 +349,7 @@ function CanvasEditor({
                         data-tour-id="zoom-reset-button"
                     >
                         {Math.round(
-                            canvasContext.local_camera.zoom * 100
+                            canvasContext.camera.zoom * 100
                         ).toLocaleString("en-US")}
                         {/* display commas instead of periods */}%
                     </button>
@@ -388,8 +367,8 @@ function CanvasEditor({
             {showManageThisBoardModal && (
                 <ManageThisBoardModal
                     onRename={handleRenameBoard}
-                    onReset={handleResetBoard}
-                    onDelete={handleDeleteBoard}
+                    onReset={requestResetBoard}
+                    onDelete={requestDeleteBoard}
                     onClose={() => {
                         setShowManageThisBoardModal(false);
                     }}

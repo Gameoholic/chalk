@@ -1,20 +1,13 @@
-import { RefObject, useContext, useEffect, useRef, useState } from "react";
-import isDeepEqual from "fast-deep-equal";
-import {
-    deleteBoard,
-    deleteBoardObjects,
-    resetBoard,
-    updateBoardCamera,
-    updateBoardObjects,
-} from "../../../api/boards";
-import { WorldObject } from "../../../types/canvas";
+import { useContext, useEffect, useRef, useState } from "react";
+import { deleteBoard, resetBoard } from "../../../api/boards";
 import { CanvasContext } from "../../../types/context/CanvasContext";
 import { env } from "../../../env";
+import { pushBoardChangesToServer } from "../utils/saveBoardToServer";
 
-export function useSaveBoard(
-    openMyBoards: () => void,
-    onTourCameraMoved: (() => void) | undefined
-) {
+export function useSaveBoard(openMyBoards: () => void) {
+    // ================================================
+    // LOCAL VARIABLES, STATE AND DATA
+    // ================================================
     const canvasContext = useContext(CanvasContext);
     // Use this whenever after we run code async, otherwise we get stale closure
     const canvasContextRef = useRef(canvasContext);
@@ -22,524 +15,385 @@ export function useSaveBoard(
         canvasContextRef.current = canvasContext;
     });
 
+    // Timers
+    const cooldownTimerRef = useRef<number | null>(null);
+    const retryTimerRef = useRef<number | null>(null);
+    useEffect(() => {
+        return () => {
+            if (cooldownTimerRef.current)
+                clearTimeout(cooldownTimerRef.current);
+            if (retryTimerRef.current) clearInterval(retryTimerRef.current);
+        };
+    }, []);
+
+    // Increment every time we want to push our changes, to trigger the tryToPushChanges effect
+    const [pushSignal, setPushSignal] = useState(0);
+
+    // Save Error
+    type SaveError =
+        | {
+              error: string;
+              retryCooldownSecondsOrStatus: number | "retrying" | "fatal-error";
+          }
+        | { error: null; retryCooldownSecondsOrStatus: null };
+    const [saveError, setSaveError] = useState<SaveError>({
+        error: null,
+        retryCooldownSecondsOrStatus: null,
+    });
+
+    // ================================================
+    // END LOCAL VARIABLES, STATE AND DATA
+    // ================================================
+
+    // ================================================
+    // MAIN SAVING LOGIC, METHODS, AND EFFECTS
+    // ================================================
+
+    // Effect 1: (effects run after render, so context states are always fresh)
+    useEffect(() => {
+        if (pushSignal === 0) return; // skip initial
+        tryToPushChanges();
+    }, [pushSignal]);
+
+    function tryToPushChanges() {
+        if (!hasLocalChanges()) {
+            console.warn("No changes to push.");
+            return;
+        }
+        if (hasPendingChanges()) {
+            console.warn("Waiting on existing request.");
+            return;
+        }
+        if (cooldownTimerRef.current !== null) {
+            console.warn("Waiting on cooldown.");
+            return;
+        }
+
+        // Convert all local changes -> pending, which will trigger effect 2 to push to the server
+        canvasContext.moveLocalChangesToPendingChanges();
+    }
+
+    // Effect 2:
+    useEffect(() => {
+        if (!hasPendingChanges()) return;
+
+        pushPendingChanges();
+    }, [
+        canvasContext.pending_objects,
+        canvasContext.pending_deletedObjectIds,
+        canvasContext.pending_cameraPosition,
+        canvasContext.pending_cameraZoom,
+    ]);
+
+    async function pushPendingChanges() {
+        startCooldown();
+
+        const upsertObjects = canvasContext.pending_objects;
+        const deleteIds = canvasContext.pending_deletedObjectIds;
+        const cameraPosition = canvasContext.pending_cameraPosition;
+        const cameraZoom = canvasContext.pending_cameraZoom;
+
+        console.log(
+            `Pushing: ${upsertObjects.length} upserts, ${deleteIds.size} deletes, cameraPosition: ${JSON.stringify(cameraPosition)}, cameraZoom: ${cameraZoom}`
+        );
+
+        try {
+            await pushBoardChangesToServer(canvasContext.local_currentBoardId, {
+                objectUpsert: new Map(upsertObjects.map((o) => [o.id, o])),
+                objectDelete: deleteIds,
+                cameraPosition,
+                cameraZoom,
+            });
+
+            console.log("Successfully pushed changes.");
+
+            // Cleanup retry timer and error state in case this was a retry attempt
+            if (retryTimerRef.current !== null) {
+                clearInterval(retryTimerRef.current);
+                retryTimerRef.current = null;
+            }
+            setSaveError({
+                error: null,
+                retryCooldownSecondsOrStatus: null,
+            });
+
+            canvasContextRef.current.onSaveCompleted(
+                upsertObjects,
+                deleteIds,
+                cameraPosition,
+                cameraZoom
+            );
+
+            // Re-trigger push in case changes accumulated mid-request
+            setPushSignal((n) => n + 1);
+        } catch (err) {
+            console.error("Failed to push changes", err);
+
+            const message = err instanceof Error ? err.message : String(err);
+            // TODO: This is not ideal, ideally we make a custom error class for expected errors
+            const isNetworkError = message.includes("NetworkError");
+
+            if (isNetworkError) {
+                scheduleRetry();
+            } else {
+                setSaveError({
+                    error: "A fatal error occurred. Please refresh the page.",
+                    retryCooldownSecondsOrStatus: "fatal-error",
+                });
+            }
+        }
+    }
+
+    function startCooldown() {
+        if (cooldownTimerRef.current !== null) {
+            return;
+        }
+
+        if (env.VITE_SAVE_REQUEST_COOLDOWN > 0) {
+            cooldownTimerRef.current = window.setTimeout(() => {
+                console.log("Cooldown finished.");
+                cooldownTimerRef.current = null;
+                setPushSignal((n) => n + 1); // trigger effect to check if we have changes to push after cooldown. Can't call function directly due to stale closure from inside timeout
+            }, env.VITE_SAVE_REQUEST_COOLDOWN);
+        }
+    }
+
+    function scheduleRetry() {
+        // Clear any existing countdown before starting a new one
+        if (retryTimerRef.current !== null) {
+            clearInterval(retryTimerRef.current);
+            retryTimerRef.current = null;
+        }
+
+        const retryDelaySecs = env.VITE_SAVE_RETRY_COOLDOWN;
+        setSaveError({
+            error: "Failed to save. Check your connection.",
+            retryCooldownSecondsOrStatus: retryDelaySecs,
+        });
+
+        let remaining = retryDelaySecs;
+        retryTimerRef.current = window.setInterval(() => {
+            remaining -= 1;
+            if (remaining <= 0) {
+                clearInterval(retryTimerRef.current!);
+                retryTimerRef.current = null;
+
+                setSaveError((prev) =>
+                    prev.error !== null
+                        ? {
+                              error: prev.error,
+                              retryCooldownSecondsOrStatus: "retrying",
+                          }
+                        : prev
+                );
+
+                // Absorb any local edits that accumulated during the countdown into the pending batch,
+                // then let Effect 2 detect the pending state change and call pushPendingChanges with fresh state.
+                canvasContextRef.current.mergeLocalIntoPendingChanges();
+            } else {
+                setSaveError((prev) =>
+                    prev.error !== null
+                        ? {
+                              error: prev.error,
+                              retryCooldownSecondsOrStatus: remaining,
+                          }
+                        : prev
+                );
+            }
+        }, 1000);
+    }
+
+    function requestForceSaveBoardNow() {
+        // Cancel current cooldown timer
+        if (cooldownTimerRef.current !== null) {
+            clearTimeout(cooldownTimerRef.current);
+            cooldownTimerRef.current = null;
+            console.log("Requested a force save, cancelling cooldown.");
+        }
+
+        tryToPushChanges();
+    }
+
+    function hasPendingChanges() {
+        return (
+            canvasContext.pending_objects.length > 0 ||
+            canvasContext.pending_deletedObjectIds.size > 0 ||
+            canvasContext.pending_cameraPosition !== null ||
+            canvasContext.pending_cameraZoom !== null
+        );
+    }
+
+    function hasLocalChanges() {
+        return (
+            canvasContext.unsaved_objects.length > 0 ||
+            canvasContext.unsaved_deletedObjectIds.size > 0 ||
+            canvasContext.unsaved_cameraPosition !== null ||
+            canvasContext.unsaved_cameraZoom !== null
+        );
+    }
+
+    // ================================================
+    // END MAIN SAVING LOGIC, METHODS, AND EFFECTS
+    // ================================================
+
+    // ================================================
+    // OTHER
+    // ================================================
+
+    // Prevent refreshing or leaving page if objects are currently being saved / awaiting save (allow refreshing if fatal error occurred)
+    const hasUnsavedWorkRef = useRef<() => boolean>(() => false);
+    const requestForceSaveBoardNowRef = useRef<() => void>(() => {});
+    const saveObjectsErrorRef = useRef<SaveError>(saveError);
+    useEffect(() => {
+        hasUnsavedWorkRef.current = hasUnsavedWork;
+        requestForceSaveBoardNowRef.current = requestForceSaveBoardNow;
+        saveObjectsErrorRef.current = saveError;
+    });
+    useEffect(() => {
+        const preventLeaving = (e: BeforeUnloadEvent) => {
+            if (
+                !hasUnsavedWorkRef.current() ||
+                saveObjectsErrorRef.current.retryCooldownSecondsOrStatus ===
+                    "fatal-error"
+            )
+                return;
+            e.preventDefault();
+            e.returnValue = "";
+            requestForceSaveBoardNowRef.current();
+        };
+        window.addEventListener("beforeunload", preventLeaving);
+        return () => window.removeEventListener("beforeunload", preventLeaving);
+    }, []);
+
     // Used if a save operation is currently undergoing and user asked to go my boards
     const [queued_navigateToMyBoards, setQueued_navigateToMyBoards] =
         useState(false);
     useEffect(() => {
-        if (queued_navigateToMyBoards && !hasPendingSaveOperations()) {
-            openMyBoards();
+        if (queued_navigateToMyBoards && !hasUnsavedWork()) {
+            handleOpenMyBoards();
             setQueued_navigateToMyBoards(false);
         }
-    }, [canvasContext.local_unsavedObjects]);
+    }, [
+        canvasContext.unsaved_objects,
+        canvasContext.unsaved_deletedObjectIds,
+        canvasContext.unsaved_cameraPosition,
+        canvasContext.unsaved_cameraZoom,
+        canvasContext.pending_objects,
+        canvasContext.pending_deletedObjectIds,
+        canvasContext.pending_cameraPosition,
+        canvasContext.pending_cameraZoom,
+    ]);
 
     // Used if a save operation is currently undergoing and user requested to reset board
+    const resetResolveRef = useRef<(() => void) | null>(null);
     const [queued_resetBoard, setQueued_ResetBoard] = useState(false);
     useEffect(() => {
-        if (queued_resetBoard && !hasPendingSaveOperations()) {
-            handleResetBoard();
+        if (queued_resetBoard && !hasUnsavedWork()) {
             setQueued_ResetBoard(false);
+            requestResetBoard();
         }
-    }, [canvasContext.local_unsavedObjects]);
+    }, [
+        canvasContext.unsaved_objects,
+        canvasContext.unsaved_deletedObjectIds,
+        canvasContext.unsaved_cameraPosition,
+        canvasContext.unsaved_cameraZoom,
+        canvasContext.pending_objects,
+        canvasContext.pending_deletedObjectIds,
+        canvasContext.pending_cameraPosition,
+        canvasContext.pending_cameraZoom,
+    ]);
 
-    // Used if a save operation is currently undergoing and user requested to reset board
+    // Used if a save operation is currently undergoing and user requested to delete board
     const [queued_deleteBoard, setQueued_deleteBoard] = useState(false);
     useEffect(() => {
-        if (queued_deleteBoard && !hasPendingSaveOperations()) {
-            handleDeleteBoard();
+        if (queued_deleteBoard && !hasUnsavedWork()) {
             setQueued_deleteBoard(false);
+            requestDeleteBoard();
         }
-    }, [canvasContext.local_unsavedObjects]);
+    }, [
+        canvasContext.unsaved_objects,
+        canvasContext.unsaved_deletedObjectIds,
+        canvasContext.unsaved_cameraPosition,
+        canvasContext.unsaved_cameraZoom,
+        canvasContext.pending_objects,
+        canvasContext.pending_deletedObjectIds,
+        canvasContext.pending_cameraPosition,
+        canvasContext.pending_cameraZoom,
+    ]);
 
-    // Saving objects
-    // Objects that are currently being saved (mid-fetch request)
-    const objectsBeingSavedOnDatabase: RefObject<WorldObject[]> = useRef([]);
-    // Objects that are currently being deleted (mid-fetch request)
-    const objectsBeingDeletedOnDatabase = useRef<Set<string>>(new Set());
-    // Error data if couldn't save board
-    const [saveObjectsError, setSaveObjectsError] = useState<
-        | { error: null }
-        | {
-              error: string;
-              retryCooldownSecondsOrStatus: "retrying" | number;
-              lastRetryCooldown: number;
-          }
-    >({ error: null });
-
-    // Fix for state closure
-    const saveObjectsErrorRef = useRef(saveObjectsError);
-    useEffect(() => {
-        saveObjectsErrorRef.current = saveObjectsError;
-    }, [saveObjectsError]);
-
-    // COOLDOWN FOR SAVING BOARD OBJECTS (CLIENT SIDE "RATE LIMITING")
-    const saveCooldownTimeoutRef = useRef<number | null>(null);
-    const saveObjectsRequestOnCooldown = useRef(false);
-
-    const startCooldownTimeout = (forceTimeoutNow = false) => {
-        // If we need to force the timeout to happen now (such as when going to my boards or reseting/deleting board)
-        if (forceTimeoutNow) {
-            saveObjectsRequestOnCooldown.current = false;
-            requestSaveObjectsOnDatabaseFunction.current(); // Use the ref to avoid stale closure
-            saveObjectsRequestOnCooldown.current = true;
-            return;
-        }
-        if (env.VITE_SAVE_REQUEST_COOLDOWN === 0) {
-            // If we don't want a cooldown timer, immediately execute the save
-            if (
-                saveObjectsErrorRef.current.error === null && // Use the ref to avoid stale closure
-                objectsBeingSavedOnDatabase.current.length === 0 &&
-                (objectsToSaveOnDatabase.current.size > 0 ||
-                    wasCameraUpdatedSinceLastSave())
-            ) {
-                console.log(
-                    "Requesting to save " +
-                        objectsToSaveOnDatabase.current.size +
-                        " objects on database (request likely originated because objects accumulated during a prior save)."
-                );
-                requestSaveObjectsOnDatabaseFunction.current(); // Use the ref to avoid stale closure
-            }
-            return;
-        }
-
-        if (saveCooldownTimeoutRef.current !== null) {
-            return;
-        }
-
-        saveCooldownTimeoutRef.current = window.setTimeout(() => {
-            saveCooldownTimeoutRef.current = null;
-            saveObjectsRequestOnCooldown.current = false;
-
-            // In case we have objects that are waiting to be saved (previously failed because of our cooldown), try to save now
-            if (
-                saveObjectsErrorRef.current.error === null && // Use the ref to avoid stale closure
-                objectsBeingSavedOnDatabase.current.length === 0 &&
-                objectsBeingDeletedOnDatabase.current.size === 0 &&
-                (objectsToSaveOnDatabase.current.size > 0 ||
-                    objectsToDeleteOnDatabase.current.size > 0 ||
-                    wasCameraUpdatedSinceLastSave())
-            ) {
-                console.log(
-                    "Cooldown expired! Requesting to save " +
-                        objectsToSaveOnDatabase.current.size +
-                        " objects and delete " +
-                        objectsToDeleteOnDatabase.current.size +
-                        " objects on database."
-                );
-                requestSaveObjectsOnDatabaseFunction.current(); // Use the ref to avoid stale closure
-            }
-        }, env.VITE_SAVE_REQUEST_COOLDOWN);
-    };
-    // Cleanup on unmount
-    useEffect(() => {
-        return () => {
-            if (saveCooldownTimeoutRef.current)
-                clearTimeout(saveCooldownTimeoutRef.current);
-        };
-    }, []);
-
-    // When objects are ready to be saved to database (user released left click, for example).
-    // Generally, only one object will be in objectsBeingUpdatedButNotReadyForSaving when this method is called,
-    // but our code should be able to support cases where there's multiple objects at once.
-    function requestCommitObjectChanges(
-        updatedObjects?: WorldObject[],
-        deletedObjectIds?: string[]
-    ) {
-        console.log(
-            "Commit: Requesting to save " +
-                (canvasContext.local_unsavedObjects.length -
-                    objectsBeingSavedOnDatabase.current.length) +
-                " objects and delete " +
-                (canvasContext.local_deletedObjectIds.size -
-                    objectsBeingDeletedOnDatabase.current.size) +
-                " objects to database."
-        );
-
-        // As soon as objects start saving - objectsToSaveOnDatabase becomes irrelevant, it'll get overwritten when it finished saving. So this is ok even if this line executes mid-save.
-        updatedObjects?.forEach((object) => {
-            objectsToSaveOnDatabase.current.set(object.id, object);
-        });
-
-        deletedObjectIds?.forEach((objectId) => {
-            objectsToDeleteOnDatabase.current.add(objectId);
-        });
-        requestSaveBoard();
+    function hasUnsavedWork() {
+        return hasLocalChanges() || hasPendingChanges();
     }
 
-    // When camera is ready to be saved to database (camera finished dragging or zoom changed).
-    function requestCommitCamera() {
-        console.log("Requesting to commit camera state to database.");
+    // ================================================
+    // END OTHER
+    // ================================================
 
-        if (onTourCameraMoved) {
-            onTourCameraMoved();
-        }
+    // ================================================
+    // PUBLIC API — these are the only exported methods
+    // ================================================
 
-        requestSaveBoard();
+    function requestSaveBoard() {
+        setPushSignal((n) => n + 1);
     }
 
-    // Avoid stale closure in timer effect hooks
-    const requestSaveObjectsOnDatabaseFunction = useRef(requestSaveBoard);
-    // Keep the ref constantly updated on every single render
-    useEffect(() => {
-        requestSaveObjectsOnDatabaseFunction.current = requestSaveBoard;
-    });
+    function requestNavigateToMyBoards() {
+        if (hasUnsavedWork()) {
+            setQueued_navigateToMyBoards(true);
+            requestForceSaveBoardNow();
+            return;
+        }
 
-    // Objects that are ready to be saved on the database
-    const objectsToSaveOnDatabase: RefObject<Map<string, WorldObject>> = useRef(
-        new Map()
-    );
-    // Object ids that are ready to be deleted on the database
-    const objectsToDeleteOnDatabase: RefObject<Set<string>> = useRef(new Set());
-
-    function wasCameraUpdatedSinceLastSave() {
-        const cameraPosOnClient =
-            canvasContextRef.current.local_camera.position;
-        const cameraZoomOnClient = canvasContextRef.current.local_camera.zoom;
-        return (
-            cameraPosOnClient.x !==
-                canvasContextRef.current.getCurrentBoard().lastCameraPosition
-                    .x ||
-            cameraPosOnClient.y !==
-                canvasContextRef.current.getCurrentBoard().lastCameraPosition
-                    .y ||
-            cameraZoomOnClient !==
-                canvasContextRef.current.getCurrentBoard().lastCameraZoom
-        );
+        openMyBoards();
     }
 
-    // Main method to save the board on database
-    async function requestSaveBoard(asErrorRetry: boolean = false) {
-        // Sanity check.
-        const saveObjects = objectsToSaveOnDatabase.current.size > 0;
-        const deleteObjects = objectsToDeleteOnDatabase.current.size > 0;
-        const saveCamera = wasCameraUpdatedSinceLastSave();
-        if (!saveObjects && !saveCamera && !deleteObjects) {
-            console.warn(
-                "Request to save objects+camera ignored because object save/delete length is 0 and camera hasn't updated since last save."
-            );
-            return;
-        }
-
-        if (saveObjectsErrorRef.current.error && !asErrorRetry) {
-            console.warn(
-                "Request to save/delete objects+camera (length " +
-                    (objectsToSaveOnDatabase.current.size +
-                        objectsToDeleteOnDatabase.current.size) +
-                    ") ignored because waiting for error retry."
-            );
-            return;
-        }
-
-        // todo: um what about if it's just a camera request? why dont we check that too?
-        // todo
-        //to do/
-        // todo
-        if (
-            objectsBeingSavedOnDatabase.current.length > 0 ||
-            objectsBeingDeletedOnDatabase.current.size > 0
-        ) {
-            console.warn(
-                "Request to save objects+camera (length " +
-                    (canvasContext.local_unsavedObjects.length -
-                        objectsBeingSavedOnDatabase.current.length) +
-                    ") ignored because waiting on existing request."
-            );
-            return;
-        }
-
-        if (saveObjectsRequestOnCooldown.current && !asErrorRetry) {
-            console.warn(
-                "Request to save objects+camera (length " +
-                    objectsToSaveOnDatabase.current.size +
-                    ") ignored because waiting for cooldown to expire."
-            );
-            return;
-        }
-
-        objectsBeingSavedOnDatabase.current = Array.from(
-            objectsToSaveOnDatabase.current.values()
-        );
-        objectsBeingDeletedOnDatabase.current = new Set(
-            objectsToDeleteOnDatabase.current
-        );
-
-        if (saveObjects) {
-            console.log(
-                "Saving " +
-                    objectsBeingSavedOnDatabase.current.length +
-                    " board objects on database."
-            );
-        }
-        if (deleteObjects) {
-            console.log(
-                "Deleting " +
-                    objectsBeingDeletedOnDatabase.current.size +
-                    " board objects on database."
-            );
-        }
-        if (saveCamera) {
-            console.log("Saving camera properties on database.");
-        }
-
-        if (env.VITE_SAVE_REQUEST_COOLDOWN > 0) {
-            saveObjectsRequestOnCooldown.current = true;
-            startCooldownTimeout();
-        }
-
-        const cameraPosOnClient =
-            canvasContextRef.current.local_camera.position;
-        const cameraZoomOnClient = canvasContextRef.current.local_camera.zoom;
-        try {
-            const savesToExecute: Promise<void>[] = [];
-
-            if (saveCamera) {
-                savesToExecute.push(
-                    updateBoardCamera(
-                        canvasContext.getCurrentBoard().id,
-                        cameraPosOnClient,
-                        cameraZoomOnClient
-                    )
-                );
-            }
-
-            if (saveObjects) {
-                savesToExecute.push(
-                    updateBoardObjects(
-                        canvasContext.local_currentBoardId,
-                        objectsBeingSavedOnDatabase.current
-                    )
-                );
-            }
-
-            await Promise.all(savesToExecute);
-            // Todo: For now I'm hesitant to put this along with the Promise.all() because I want to avoid a situation where
-            // an object was added/modified and also deleted in the same save operation, and then server-side it's deleted first and then re-created
-            // I'm not sure if this can happen, probably not, if I'm 100% that not then we can put this along with the Promise.all above
-            if (deleteObjects) {
-                await deleteBoardObjects(
-                    canvasContext.local_currentBoardId,
-                    objectsBeingDeletedOnDatabase.current
-                );
-            }
-        } catch (err) {
-            console.error("Failure to save the objects+camera!");
-
-            objectsBeingSavedOnDatabase.current = [];
-            objectsBeingDeletedOnDatabase.current = new Set();
-            setSaveObjectsError((prev) => {
-                const accumulatedCooldown = prev.error
-                    ? prev.lastRetryCooldown
-                    : 0; // Add delay from previous attempts
-                const updatedCooldown =
-                    accumulatedCooldown + env.VITE_SAVE_RETRY_COOLDOWN;
-                const finalCooldown =
-                    env.VITE_SAVE_RETRY_MAX_COOLDOWN === 0 // If max cooldown is 0, we ignore it
-                        ? updatedCooldown
-                        : Math.min(
-                              updatedCooldown,
-                              env.VITE_SAVE_RETRY_MAX_COOLDOWN
-                          );
-                return {
-                    error: "Failed to save changes. Your work is out of sync.",
-                    retryCooldownSecondsOrStatus: finalCooldown,
-                    lastRetryCooldown: finalCooldown,
-                };
-            });
-            return;
-        }
-
-        console.log("Successfully saved the objects+camera.");
-
-        setSaveObjectsError({ error: null });
-        // Iterate over all objects we saved, remove them from localUnsavedObjects, UNLESS they were modified since the save started (unlikely but possible)
-        // Since this is all happening after an await asynchrounsly, the context is stale, so we use the ref to read it here
-        const remainingUnsavedObjects =
-            canvasContextRef.current.local_unsavedObjects.filter(
-                (objectLocal) => {
-                    const savedVersion =
-                        objectsBeingSavedOnDatabase.current.find(
-                            (s) => s.id === objectLocal.id
-                        );
-
-                    // If it wasn't in the save batch, keep it.
-                    if (!savedVersion) return true;
-
-                    // If it WAS in the batch, check if it has changed since then.
-                    // If isDeepEqual is true, they are identical -> Return false, removes it.
-                    // If isDeepEqual is false, the user modified it mid-save -> Return true, keeps it.
-                    return !isDeepEqual(objectLocal, savedVersion);
-                }
-            );
-        // Update the server-synced context properties
-        canvasContextRef.current.onCurrentBoardSaved(
-            // we do this so if the object was saved but modified stays then, it stays only in localunsavedobjects and not in both buffers
-            objectsBeingSavedOnDatabase.current.filter(
-                (x) => !remainingUnsavedObjects.includes(x)
-            ),
-            objectsBeingDeletedOnDatabase.current,
-            cameraPosOnClient,
-            cameraZoomOnClient
-        );
-
-        canvasContextRef.current.setLocalUnsavedObjects(
-            remainingUnsavedObjects
-        );
-        const remainingUndeletedObjectIds = new Set(
-            [...canvasContext.local_deletedObjectIds].filter(
-                (id) => !objectsBeingDeletedOnDatabase.current.has(id)
-            )
-        );
-        canvasContextRef.current.setLocalDeletedObjectIds(
-            remainingUndeletedObjectIds
-        );
-
-        objectsBeingSavedOnDatabase.current = [];
-        objectsBeingDeletedOnDatabase.current = new Set();
-
-        objectsToSaveOnDatabase.current = new Map();
-        remainingUnsavedObjects.forEach((object) => {
-            objectsToSaveOnDatabase.current.set(object.id, object);
-        });
-        objectsToDeleteOnDatabase.current = remainingUndeletedObjectIds;
-
-        // Save any objects that were piling up as this request was processed
-        if (objectsToSaveOnDatabase.current.size > 0) {
-            console.log(
-                objectsToSaveOnDatabase.current.size +
-                    " objects accumulated while processing the request. Attempting to save them once cooldown expires."
-            );
-            console.log(
-                objectsToDeleteOnDatabase.current.size +
-                    " object deletions accumulated while processing the request. Attempting to save them once cooldown expires."
-            );
-            startCooldownTimeout();
-        }
-
-        // Save camera again if it changed while this request was being processed
-        if (
-            canvasContextRef.current.local_camera.position.x !==
-                cameraPosOnClient.x ||
-            canvasContextRef.current.local_camera.position.y !==
-                cameraPosOnClient.y ||
-            canvasContextRef.current.local_camera.zoom !== cameraZoomOnClient
-        ) {
-            console.log(
-                "Camera properties updated while processing the request. Attempting to save once cooldown expires."
-            );
-            startCooldownTimeout();
-        }
-    }
-
-    // Handle object save error retry
-    useEffect(() => {
-        if (!saveObjectsError.error) return;
-
-        const secondsLeft = saveObjectsError.retryCooldownSecondsOrStatus;
-        if (secondsLeft === "retrying") return;
-
-        // If we've hit 0, trigger the retry
-        if (secondsLeft <= 0) {
-            setSaveObjectsError((prev) => ({
-                ...prev,
-                retryCooldownSecondsOrStatus: "retrying",
-            }));
-            console.log("Retrying to save objects.");
-            requestSaveObjectsOnDatabaseFunction.current(true);
-            return;
-        }
-
-        // If we are actively counting down, tick down by 1 every second
-        const timer = setTimeout(() => {
-            setSaveObjectsError((prev) => {
-                if (
-                    prev.error === null ||
-                    prev.retryCooldownSecondsOrStatus === "retrying"
-                )
-                    return prev;
-
-                return {
-                    ...prev,
-                    retryCooldownSecondsOrStatus:
-                        prev.retryCooldownSecondsOrStatus - 1,
-                };
-            });
-        }, 1000);
-
-        return () => clearTimeout(timer);
-    }, [saveObjectsError]);
-
-    const handleResetBoard = async () => {
-        if (hasPendingSaveOperations()) {
-            // Will quicken the ongoing save processes and reset the board as soon as save is done
+    async function requestResetBoard() {
+        if (hasUnsavedWork()) {
             setQueued_ResetBoard(true);
-            startCooldownTimeout(true);
-            return;
+            requestForceSaveBoardNow();
+            // Return a promise that resolves only after the queued reset actually completes,
+            // so the caller's loading state stays active while waiting for the reset to finish.
+            return new Promise<void>((resolve) => {
+                resetResolveRef.current = resolve;
+            });
         }
-        await resetBoard(canvasContext.local_currentBoardId);
 
-        canvasContext.updateCurrentBoardObjects([]);
-        setSaveObjectsError({ error: null });
-        objectsBeingSavedOnDatabase.current = [];
-        canvasContext.local_unsavedObjects = [];
-        objectsToSaveOnDatabase.current.clear();
-    };
+        try {
+            await resetBoard(canvasContext.local_currentBoardId);
+            canvasContext.onBoardReset();
+            setSaveError({
+                error: null,
+                retryCooldownSecondsOrStatus: null,
+            });
+        } finally {
+            resetResolveRef.current?.();
+            resetResolveRef.current = null;
+        }
+    }
 
-    const handleDeleteBoard = async () => {
-        if (hasPendingSaveOperations()) {
-            // Will quicken the ongoing save processes and reset the board as soon as save is done
+    async function requestDeleteBoard() {
+        if (hasUnsavedWork()) {
             setQueued_deleteBoard(true);
-            startCooldownTimeout(true);
+            requestForceSaveBoardNow();
             return;
         }
         await deleteBoard(canvasContext.local_currentBoardId);
         window.location.reload();
-    };
-
-    // Prevent refreshing or leaving page if objects are currently being saved / awaiting save
-    useEffect(() => {
-        const preventLeaving = (e: any) => {
-            if (!hasPendingSaveOperations()) {
-                return;
-            }
-            e.preventDefault();
-            e.returnValue = "";
-            startCooldownTimeout(true); // Force a save right now because user wanted to leave.
-        };
-        window.addEventListener("beforeunload", preventLeaving);
-
-        // Clean up the event listener to avoid memory leaks
-        return () => {
-            window.removeEventListener("beforeunload", preventLeaving);
-        };
-    }, []);
-
-    function hasPendingSaveOperations() {
-        return (
-            objectsBeingSavedOnDatabase.current.length !== 0 ||
-            objectsToSaveOnDatabase.current.size !== 0 ||
-            canvasContext.local_unsavedObjects.length !== 0 ||
-            objectsBeingDeletedOnDatabase.current.size !== 0 ||
-            objectsToDeleteOnDatabase.current.size !== 0 ||
-            canvasContext.local_deletedObjectIds.size !== 0 ||
-            wasCameraUpdatedSinceLastSave()
-        );
     }
 
-    function requestNavigateToMyBoards() {
-        if (!hasPendingSaveOperations()) {
-            openMyBoards();
-        } else {
-            // quicken the save process and queue the navigate to my boards until save finishes
-            setQueued_navigateToMyBoards(true);
-            startCooldownTimeout(true);
-        }
+    function handleOpenMyBoards() {
+        openMyBoards();
     }
+
+    // ================================================
+    // END PUBLIC API
+    // ================================================
 
     return {
-        saveObjectsError,
-        requestCommitObjectChanges,
-        requestCommitCamera,
-        handleResetBoard,
-        handleDeleteBoard,
+        saveError,
+        requestResetBoard,
+        requestDeleteBoard,
         requestNavigateToMyBoards,
+        requestSaveBoard,
     };
 }

@@ -130,7 +130,10 @@ interface useMouseEventsProps {
     editingTextObjectId: string | null;
     onTextCursorMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => void;
     onTextCursorMouseMove: (e: React.MouseEvent<HTMLCanvasElement>) => void;
-    onTextObjectDoubleClick: (objectId: string, worldPos: { x: number; y: number }) => void;
+    onTextObjectDoubleClick: (
+        objectId: string,
+        worldPos: { x: number; y: number }
+    ) => void;
 }
 
 // Maps a corner name to the CSS resize cursor string for that corner's drag axis.
@@ -166,7 +169,7 @@ export function useMouseEvents({
 }: useMouseEventsProps) {
     const canvasContext = useContext(CanvasContext);
     const tool: Tool = canvasContext.local_tool;
-    const camera: Camera = canvasContext.local_camera;
+    const camera: Camera = canvasContext.camera;
 
     // what to show as the cursor (when resizing text object corners for example)
     const [cursor, setCursor] = useState<string>("default");
@@ -182,7 +185,7 @@ export function useMouseEvents({
     >(null);
 
     function findObjectAtCoords(coords: Vec2): WorldObject | null {
-        return hitTest([...canvasContext.allObjects.values()], coords);
+        return hitTest([...canvasContext.objects.values()], coords);
     }
 
     // Prevent the default browser context menu on right-click
@@ -245,9 +248,14 @@ export function useMouseEvents({
                 // HOWEVER, exception: If this object is already selected...
                 if (selectedObjectIds.has(clickedObject.id)) {
                     // If it's the currently editing text object, route to text cursor positioning
-                    if (editingTextObjectId && clickedObject.id === editingTextObjectId) {
+                    if (
+                        editingTextObjectId &&
+                        clickedObject.id === editingTextObjectId
+                    ) {
                         onTextCursorMouseDown(e);
-                        currentInteraction.current = { type: "text-cursor-drag" };
+                        currentInteraction.current = {
+                            type: "text-cursor-drag",
+                        };
                         return;
                     }
                     // Otherwise start an object drag interaction

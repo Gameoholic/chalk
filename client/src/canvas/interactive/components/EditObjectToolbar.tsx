@@ -76,9 +76,22 @@ export function EditObjectToolbar({
     onUpdate,
     onDelete,
 }: EditObjectToolbarProps) {
-    const { setLocalCachedTextProps } = useContext(CanvasContext);
+    const { setLocalTextProperties: setLocalCachedTextProps } =
+        useContext(CanvasContext);
 
-    function updateTextCache(patch: Partial<Pick<TextObject, "color" | "fontSize" | "fontFamily" | "lineHeight" | "bold" | "italic">>) {
+    function updateTextCache(
+        patch: Partial<
+            Pick<
+                TextObject,
+                | "color"
+                | "fontSize"
+                | "fontFamily"
+                | "lineHeight"
+                | "bold"
+                | "italic"
+            >
+        >
+    ) {
         if (selectedObjects.some((obj) => obj.type === "text")) {
             setLocalCachedTextProps((prev) => ({ ...prev, ...patch }));
         }
@@ -348,7 +361,9 @@ export function EditObjectToolbar({
                         }}
                     />
                     {strokeValue === "mixed" ? (
-                        <span style={{ ...mixedLabelStyle, minWidth: 24 }}>—</span>
+                        <span style={{ ...mixedLabelStyle, minWidth: 24 }}>
+                            —
+                        </span>
                     ) : (
                         <InlineNumberInput
                             value={strokeValue}
@@ -413,13 +428,17 @@ export function EditObjectToolbar({
                         }}
                     />
                     {hollowStrokeValue === "mixed" ? (
-                        <span style={{ ...mixedLabelStyle, minWidth: 24 }}>—</span>
+                        <span style={{ ...mixedLabelStyle, minWidth: 24 }}>
+                            —
+                        </span>
                     ) : (
                         <InlineNumberInput
                             value={hollowStrokeValue}
                             min={1}
                             max={20}
-                            onChange={(hollowStroke) => applyToAll({ hollowStroke })}
+                            onChange={(hollowStroke) =>
+                                applyToAll({ hollowStroke })
+                            }
                         />
                     )}
                 </div>
@@ -445,7 +464,9 @@ export function EditObjectToolbar({
                         }}
                     />
                     {fontSizeValue === "mixed" ? (
-                        <span style={{ ...mixedLabelStyle, minWidth: 24 }}>—</span>
+                        <span style={{ ...mixedLabelStyle, minWidth: 24 }}>
+                            —
+                        </span>
                     ) : (
                         <InlineNumberInput
                             value={fontSizeValue}
@@ -510,7 +531,9 @@ export function EditObjectToolbar({
                                     key={f.family}
                                     onClick={() => {
                                         applyToAll({ fontFamily: f.family });
-                                        updateTextCache({ fontFamily: f.family });
+                                        updateTextCache({
+                                            fontFamily: f.family,
+                                        });
                                         setShowFontPicker(false);
                                     }}
                                     style={{

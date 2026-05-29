@@ -59,8 +59,8 @@ const Toolbox = ({
         pencil: {
             tool: {
                 type: "pencil",
-                color: canvasContext.local_cachedColor,
-                stroke: canvasContext.local_cachedStroke,
+                color: canvasContext.local_color,
+                stroke: canvasContext.local_stroke,
             } satisfies PencilTool,
             displayName: "Pencil",
             icon: <Pen size={20} />,
@@ -68,7 +68,7 @@ const Toolbox = ({
         eraser: {
             tool: {
                 type: "eraser",
-                stroke: canvasContext.local_cachedStroke,
+                stroke: canvasContext.local_stroke,
                 eraserMode: "object",
             } satisfies EraserTool,
             displayName: "Eraser",
@@ -79,7 +79,7 @@ const Toolbox = ({
                 type: "ellipse",
                 hollow: true,
                 hollowStroke: 1,
-                color: canvasContext.local_cachedColor,
+                color: canvasContext.local_color,
             } satisfies EllipseTool,
             displayName: "Draw Ellipse",
             icon: <Circle size={20} />,
@@ -87,8 +87,8 @@ const Toolbox = ({
         line: {
             tool: {
                 type: "line",
-                color: canvasContext.local_cachedColor,
-                stroke: canvasContext.local_cachedStroke,
+                color: canvasContext.local_color,
+                stroke: canvasContext.local_stroke,
             } satisfies LineTool,
             displayName: "Draw Line",
             icon: <Slash size={20} />,
@@ -98,7 +98,7 @@ const Toolbox = ({
                 type: "rect",
                 hollow: true,
                 hollowStroke: 1,
-                color: canvasContext.local_cachedColor,
+                color: canvasContext.local_color,
             } satisfies RectTool,
             displayName: "Draw Rectangle",
             icon: <Square size={20} />,
@@ -121,41 +121,41 @@ const Toolbox = ({
                 ...prev.pencil,
                 tool: {
                     ...prev.pencil.tool,
-                    color: canvasContext.local_cachedColor,
-                    stroke: canvasContext.local_cachedStroke,
+                    color: canvasContext.local_color,
+                    stroke: canvasContext.local_stroke,
                 },
             },
             eraser: {
                 ...prev.eraser,
                 tool: {
                     ...prev.eraser.tool,
-                    stroke: canvasContext.local_cachedStroke,
+                    stroke: canvasContext.local_stroke,
                 },
             },
             ellipse: {
                 ...prev.ellipse,
                 tool: {
                     ...prev.ellipse.tool,
-                    color: canvasContext.local_cachedColor,
+                    color: canvasContext.local_color,
                 },
             },
             line: {
                 ...prev.line,
                 tool: {
                     ...prev.line.tool,
-                    color: canvasContext.local_cachedColor,
-                    stroke: canvasContext.local_cachedStroke,
+                    color: canvasContext.local_color,
+                    stroke: canvasContext.local_stroke,
                 },
             },
             rect: {
                 ...prev.rect,
                 tool: {
                     ...prev.rect.tool,
-                    color: canvasContext.local_cachedColor,
+                    color: canvasContext.local_color,
                 },
             },
         }));
-    }, [canvasContext.local_cachedColor, canvasContext.local_cachedStroke]);
+    }, [canvasContext.local_color, canvasContext.local_stroke]);
 
     const handleToolClick = (toolType: ToolType) => {
         canvasContext.setLocalTool(tools[toolType].tool);
@@ -165,14 +165,14 @@ const Toolbox = ({
         canvasContext.setLocalTool((prevTool) => {
             return { ...prevTool, color: newColor };
         });
-        canvasContext.setLocalCachedColor(newColor);
+        canvasContext.setLocalColor(newColor);
     };
 
     const handleStrokeChange = (newStroke: number) => {
         canvasContext.setLocalTool((prevTool) => {
             return { ...prevTool, stroke: newStroke };
         });
-        canvasContext.setLocalCachedStroke(newStroke);
+        canvasContext.setLocalStroke(newStroke);
     };
 
     const showOptionsPanel =
@@ -205,14 +205,14 @@ const Toolbox = ({
 
                 {/* Color Picker */}
                 <ColorPickerSection
-                    cachedColor={canvasContext.local_cachedColor}
+                    cachedColor={canvasContext.local_color}
                     isEnabled={"color" in canvasContext.local_tool}
                     onColorChange={handleColorChange}
                 />
 
                 {/* Stroke selector */}
                 <StrokeSection
-                    cachedStroke={canvasContext.local_cachedStroke}
+                    cachedStroke={canvasContext.local_stroke}
                     isEnabled={"stroke" in canvasContext.local_tool}
                     onStrokeChange={handleStrokeChange}
                 />

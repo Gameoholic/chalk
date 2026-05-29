@@ -15,29 +15,22 @@ import { useObjectSelection } from "./hooks/useObjectSelection";
 import { EditObjectToolbar } from "./components/EditObjectToolbar";
 
 interface CanvasInteractiveProps {
-    commitObjectChanges: (
-        updatedOrNewObjects?: WorldObject[],
-        deletedObjectIds?: string[]
-    ) => void;
-    commitCamera: () => void;
+    saveBoard: () => void;
 }
 
 /**
  * Handles all user interactions, mouse events, drawing.
  */
-function CanvasInteractive({
-    commitObjectChanges,
-    commitCamera,
-}: CanvasInteractiveProps) {
+function CanvasInteractive({ saveBoard }: CanvasInteractiveProps) {
     const canvasContext = useContext(CanvasContext);
 
     // Automatically set camera size to this component's MAX allocated size
     const { observe } = useDimensions({
         onResize: ({ observe, unobserve, width, height }) => {
-            canvasContext.setLocalCamera((prev) => ({
-                ...prev,
-                size: { x: width, y: height },
-            }));
+            canvasContext.setLocalCameraSize({
+                x: width,
+                y: height,
+            });
             unobserve();
             observe();
         },
@@ -45,7 +38,7 @@ function CanvasInteractive({
 
     // Either add an entirely new object or update an existing one (based on its ID)
     function updateOrAddObject(object: WorldObject) {
-        canvasContext.setLocalUnsavedObjects((prev) => [
+        canvasContext.setUnsavedObjects((prev) => [
             ...prev.filter((obj) => obj.id !== object.id),
             object,
         ]);
@@ -53,11 +46,11 @@ function CanvasInteractive({
 
     function removeObject(objectId: string) {
         // First, remove the object from the local objects (handles cases where the object was created, then immediately deleted before committing to server)
-        canvasContext.setLocalUnsavedObjects((prev) =>
+        canvasContext.setUnsavedObjects((prev) =>
             prev.filter((obj) => obj.id !== objectId)
         );
         // Then prepare the object to be deleted
-        canvasContext.setLocalDeletedObjectIds(
+        canvasContext.setUnsavedDeletedObjectIds(
             (prev) => new Set([...prev, objectId])
         );
     }
@@ -75,8 +68,7 @@ function CanvasInteractive({
                 "Commit changes was called, but there are no changes to commit."
             );
         }
-        // Explicitly tells CanvasEditor what to delete, bypassing state closure bugs caused by relying only on CanvasContext states
-        commitObjectChanges(updatedObjects, deletedObjectIds);
+        saveBoard();
     }
 
     // drawingTextBoxObjectId tracks the textbox being drag-created, cleared once drawing finishes and object becomes selected
@@ -105,28 +97,36 @@ function CanvasInteractive({
     const selectedObjects = useMemo(
         () =>
             [...selectedObjectIds]
-                .map((id) => canvasContext.allObjects.get(id))
+                .map((id) => canvasContext.objects.get(id))
                 .filter(Boolean) as WorldObject[],
-        [selectedObjectIds, canvasContext.allObjects]
+        [selectedObjectIds, canvasContext.objects]
     );
 
     // Explicit editing state — only set on double-click (or after drawing a new text box).
     // A selected text object can be moved/resized without entering editing mode.
-    const [editingTextObjectId, setEditingTextObjectId] = useState<string | null>(null);
-    const [textEntryWorldPos, setTextEntryWorldPos] = useState<{ x: number; y: number } | null>(null);
+    const [editingTextObjectId, setEditingTextObjectId] = useState<
+        string | null
+    >(null);
+    const [textEntryWorldPos, setTextEntryWorldPos] = useState<{
+        x: number;
+        y: number;
+    } | null>(null);
 
     // Exit editing mode if the editing object is no longer selected
     useEffect(() => {
-        if (editingTextObjectId && !selectedObjectIds.has(editingTextObjectId)) {
+        if (
+            editingTextObjectId &&
+            !selectedObjectIds.has(editingTextObjectId)
+        ) {
             setEditingTextObjectId(null);
         }
     }, [selectedObjectIds]);
 
     const editingTextObject = useMemo<TextObject | null>(() => {
         if (!editingTextObjectId) return null;
-        const obj = canvasContext.allObjects.get(editingTextObjectId);
+        const obj = canvasContext.objects.get(editingTextObjectId);
         return obj?.type === "text" ? (obj as TextObject) : null;
-    }, [editingTextObjectId, canvasContext.allObjects]);
+    }, [editingTextObjectId, canvasContext.objects]);
 
     // Handle text editing
     const {
@@ -167,7 +167,7 @@ function CanvasInteractive({
         handleCameraDragInteraction_MouseUp,
         handleCamera_Wheel,
     } = useCamera({
-        commitCamera,
+        saveBoard,
     });
 
     // Handle mouse events hook - main method which will handle the interactions from before
@@ -209,8 +209,8 @@ function CanvasInteractive({
     return (
         <div ref={observe} className="h-full w-full touch-none">
             <CanvasRenderer
-                camera={canvasContext.local_camera}
-                objects={canvasContext.allObjects}
+                camera={canvasContext.camera}
+                objects={canvasContext.objects}
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
@@ -243,7 +243,7 @@ function CanvasInteractive({
             {selectedObjects.length > 0 && (
                 <EditObjectToolbar
                     selectedObjects={selectedObjects}
-                    camera={canvasContext.local_camera}
+                    camera={canvasContext.camera}
                     onUpdate={(updated) => {
                         updated.forEach(updateOrAddObject);
                         _commitObjectChanges(updated, undefined);

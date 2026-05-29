@@ -45,7 +45,7 @@ export function useDrawing({
     selectTextObjectForEditing,
 }: useDrawingInteractionsProps) {
     const canvasContext = useContext(CanvasContext);
-    const camera = canvasContext.local_camera;
+    const camera = canvasContext.camera;
 
     function handleDrawingInteraction_MouseMove(
         e: React.MouseEvent<HTMLCanvasElement>,
@@ -75,6 +75,12 @@ export function useDrawing({
                 interaction.current.latestObject as TextObject
             );
         }
+        commitObjectChanges(
+            interaction.current?.latestObject
+                ? [interaction.current.latestObject]
+                : undefined,
+            undefined
+        );
     }
 
     function handleMouseMovePencilDraw(
@@ -107,7 +113,7 @@ export function useDrawing({
         interaction.current.path.push(mouseWorldCoords);
 
         function findObjectAtCoords(coords: Vec2): WorldObject | null {
-            return hitTest([...canvasContext.allObjects.values()], coords);
+            return hitTest([...canvasContext.objects.values()], coords);
         }
 
         if (eraserTool.eraserMode === "object") {
@@ -239,7 +245,7 @@ export function useDrawing({
             id: interaction.current.objectId,
             type: "text",
             text: "",
-            ...canvasContext.local_cachedTextProps,
+            ...canvasContext.local_textProperties,
             boxPosition: interaction.current.path[0],
             boxSize: {
                 x: Math.max(

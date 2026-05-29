@@ -18,10 +18,7 @@ export default function ManageThisBoardModal({
 }) {
     const canvasContext = useContext(CanvasContext);
 
-    const [draftName, setDraftName] = useState(
-        canvasContext.getCurrentBoard().name
-    );
-    const [name, setName] = useState(canvasContext.getCurrentBoard().name);
+    const [draftName, setDraftName] = useState(canvasContext.serverBoard.name);
     const [isEditing, setIsEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [isDeleted, setIsDeleted] = useState(false); // New success state
@@ -30,12 +27,6 @@ export default function ManageThisBoardModal({
     const [deleteError, setDeleteError] = useState<string | null>(null);
     const [confirmingReset, setConfirmingReset] = useState(false);
     const [confirmingDelete, setConfirmingDelete] = useState(false);
-
-    useEffect(() => {
-        const trimmed = name.slice(0, MAX_NAME_LENGTH);
-        setDraftName(trimmed);
-        setName(trimmed);
-    }, [name]);
 
     useEffect(() => {
         const onEsc = (e: KeyboardEvent) => {
@@ -47,7 +38,7 @@ export default function ManageThisBoardModal({
 
     const handleSave = async () => {
         const trimmed = draftName.trim().slice(0, MAX_NAME_LENGTH);
-        if (!trimmed || trimmed === name) {
+        if (!trimmed || trimmed === canvasContext.serverBoard.name) {
             setIsEditing(false);
             return;
         }
@@ -57,7 +48,6 @@ export default function ManageThisBoardModal({
             setNameError(null);
             await onRename(trimmed);
             setIsEditing(false);
-            setName(trimmed); // todo wanna get rid of this
         } catch (err) {
             setNameError("Failed to rename board: " + (err as Error)?.message);
         }
@@ -93,7 +83,7 @@ export default function ManageThisBoardModal({
     };
 
     const formattedDate = new Date(
-        canvasContext.getCurrentBoard().createdOn
+        canvasContext.serverBoard.createdOn
     ).toLocaleDateString(undefined, {
         year: "numeric",
         month: "long",
@@ -153,7 +143,9 @@ export default function ManageThisBoardModal({
                                 </button>
                                 <button
                                     onClick={() => {
-                                        setDraftName(name);
+                                        setDraftName(
+                                            canvasContext.serverBoard.name
+                                        );
                                         setIsEditing(false);
                                     }}
                                     disabled={isSaving || isDeleted}
@@ -165,7 +157,7 @@ export default function ManageThisBoardModal({
                         ) : (
                             <>
                                 <span className="flex-1 truncate text-sm">
-                                    {name}
+                                    {canvasContext.serverBoard.name}
                                 </span>
                                 <button
                                     onClick={() => setIsEditing(true)}
