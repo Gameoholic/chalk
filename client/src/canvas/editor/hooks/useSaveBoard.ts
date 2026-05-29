@@ -19,18 +19,17 @@ export function useSaveBoard(
     });
 
     const cooldownTimerRef = useRef<number | null>(null);
-    // Cleanup timers on unmount
+    const retryTimerRef = useRef<number | null>(null);
     useEffect(() => {
         return () => {
             if (cooldownTimerRef.current)
                 clearTimeout(cooldownTimerRef.current);
-            if (retryCountdownRef.current)
-                clearInterval(retryCountdownRef.current);
+            if (retryTimerRef.current) clearInterval(retryTimerRef.current);
         };
     }, []);
 
-    // Increment every time we make changes to trigger the tryToPushChanges effect
-    const [commitSignal, setCommitSignal] = useState(0);
+    // Increment every time we want to push our changes, to trigger the tryToPushChanges effect
+    const [pushSignal, setPushSignal] = useState(0);
 
     type SaveError =
         | {
@@ -39,13 +38,10 @@ export function useSaveBoard(
           }
         | { error: null; retryCooldownSecondsOrStatus: null };
 
-    const [saveObjectsError, setSaveObjectsError] = useState<SaveError>({
+    const [saveError, setSaveError] = useState<SaveError>({
         error: null,
         retryCooldownSecondsOrStatus: null,
     });
-
-    // Interval handle for the retry countdown tick
-    const retryCountdownRef = useRef<number | null>(null);
 
     // ================================================
     // END LOCAL VARIABLES, STATE AND DATA
@@ -57,27 +53,16 @@ export function useSaveBoard(
 
     // Effect 1: (effects run after render, so context states are always fresh)
     useEffect(() => {
-        if (commitSignal === 0) return; // skip initial
-        tryToPushChanges(); // reads fresh local_ from context, snapshots → pending
-    }, [commitSignal]);
+        if (pushSignal === 0) return; // skip initial
+        tryToPushChanges();
+    }, [pushSignal]);
 
     function tryToPushChanges() {
-        const hasChanges =
-            canvasContext.local_unsavedObjects.length > 0 ||
-            canvasContext.local_deletedObjectIds.size > 0 ||
-            canvasContext.local_cameraPosition !== null ||
-            canvasContext.local_cameraZoom !== null;
-
-        if (!hasChanges) {
+        if (!hasLocalChanges()) {
             console.warn("No changes to push.");
             return;
         }
-        if (
-            canvasContext.pending_cameraPosition !== null ||
-            canvasContext.pending_cameraZoom !== null ||
-            canvasContext.pending_unsavedObjects.length > 0 ||
-            canvasContext.pending_deletedObjectIds.size > 0
-        ) {
+        if (hasPendingChanges()) {
             console.warn("Waiting on existing request.");
             return;
         }
@@ -93,7 +78,7 @@ export function useSaveBoard(
     // Effect 2:
     useEffect(() => {
         const hasPendingChanges =
-            canvasContext.pending_unsavedObjects.length > 0 ||
+            canvasContext.pending_objects.length > 0 ||
             canvasContext.pending_deletedObjectIds.size > 0 ||
             canvasContext.pending_cameraPosition !== null ||
             canvasContext.pending_cameraZoom !== null;
@@ -102,7 +87,7 @@ export function useSaveBoard(
 
         pushPendingChanges();
     }, [
-        canvasContext.pending_unsavedObjects,
+        canvasContext.pending_objects,
         canvasContext.pending_deletedObjectIds,
         canvasContext.pending_cameraPosition,
         canvasContext.pending_cameraZoom,
@@ -111,7 +96,7 @@ export function useSaveBoard(
     async function pushPendingChanges() {
         startCooldown();
 
-        const upsertObjects = canvasContext.pending_unsavedObjects;
+        const upsertObjects = canvasContext.pending_objects;
         const deleteIds = canvasContext.pending_deletedObjectIds;
         const cameraPosition = canvasContext.pending_cameraPosition;
         const cameraZoom = canvasContext.pending_cameraZoom;
@@ -131,11 +116,11 @@ export function useSaveBoard(
             console.log("Successfully pushed changes.");
 
             // Clear any active retry state on success
-            if (retryCountdownRef.current !== null) {
-                clearInterval(retryCountdownRef.current);
-                retryCountdownRef.current = null;
+            if (retryTimerRef.current !== null) {
+                clearInterval(retryTimerRef.current);
+                retryTimerRef.current = null;
             }
-            setSaveObjectsError({
+            setSaveError({
                 error: null,
                 retryCooldownSecondsOrStatus: null,
             });
@@ -148,7 +133,7 @@ export function useSaveBoard(
             );
 
             // Re-trigger push in case changes accumulated mid-request
-            setCommitSignal((n) => n + 1);
+            setPushSignal((n) => n + 1);
         } catch (err) {
             console.error("Failed to push changes", err);
 
@@ -159,7 +144,7 @@ export function useSaveBoard(
             if (isNetworkError) {
                 scheduleRetry();
             } else {
-                setSaveObjectsError({
+                setSaveError({
                     error: "A fatal error occurred. Please refresh the page.",
                     retryCooldownSecondsOrStatus: "fatal-error",
                 });
@@ -169,25 +154,25 @@ export function useSaveBoard(
 
     function scheduleRetry() {
         // Clear any existing countdown before starting a new one
-        if (retryCountdownRef.current !== null) {
-            clearInterval(retryCountdownRef.current);
-            retryCountdownRef.current = null;
+        if (retryTimerRef.current !== null) {
+            clearInterval(retryTimerRef.current);
+            retryTimerRef.current = null;
         }
 
         const retryDelaySecs = env.VITE_SAVE_RETRY_COOLDOWN;
-        setSaveObjectsError({
+        setSaveError({
             error: "Failed to save. Check your connection.",
             retryCooldownSecondsOrStatus: retryDelaySecs,
         });
 
         let remaining = retryDelaySecs;
-        retryCountdownRef.current = window.setInterval(() => {
+        retryTimerRef.current = window.setInterval(() => {
             remaining -= 1;
             if (remaining <= 0) {
-                clearInterval(retryCountdownRef.current!);
-                retryCountdownRef.current = null;
+                clearInterval(retryTimerRef.current!);
+                retryTimerRef.current = null;
 
-                setSaveObjectsError((prev) =>
+                setSaveError((prev) =>
                     prev.error !== null
                         ? {
                               error: prev.error,
@@ -200,7 +185,7 @@ export function useSaveBoard(
                 // then let Effect 2 detect the pending state change and call pushPendingChanges with fresh state.
                 canvasContextRef.current.mergeLocalIntoPendingChanges();
             } else {
-                setSaveObjectsError((prev) =>
+                setSaveError((prev) =>
                     prev.error !== null
                         ? {
                               error: prev.error,
@@ -231,14 +216,14 @@ export function useSaveBoard(
             cooldownTimerRef.current = window.setTimeout(() => {
                 console.log("Cooldown finished.");
                 cooldownTimerRef.current = null;
-                setCommitSignal((n) => n + 1); // trigger effect to check if we have changes to push after cooldown. Can't call function directly due to stale closure from inside timeout
+                setPushSignal((n) => n + 1); // trigger effect to check if we have changes to push after cooldown. Can't call function directly due to stale closure from inside timeout
             }, env.VITE_SAVE_REQUEST_COOLDOWN);
         }
     }
 
     function hasPendingChanges() {
         return (
-            canvasContext.pending_unsavedObjects.length > 0 ||
+            canvasContext.pending_objects.length > 0 ||
             canvasContext.pending_deletedObjectIds.size > 0 ||
             canvasContext.pending_cameraPosition !== null ||
             canvasContext.pending_cameraZoom !== null
@@ -247,21 +232,21 @@ export function useSaveBoard(
 
     function hasLocalChanges() {
         return (
-            canvasContext.local_unsavedObjects.length > 0 ||
-            canvasContext.local_deletedObjectIds.size > 0 ||
-            canvasContext.local_cameraPosition !== null ||
-            canvasContext.local_cameraZoom !== null
+            canvasContext.unsaved_objects.length > 0 ||
+            canvasContext.unsaved_deletedObjectIds.size > 0 ||
+            canvasContext.unsaved_cameraPosition !== null ||
+            canvasContext.unsaved_cameraZoom !== null
         );
     }
 
     // Prevent refreshing or leaving page if objects are currently being saved / awaiting save
     const hasUnsavedWorkRef = useRef<() => boolean>(() => false);
     const requestForceSaveBoardNowRef = useRef<() => void>(() => {});
-    const saveObjectsErrorRef = useRef<SaveError>(saveObjectsError);
+    const saveObjectsErrorRef = useRef<SaveError>(saveError);
     useEffect(() => {
         hasUnsavedWorkRef.current = hasUnsavedWork;
         requestForceSaveBoardNowRef.current = requestForceSaveBoardNow;
-        saveObjectsErrorRef.current = saveObjectsError;
+        saveObjectsErrorRef.current = saveError;
     });
     useEffect(() => {
         const preventLeaving = (e: BeforeUnloadEvent) => {
@@ -288,7 +273,7 @@ export function useSaveBoard(
     // ================================================
 
     function requestSaveBoard() {
-        setCommitSignal((n) => n + 1);
+        setPushSignal((n) => n + 1);
     }
 
     // ================================================
@@ -304,11 +289,11 @@ export function useSaveBoard(
             setQueued_navigateToMyBoards(false);
         }
     }, [
-        canvasContext.local_unsavedObjects,
-        canvasContext.local_deletedObjectIds,
-        canvasContext.local_cameraPosition,
-        canvasContext.local_cameraZoom,
-        canvasContext.pending_unsavedObjects,
+        canvasContext.unsaved_objects,
+        canvasContext.unsaved_deletedObjectIds,
+        canvasContext.unsaved_cameraPosition,
+        canvasContext.unsaved_cameraZoom,
+        canvasContext.pending_objects,
         canvasContext.pending_deletedObjectIds,
         canvasContext.pending_cameraPosition,
         canvasContext.pending_cameraZoom,
@@ -322,11 +307,11 @@ export function useSaveBoard(
             handleResetBoard();
         }
     }, [
-        canvasContext.local_unsavedObjects,
-        canvasContext.local_deletedObjectIds,
-        canvasContext.local_cameraPosition,
-        canvasContext.local_cameraZoom,
-        canvasContext.pending_unsavedObjects,
+        canvasContext.unsaved_objects,
+        canvasContext.unsaved_deletedObjectIds,
+        canvasContext.unsaved_cameraPosition,
+        canvasContext.unsaved_cameraZoom,
+        canvasContext.pending_objects,
         canvasContext.pending_deletedObjectIds,
         canvasContext.pending_cameraPosition,
         canvasContext.pending_cameraZoom,
@@ -340,11 +325,11 @@ export function useSaveBoard(
             handleDeleteBoard();
         }
     }, [
-        canvasContext.local_unsavedObjects,
-        canvasContext.local_deletedObjectIds,
-        canvasContext.local_cameraPosition,
-        canvasContext.local_cameraZoom,
-        canvasContext.pending_unsavedObjects,
+        canvasContext.unsaved_objects,
+        canvasContext.unsaved_deletedObjectIds,
+        canvasContext.unsaved_cameraPosition,
+        canvasContext.unsaved_cameraZoom,
+        canvasContext.pending_objects,
         canvasContext.pending_deletedObjectIds,
         canvasContext.pending_cameraPosition,
         canvasContext.pending_cameraZoom,
@@ -358,7 +343,7 @@ export function useSaveBoard(
         }
         await resetBoard(canvasContext.local_currentBoardId);
         canvasContext.updateCurrentBoardObjects([]);
-        setSaveObjectsError({
+        setSaveError({
             error: null,
             retryCooldownSecondsOrStatus: null,
         });
@@ -388,7 +373,7 @@ export function useSaveBoard(
     }
 
     return {
-        saveObjectsError,
+        saveObjectsError: saveError,
         handleResetBoard,
         handleDeleteBoard,
         requestNavigateToMyBoards,

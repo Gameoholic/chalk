@@ -44,7 +44,7 @@ export function useCamera({ saveBoard }: useCameraProps) {
             (e.clientY - interaction.current.lastMousePos.y) /
             canvasContext.updatedCamera.zoom;
 
-        canvasContext.setLocalCameraPosition({
+        canvasContext.setUnsavedCameraPosition({
             x: canvasContext.updatedCamera.position.x - dx,
             y: canvasContext.updatedCamera.position.y - dy,
         });
@@ -81,8 +81,8 @@ export function useCamera({ saveBoard }: useCameraProps) {
             x: worldX - mouseX / clampedZoom,
             y: worldY - mouseY / clampedZoom,
         };
-        canvasContext.setLocalCameraPosition(newPosition);
-        canvasContext.setLocalCameraZoom(clampedZoom);
+        canvasContext.setUnsavedCameraPosition(newPosition);
+        canvasContext.setUnsavedCameraZoom(clampedZoom);
         saveBoard();
     }
     return {

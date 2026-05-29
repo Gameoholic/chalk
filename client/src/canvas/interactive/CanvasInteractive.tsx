@@ -38,7 +38,7 @@ function CanvasInteractive({ saveBoard }: CanvasInteractiveProps) {
 
     // Either add an entirely new object or update an existing one (based on its ID)
     function updateOrAddObject(object: WorldObject) {
-        canvasContext.setLocalUnsavedObjects((prev) => [
+        canvasContext.setUnsavedObjects((prev) => [
             ...prev.filter((obj) => obj.id !== object.id),
             object,
         ]);
@@ -46,11 +46,11 @@ function CanvasInteractive({ saveBoard }: CanvasInteractiveProps) {
 
     function removeObject(objectId: string) {
         // First, remove the object from the local objects (handles cases where the object was created, then immediately deleted before committing to server)
-        canvasContext.setLocalUnsavedObjects((prev) =>
+        canvasContext.setUnsavedObjects((prev) =>
             prev.filter((obj) => obj.id !== objectId)
         );
         // Then prepare the object to be deleted
-        canvasContext.setLocalDeletedObjectIds(
+        canvasContext.setUnsavedDeletedObjectIds(
             (prev) => new Set([...prev, objectId])
         );
     }

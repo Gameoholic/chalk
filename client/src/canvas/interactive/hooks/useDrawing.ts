@@ -245,7 +245,7 @@ export function useDrawing({
             id: interaction.current.objectId,
             type: "text",
             text: "",
-            ...canvasContext.local_cachedTextProps,
+            ...canvasContext.local_textProperties,
             boxPosition: interaction.current.path[0],
             boxSize: {
                 x: Math.max(

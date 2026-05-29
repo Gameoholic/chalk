@@ -146,7 +146,7 @@ function CanvasEditor({
             const zoom = startZoom + (1.0 - startZoom) * ease;
 
             // Derive position from zoom directly — interpolating them separately causes drift
-            canvasContext.setLocalCameraPosition({
+            canvasContext.setUnsavedCameraPosition({
                 x: worldAnchorX - centerX / zoom,
                 y: worldAnchorY - centerY / zoom,
             });
@@ -318,14 +318,14 @@ function CanvasEditor({
                             Server:{" "}
                             {canvasContext.getCurrentBoard().objects.length} |
                             Local unsaved:{" "}
-                            {canvasContext.local_unsavedObjects.length} | Local
+                            {canvasContext.unsaved_objects.length} | Local
                             deleting:{" "}
-                            {canvasContext.local_deletedObjectIds.size}
+                            {canvasContext.unsaved_deletedObjectIds.size}
                         </p>
                         <p>
                             Pending unsaved:{" "}
-                            {canvasContext.pending_unsavedObjects.length} |
-                            Pending deleting:{" "}
+                            {canvasContext.pending_objects.length} | Pending
+                            deleting:{" "}
                             {canvasContext.pending_deletedObjectIds.size}
                         </p>
                         <p>

@@ -5,46 +5,50 @@ import { SessionContext } from "./SessionContext";
 import { Tool } from "../tool";
 
 /**
- * Local properties - not synced with server.
+ * Properties relating to the currently open/selected board
  */
 interface CanvasContextType {
-    // technically currentBoardId doesn't even have a server-side counterpart, we keep it local_ just for clarity
-    local_currentBoardId: string;
+    // unsaved: board data that haven't been pushed to server yet, exists only on client
+    unsaved_objects: WorldObject[];
+    unsaved_deletedObjectIds: Set<string>;
+    unsaved_cameraPosition: Vec2 | null;
+    unsaved_cameraZoom: number | null;
 
-    // local: board data that haven't been pushed to server yet, exists only on client
-    local_unsavedObjects: WorldObject[];
-    local_deletedObjectIds: Set<string>;
-    local_cameraPosition: Vec2 | null;
-    local_cameraZoom: number | null;
     // pending: board data that has been sent to the server but doesn't exist there yet
-    pending_unsavedObjects: WorldObject[];
+    pending_objects: WorldObject[];
     pending_deletedObjectIds: Set<string>;
     pending_cameraPosition: Vec2 | null;
     pending_cameraZoom: number | null;
 
+    // local: stuff that exists purely on client - no pushing it to server
+    local_currentBoardId: string;
     local_cameraSize: Vec2;
     local_tool: Tool;
     // Color to persist across tool changes, even for tools that don't have a color property (e.g. eraser).
-    local_cachedColor: string;
+    local_color: string;
     // Stroke to persist across tool changes, even for tools that don't have a stroke property (e.g. rect).
-    local_cachedStroke: number;
+    local_stroke: number;
     // Text style to use as defaults when creating new text objects.
-    local_cachedTextProps: Pick<
+    local_textProperties: Pick<
         TextObject,
         "color" | "fontSize" | "fontFamily" | "lineHeight" | "bold" | "italic"
     >;
 
+    // Unsaved state updaters
+    setUnsavedObjects: React.Dispatch<React.SetStateAction<WorldObject[]>>;
+    setUnsavedDeletedObjectIds: React.Dispatch<
+        React.SetStateAction<Set<string>>
+    >;
+    setUnsavedCameraPosition: React.Dispatch<React.SetStateAction<Vec2 | null>>;
+    setUnsavedCameraZoom: React.Dispatch<React.SetStateAction<number | null>>;
+
     // Local state updaters
     setLocalCurrentBoardId: React.Dispatch<React.SetStateAction<string>>;
-    setLocalCameraPosition: React.Dispatch<React.SetStateAction<Vec2 | null>>;
-    setLocalCameraZoom: React.Dispatch<React.SetStateAction<number | null>>;
     setLocalCameraSize: React.Dispatch<React.SetStateAction<Vec2>>;
     setLocalTool: React.Dispatch<React.SetStateAction<Tool>>;
-    setLocalUnsavedObjects: React.Dispatch<React.SetStateAction<WorldObject[]>>;
-    setLocalDeletedObjectIds: React.Dispatch<React.SetStateAction<Set<string>>>;
-    setLocalCachedColor: React.Dispatch<React.SetStateAction<string>>;
-    setLocalCachedStroke: React.Dispatch<React.SetStateAction<number>>;
-    setLocalCachedTextProps: React.Dispatch<
+    setLocalColor: React.Dispatch<React.SetStateAction<string>>;
+    setLocalStroke: React.Dispatch<React.SetStateAction<number>>;
+    setLocalTextProperties: React.Dispatch<
         React.SetStateAction<
             Pick<
                 TextObject,
@@ -132,15 +136,15 @@ export function CanvasContextProvider({
     const [local_tool, setLocalTool] = useState<Tool>(defaultTool);
 
     // Local board data:
-    const [local_cameraPosition, setLocalCameraPosition] =
+    const [unsaved_cameraPosition, setLocalCameraPosition] =
         useState<Vec2 | null>(null);
-    const [local_cameraZoom, setLocalCameraZoom] = useState<number | null>(
+    const [unsaved_cameraZoom, setLocalCameraZoom] = useState<number | null>(
         null
     );
-    const [local_unsavedObjects, setLocalUnsavedObjects] = useState<
-        WorldObject[]
-    >([]);
-    const [local_deletedObjectIds, setLocalDeletedObjectIds] = useState<
+    const [unsaved_objects, setLocalUnsavedObjects] = useState<WorldObject[]>(
+        []
+    );
+    const [unsaved_deletedObjectIds, setLocalDeletedObjectIds] = useState<
         Set<string>
     >(new Set());
 
@@ -165,35 +169,35 @@ export function CanvasContextProvider({
         // Pending objects layer on top
         pending_unsavedObjects.forEach((obj) => map.set(obj.id, obj));
         // Local (freshest) wins over pending
-        local_unsavedObjects.forEach((obj) => map.set(obj.id, obj));
+        unsaved_objects.forEach((obj) => map.set(obj.id, obj));
         // Deletions last — both pending and local
         pending_deletedObjectIds.forEach((id) => map.delete(id));
-        local_deletedObjectIds.forEach((id) => map.delete(id));
+        unsaved_deletedObjectIds.forEach((id) => map.delete(id));
         return map;
     }, [
         getCurrentBoard().objects,
         pending_unsavedObjects,
-        local_unsavedObjects,
+        unsaved_objects,
         pending_deletedObjectIds,
-        local_deletedObjectIds,
+        unsaved_deletedObjectIds,
     ]);
 
     const updatedCamera = useMemo<Camera>(() => {
         return {
             position:
-                local_cameraPosition ??
+                unsaved_cameraPosition ??
                 pending_cameraPosition ??
                 getCurrentBoard().lastCameraPosition,
             zoom:
-                local_cameraZoom ??
+                unsaved_cameraZoom ??
                 pending_cameraZoom ??
                 getCurrentBoard().lastCameraZoom,
             size: local_cameraSize,
         };
     }, [
-        local_cameraPosition,
+        unsaved_cameraPosition,
         pending_cameraPosition,
-        local_cameraZoom,
+        unsaved_cameraZoom,
         pending_cameraZoom,
         local_cameraSize,
         getCurrentBoard().lastCameraPosition,
@@ -233,10 +237,10 @@ export function CanvasContextProvider({
 
     function moveLocalChangesToPendingChanges() {
         // Snapshot local → pending
-        setPendingUnsavedObjects(local_unsavedObjects);
-        setPendingDeletedObjectIds(local_deletedObjectIds);
-        setPendingCameraPosition(local_cameraPosition);
-        setPendingCameraZoom(local_cameraZoom);
+        setPendingUnsavedObjects(unsaved_objects);
+        setPendingDeletedObjectIds(unsaved_deletedObjectIds);
+        setPendingCameraPosition(unsaved_cameraPosition);
+        setPendingCameraZoom(unsaved_cameraZoom);
 
         // Clear local — new edits from here accumulate fresh
         setLocalUnsavedObjects([]);
@@ -251,17 +255,18 @@ export function CanvasContextProvider({
         // Merge objects: pending base, local wins on ID collision
         setPendingUnsavedObjects((prev) => {
             const merged = new Map(prev.map((o) => [o.id, o]));
-            local_unsavedObjects.forEach((o) => merged.set(o.id, o));
-            local_deletedObjectIds.forEach((id) => merged.delete(id));
+            unsaved_objects.forEach((o) => merged.set(o.id, o));
+            unsaved_deletedObjectIds.forEach((id) => merged.delete(id));
             return Array.from(merged.values());
         });
         setPendingDeletedObjectIds(
-            (prev) => new Set([...prev, ...local_deletedObjectIds])
+            (prev) => new Set([...prev, ...unsaved_deletedObjectIds])
         );
         // Local camera overwrites pending if present
-        if (local_cameraPosition !== null)
-            setPendingCameraPosition(local_cameraPosition);
-        if (local_cameraZoom !== null) setPendingCameraZoom(local_cameraZoom);
+        if (unsaved_cameraPosition !== null)
+            setPendingCameraPosition(unsaved_cameraPosition);
+        if (unsaved_cameraZoom !== null)
+            setPendingCameraZoom(unsaved_cameraZoom);
 
         // Clear local — new edits from here accumulate fresh
         setLocalUnsavedObjects([]);
@@ -309,29 +314,29 @@ export function CanvasContextProvider({
         <CanvasContext.Provider
             value={{
                 local_currentBoardId,
-                local_unsavedObjects,
-                local_deletedObjectIds,
-                local_cameraPosition,
-                local_cameraZoom,
-                pending_unsavedObjects,
+                unsaved_objects,
+                unsaved_deletedObjectIds,
+                unsaved_cameraPosition,
+                unsaved_cameraZoom,
+                pending_objects: pending_unsavedObjects,
                 pending_deletedObjectIds,
                 pending_cameraPosition,
                 pending_cameraZoom,
                 local_cameraSize,
                 local_tool: local_tool,
-                local_cachedColor,
-                local_cachedStroke,
-                local_cachedTextProps,
+                local_color: local_cachedColor,
+                local_stroke: local_cachedStroke,
+                local_textProperties: local_cachedTextProps,
                 setLocalCurrentBoardId,
-                setLocalCameraPosition,
-                setLocalCameraZoom,
+                setUnsavedCameraPosition: setLocalCameraPosition,
+                setUnsavedCameraZoom: setLocalCameraZoom,
                 setLocalCameraSize,
                 setLocalTool,
-                setLocalUnsavedObjects,
-                setLocalDeletedObjectIds,
-                setLocalCachedColor,
-                setLocalCachedStroke,
-                setLocalCachedTextProps,
+                setUnsavedObjects: setLocalUnsavedObjects,
+                setUnsavedDeletedObjectIds: setLocalDeletedObjectIds,
+                setLocalColor: setLocalCachedColor,
+                setLocalStroke: setLocalCachedStroke,
+                setLocalTextProperties: setLocalCachedTextProps,
                 updateCurrentBoardCamera,
                 updateCurrentBoardObjects,
                 // onCurrentBoardSaved,
