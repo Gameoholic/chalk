@@ -376,9 +376,9 @@ function drawText(
             const lineSelEnd = Math.min(line.text.length, selEnd - line.startIndex);
             const selX =
                 x + 4 + ctx.measureText(line.text.slice(0, lineSelStart)).width;
-            const selW = ctx.measureText(
-                line.text.slice(lineSelStart, lineSelEnd)
-            ).width;
+            const selW =
+                ctx.measureText(line.text.slice(lineSelStart, lineSelEnd)).width ||
+                ctx.measureText(" ").width;
             ctx.fillRect(selX, y + 4 + i * lineHeightPx, selW, lineHeightPx);
         }
         ctx.fillStyle = object.color;
