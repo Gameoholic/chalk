@@ -51,11 +51,10 @@ function CanvasEditor({
     const sessionContext = useContext(SessionContext);
 
     const {
-        saveObjectsError,
+        saveError,
         requestResetBoard,
         requestDeleteBoard,
         requestNavigateToMyBoards,
-        requestForceSaveBoardNow,
         requestSaveBoard,
     } = useSaveBoard(openMyBoards, onTourCameraMoved);
 
@@ -186,17 +185,17 @@ function CanvasEditor({
             </div>
 
             {/* FATAL SAVE ERROR OVERLAY */}
-            {saveObjectsError.retryCooldownSecondsOrStatus ===
-                "fatal-error" && <FatalErrorOverlay />}
+            {saveError.retryCooldownSecondsOrStatus === "fatal-error" && (
+                <FatalErrorOverlay />
+            )}
 
             {/* OK/NETWORK SAVE ERROR BANNER */}
-            {saveObjectsError.error &&
-                saveObjectsError.retryCooldownSecondsOrStatus !==
-                    "fatal-error" && (
+            {saveError.error &&
+                saveError.retryCooldownSecondsOrStatus !== "fatal-error" && (
                     <SaveErrorBanner
-                        error={saveObjectsError.error}
+                        error={saveError.error}
                         retryCooldownSecondsOrStatus={
-                            saveObjectsError.retryCooldownSecondsOrStatus
+                            saveError.retryCooldownSecondsOrStatus
                         }
                     />
                 )}

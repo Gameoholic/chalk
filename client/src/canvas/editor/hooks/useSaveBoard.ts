@@ -393,11 +393,10 @@ export function useSaveBoard(
     // ================================================
 
     return {
-        saveObjectsError: saveError,
+        saveError,
         requestResetBoard,
         requestDeleteBoard,
         requestNavigateToMyBoards,
-        requestForceSaveBoardNow,
         requestSaveBoard,
     };
 }
