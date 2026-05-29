@@ -1,6 +1,9 @@
 import React, { useContext, useEffect, useRef, useState } from "react";
 import { TextObject, WorldObject } from "../../../types/canvas";
-import { makeCtxForObject, measureTextBox } from "../utils/canvasTextBoxMeasurement";
+import {
+    makeCtxForObject,
+    measureTextBox,
+} from "../utils/canvasTextBoxMeasurement";
 import { CanvasContext } from "../../../types/context/CanvasContext";
 import {
     computeLines,
@@ -64,8 +67,7 @@ function moveCursorByLine(
 ): number {
     const { ctx, maxWidth } = makeCtxForObject(obj);
     const lines = computeLines(obj.text, ctx, maxWidth);
-    if (lines.length <= 1)
-        return direction === "up" ? 0 : obj.text.length;
+    if (lines.length <= 1) return direction === "up" ? 0 : obj.text.length;
 
     const { lineIndex, offsetInLine } = getCursorLineAndOffset(
         lines,
@@ -108,7 +110,7 @@ export function useTextEditing({
     deselectAllObjects,
 }: UseTextEditingProps) {
     const canvasContext = useContext(CanvasContext);
-    const camera = canvasContext.local_camera;
+    const camera = canvasContext.camera;
 
     const [cursorIndex, setCursorIndex] = useState(0);
     const cursorIndexRef = useRef(0);
@@ -228,8 +230,7 @@ export function useTextEditing({
                     newCursor = selStart;
                     newAnchor = null;
                 } else if (cursor > 0) {
-                    newText =
-                        text.slice(0, cursor - 1) + text.slice(cursor);
+                    newText = text.slice(0, cursor - 1) + text.slice(cursor);
                     newCursor = cursor - 1;
                 } else return;
             } else if (e.key === "Delete") {
@@ -239,8 +240,7 @@ export function useTextEditing({
                     newCursor = selStart;
                     newAnchor = null;
                 } else if (cursor < text.length) {
-                    newText =
-                        text.slice(0, cursor) + text.slice(cursor + 1);
+                    newText = text.slice(0, cursor) + text.slice(cursor + 1);
                 } else return;
             } else if (e.key === "ArrowLeft") {
                 e.preventDefault();
@@ -310,8 +310,7 @@ export function useTextEditing({
                 }
                 newCursor = next;
             } else if (e.key === "Enter") {
-                newText =
-                    text.slice(0, selStart) + "\n" + text.slice(selEnd);
+                newText = text.slice(0, selStart) + "\n" + text.slice(selEnd);
                 newCursor = selStart + 1;
                 newAnchor = null;
             } else if (e.key.length === 1 && !e.ctrlKey && !e.metaKey) {
