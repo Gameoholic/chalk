@@ -336,27 +336,27 @@ export function useSaveBoard(
     ]);
 
     const handleResetBoard = async () => {
-        if (hasUnsavedWork()) {
-            setQueued_ResetBoard(true);
-            requestForceSaveBoardNow();
-            return;
-        }
-        await resetBoard(canvasContext.local_currentBoardId);
-        canvasContext.updateCurrentBoardObjects([]);
-        setSaveError({
-            error: null,
-            retryCooldownSecondsOrStatus: null,
-        });
+        // if (hasUnsavedWork()) {
+        //     setQueued_ResetBoard(true);
+        //     requestForceSaveBoardNow();
+        //     return;
+        // }
+        // await resetBoard(canvasContext.local_currentBoardId);
+        // canvasContext.updateCurrentBoardObjects([]);
+        // setSaveError({
+        //     error: null,
+        //     retryCooldownSecondsOrStatus: null,
+        // });
     };
 
     const handleDeleteBoard = async () => {
-        if (hasUnsavedWork()) {
-            setQueued_deleteBoard(true);
-            requestForceSaveBoardNow();
-            return;
-        }
-        await deleteBoard(canvasContext.local_currentBoardId);
-        window.location.reload();
+        // if (hasUnsavedWork()) {
+        //     setQueued_deleteBoard(true);
+        //     requestForceSaveBoardNow();
+        //     return;
+        // }
+        // await deleteBoard(canvasContext.local_currentBoardId);
+        // window.location.reload();
     };
 
     function hasUnsavedWork() {

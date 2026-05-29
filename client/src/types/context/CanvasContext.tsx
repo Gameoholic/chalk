@@ -62,19 +62,16 @@ interface CanvasContextType {
         >
     >;
 
-    // Server-synced-properties methods
-    updateCurrentBoardCamera: (
-        cameraPosition: Vec2,
-        cameraZoom: number
-    ) => void;
-    updateCurrentBoardObjects: (objects: WorldObject[]) => void;
-    getCurrentBoard: () => BoardData;
-    updateCurrentBoard: (boardData: BoardData) => void;
+    // Server-synced helpers
+    getServerCurrentBoard: () => BoardData;
 
-    // Get all objects including client and server changes (useMemo internally)
+    // Computed values
+    // Get OPTIMISTICALLY-UPDATED object state (combines server+local+pending object changes)
     allObjects: Map<string, WorldObject>;
-    // gets the most recent camera with local and pending changes applied
+    // Get OPTIMISTICALLY-UPDATED camera state (combines server+local+pending camera changes)
     updatedCamera: Camera;
+
+    // Board change data update functions
     onSaveCompleted: (
         savedObjects: WorldObject[],
         deletedIds: Set<string>,
@@ -108,50 +105,20 @@ export function CanvasContextProvider({
     >;
 }) {
     const sessionContext = useContext(SessionContext);
-    const [local_currentBoardId, setLocalCurrentBoardId] =
-        useState<string>(defaultBoardId);
 
-    const [local_cachedColor, setLocalCachedColor] =
-        useState<string>(defaultCachedColor);
-    const [local_cachedStroke, setLocalCachedStroke] =
-        useState<number>(defaultCachedStroke);
-    const [local_cachedTextProps, setLocalCachedTextProps] = useState(
-        defaultCachedTextProps
-    );
-
-    function getCurrentBoard(): BoardData {
-        const currentBoard = sessionContext.boards.find(
-            (board) => board.id === local_currentBoardId
-        );
-        if (!currentBoard) {
-            throw new Error("Couldn't get current board in context!");
-        }
-        return currentBoard;
-    }
-
-    const [local_cameraSize, setLocalCameraSize] = useState<Vec2>(
-        defaultBoardCameraSize
-    );
-
-    const [local_tool, setLocalTool] = useState<Tool>(defaultTool);
-
-    // Local board data:
-    const [unsaved_cameraPosition, setLocalCameraPosition] =
-        useState<Vec2 | null>(null);
-    const [unsaved_cameraZoom, setLocalCameraZoom] = useState<number | null>(
-        null
-    );
-    const [unsaved_objects, setLocalUnsavedObjects] = useState<WorldObject[]>(
-        []
-    );
-    const [unsaved_deletedObjectIds, setLocalDeletedObjectIds] = useState<
+    // --- Unsaved board data ---
+    const [unsaved_objects, setUnsavedObjects] = useState<WorldObject[]>([]);
+    const [unsaved_deletedObjectIds, setUnsavedDeletedObjectIds] = useState<
         Set<string>
     >(new Set());
+    const [unsaved_cameraPosition, setUnsavedCameraPosition] =
+        useState<Vec2 | null>(null);
+    const [unsaved_cameraZoom, setUnsavedCameraZoom] = useState<number | null>(
+        null
+    );
 
-    // pending board data:
-    const [pending_unsavedObjects, setPendingUnsavedObjects] = useState<
-        WorldObject[]
-    >([]);
+    // --- Pending board data ---
+    const [pending_objects, setPendingObjects] = useState<WorldObject[]>([]);
     const [pending_deletedObjectIds, setPendingDeletedObjectIds] = useState<
         Set<string>
     >(new Set());
@@ -161,13 +128,39 @@ export function CanvasContextProvider({
         null
     );
 
-    // Server-synced objects and local unsaved objects and locally deleted objects. Basically, most recent objects "state"
+    // --- Local state ---
+    const [local_currentBoardId, setLocalCurrentBoardId] =
+        useState<string>(defaultBoardId);
+    const [local_cameraSize, setLocalCameraSize] = useState<Vec2>(
+        defaultBoardCameraSize
+    );
+    const [local_tool, setLocalTool] = useState<Tool>(defaultTool);
+    const [local_color, setLocalColor] = useState<string>(defaultCachedColor);
+    const [local_stroke, setLocalStroke] =
+        useState<number>(defaultCachedStroke);
+    const [local_textProperties, setLocalTextProperties] = useState(
+        defaultCachedTextProps
+    );
+
+    // --- Server-synced helpers ---
+    function getServerCurrentBoard(): BoardData {
+        const currentBoard = sessionContext.boards.find(
+            (board) => board.id === local_currentBoardId
+        );
+        if (!currentBoard) {
+            throw new Error("Couldn't get current board in context!");
+        }
+        return currentBoard;
+    }
+
+    // --- Computed values ---
+
     const allObjects = useMemo(() => {
         const map = new Map<string, WorldObject>();
         // Base: server-synced
-        getCurrentBoard().objects.forEach((obj) => map.set(obj.id, obj));
+        getServerCurrentBoard().objects.forEach((obj) => map.set(obj.id, obj));
         // Pending objects layer on top
-        pending_unsavedObjects.forEach((obj) => map.set(obj.id, obj));
+        pending_objects.forEach((obj) => map.set(obj.id, obj));
         // Local (freshest) wins over pending
         unsaved_objects.forEach((obj) => map.set(obj.id, obj));
         // Deletions last — both pending and local
@@ -175,8 +168,8 @@ export function CanvasContextProvider({
         unsaved_deletedObjectIds.forEach((id) => map.delete(id));
         return map;
     }, [
-        getCurrentBoard().objects,
-        pending_unsavedObjects,
+        getServerCurrentBoard().objects,
+        pending_objects,
         unsaved_objects,
         pending_deletedObjectIds,
         unsaved_deletedObjectIds,
@@ -187,11 +180,11 @@ export function CanvasContextProvider({
             position:
                 unsaved_cameraPosition ??
                 pending_cameraPosition ??
-                getCurrentBoard().lastCameraPosition,
+                getServerCurrentBoard().lastCameraPosition,
             zoom:
                 unsaved_cameraZoom ??
                 pending_cameraZoom ??
-                getCurrentBoard().lastCameraZoom,
+                getServerCurrentBoard().lastCameraZoom,
             size: local_cameraSize,
         };
     }, [
@@ -200,60 +193,32 @@ export function CanvasContextProvider({
         unsaved_cameraZoom,
         pending_cameraZoom,
         local_cameraSize,
-        getCurrentBoard().lastCameraPosition,
-        getCurrentBoard().lastCameraZoom,
+        getServerCurrentBoard().lastCameraPosition,
+        getServerCurrentBoard().lastCameraZoom,
         defaultBoardCameraSize,
     ]);
 
-    // --- Server-Side Sync Logic ---
-    function updateCurrentBoard(boardData: BoardData) {
-        if (boardData.id !== local_currentBoardId) {
-            throw new Error(
-                "Provided board data's id doesn't match current board id."
-            );
-        }
-        sessionContext.updateBoardById(boardData);
-    }
-
-    function updateCurrentBoardCamera(
-        cameraPosition: Vec2,
-        cameraZoom: number
-    ) {
-        const currentBoardData = getCurrentBoard();
-        sessionContext.updateBoardById({
-            ...currentBoardData,
-            lastCameraPosition: cameraPosition,
-            lastCameraZoom: cameraZoom,
-        });
-    }
-
-    function updateCurrentBoardObjects(objects: WorldObject[]) {
-        const currentBoardData = getCurrentBoard();
-        sessionContext.updateBoardById({
-            ...currentBoardData,
-            objects: objects,
-        });
-    }
+    // --- Board change functions ---
 
     function moveLocalChangesToPendingChanges() {
         // Snapshot local → pending
-        setPendingUnsavedObjects(unsaved_objects);
+        setPendingObjects(unsaved_objects);
         setPendingDeletedObjectIds(unsaved_deletedObjectIds);
         setPendingCameraPosition(unsaved_cameraPosition);
         setPendingCameraZoom(unsaved_cameraZoom);
 
         // Clear local — new edits from here accumulate fresh
-        setLocalUnsavedObjects([]);
-        setLocalDeletedObjectIds(new Set());
-        setLocalCameraPosition(null);
-        setLocalCameraZoom(null);
+        setUnsavedObjects([]);
+        setUnsavedDeletedObjectIds(new Set());
+        setUnsavedCameraPosition(null);
+        setUnsavedCameraZoom(null);
     }
 
-    // Like moveLocalChangesToPendingChanges, but merges into an existing pending batch
-    // (used when retrying a failed save — pending holds the failed batch, local holds new edits since)
+    // Like moveLocalChangesToPendingChanges, but merges all unsaved changes into an existing pending batch
+    // (used when retrying a failed save because pending still holds the failed batch, local holds new edits since)
     function mergeLocalIntoPendingChanges() {
         // Merge objects: pending base, local wins on ID collision
-        setPendingUnsavedObjects((prev) => {
+        setPendingObjects((prev) => {
             const merged = new Map(prev.map((o) => [o.id, o]));
             unsaved_objects.forEach((o) => merged.set(o.id, o));
             unsaved_deletedObjectIds.forEach((id) => merged.delete(id));
@@ -269,10 +234,10 @@ export function CanvasContextProvider({
             setPendingCameraZoom(unsaved_cameraZoom);
 
         // Clear local — new edits from here accumulate fresh
-        setLocalUnsavedObjects([]);
-        setLocalDeletedObjectIds(new Set());
-        setLocalCameraPosition(null);
-        setLocalCameraZoom(null);
+        setUnsavedObjects([]);
+        setUnsavedDeletedObjectIds(new Set());
+        setUnsavedCameraPosition(null);
+        setUnsavedCameraZoom(null);
     }
 
     function onSaveCompleted(
@@ -281,7 +246,7 @@ export function CanvasContextProvider({
         cameraPosition: Vec2 | null,
         cameraZoom: number | null
     ) {
-        const board = getCurrentBoard();
+        const board = getServerCurrentBoard();
         const savedIds = new Set(savedObjects.map((o) => o.id));
 
         // Build final object state in one pass
@@ -300,9 +265,7 @@ export function CanvasContextProvider({
         });
 
         // Drain all pending buffers
-        setPendingUnsavedObjects((prev) =>
-            prev.filter((o) => !savedIds.has(o.id))
-        );
+        setPendingObjects((prev) => prev.filter((o) => !savedIds.has(o.id)));
         setPendingDeletedObjectIds(
             (prev) => new Set([...prev].filter((id) => !deletedIds.has(id)))
         );
@@ -313,37 +276,48 @@ export function CanvasContextProvider({
     return (
         <CanvasContext.Provider
             value={{
-                local_currentBoardId,
+                // Unsaved board data
                 unsaved_objects,
                 unsaved_deletedObjectIds,
                 unsaved_cameraPosition,
                 unsaved_cameraZoom,
-                pending_objects: pending_unsavedObjects,
+
+                // Pending board data
+                pending_objects,
                 pending_deletedObjectIds,
                 pending_cameraPosition,
                 pending_cameraZoom,
+
+                // Local state
+                local_currentBoardId,
                 local_cameraSize,
-                local_tool: local_tool,
-                local_color: local_cachedColor,
-                local_stroke: local_cachedStroke,
-                local_textProperties: local_cachedTextProps,
+                local_tool,
+                local_color,
+                local_stroke,
+                local_textProperties,
+
+                // Unsaved state updaters
+                setUnsavedObjects,
+                setUnsavedDeletedObjectIds,
+                setUnsavedCameraPosition,
+                setUnsavedCameraZoom,
+
+                // Local state updaters
                 setLocalCurrentBoardId,
-                setUnsavedCameraPosition: setLocalCameraPosition,
-                setUnsavedCameraZoom: setLocalCameraZoom,
                 setLocalCameraSize,
                 setLocalTool,
-                setUnsavedObjects: setLocalUnsavedObjects,
-                setUnsavedDeletedObjectIds: setLocalDeletedObjectIds,
-                setLocalColor: setLocalCachedColor,
-                setLocalStroke: setLocalCachedStroke,
-                setLocalTextProperties: setLocalCachedTextProps,
-                updateCurrentBoardCamera,
-                updateCurrentBoardObjects,
-                // onCurrentBoardSaved,
-                getCurrentBoard,
-                updateCurrentBoard,
+                setLocalColor,
+                setLocalStroke,
+                setLocalTextProperties,
+
+                // Server-synced helpers
+                getServerCurrentBoard,
+
+                // Computed values
                 allObjects,
                 updatedCamera,
+
+                // Board change functions
                 onSaveCompleted,
                 moveLocalChangesToPendingChanges,
                 mergeLocalIntoPendingChanges,

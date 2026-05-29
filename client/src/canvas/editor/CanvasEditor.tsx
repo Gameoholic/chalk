@@ -110,8 +110,11 @@ function CanvasEditor({
     }, [openLoginOnMount, onLoginOpened]);
 
     const handleRenameBoard = async (newName: string) => {
-        await updateBoardName(canvasContext.getCurrentBoard().id, newName);
-        canvasContext.getCurrentBoard().name = newName;
+        await updateBoardName(
+            canvasContext.getServerCurrentBoard().id,
+            newName
+        );
+        canvasContext.getServerCurrentBoard().name = newName;
     };
 
     const handleUserLogout = async () => {
@@ -316,8 +319,11 @@ function CanvasEditor({
                         <p>Objects: {canvasContext.allObjects.size} total</p>
                         <p>
                             Server:{" "}
-                            {canvasContext.getCurrentBoard().objects.length} |
-                            Local unsaved:{" "}
+                            {
+                                canvasContext.getServerCurrentBoard().objects
+                                    .length
+                            }{" "}
+                            | Local unsaved:{" "}
                             {canvasContext.unsaved_objects.length} | Local
                             deleting:{" "}
                             {canvasContext.unsaved_deletedObjectIds.size}
@@ -331,13 +337,14 @@ function CanvasEditor({
                         <p>
                             Camera:{" "}
                             {canvasContext.updatedCamera.position.x !==
-                                canvasContext.getCurrentBoard()
+                                canvasContext.getServerCurrentBoard()
                                     .lastCameraPosition.x ||
                             canvasContext.updatedCamera.position.y !==
-                                canvasContext.getCurrentBoard()
+                                canvasContext.getServerCurrentBoard()
                                     .lastCameraPosition.y ||
                             canvasContext.updatedCamera.zoom !==
-                                canvasContext.getCurrentBoard().lastCameraZoom
+                                canvasContext.getServerCurrentBoard()
+                                    .lastCameraZoom
                                 ? "Unsaved."
                                 : "Saved."}
                         </p>

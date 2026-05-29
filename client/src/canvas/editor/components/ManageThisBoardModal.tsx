@@ -19,9 +19,11 @@ export default function ManageThisBoardModal({
     const canvasContext = useContext(CanvasContext);
 
     const [draftName, setDraftName] = useState(
-        canvasContext.getCurrentBoard().name
+        canvasContext.getServerCurrentBoard().name
     );
-    const [name, setName] = useState(canvasContext.getCurrentBoard().name);
+    const [name, setName] = useState(
+        canvasContext.getServerCurrentBoard().name
+    );
     const [isEditing, setIsEditing] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [isDeleted, setIsDeleted] = useState(false); // New success state
@@ -93,7 +95,7 @@ export default function ManageThisBoardModal({
     };
 
     const formattedDate = new Date(
-        canvasContext.getCurrentBoard().createdOn
+        canvasContext.getServerCurrentBoard().createdOn
     ).toLocaleDateString(undefined, {
         year: "numeric",
         month: "long",
