@@ -110,11 +110,8 @@ function CanvasEditor({
     }, [openLoginOnMount, onLoginOpened]);
 
     const handleRenameBoard = async (newName: string) => {
-        await updateBoardName(
-            canvasContext.getServerCurrentBoard().id,
-            newName
-        );
-        canvasContext.getServerCurrentBoard().name = newName;
+        await updateBoardName(canvasContext.serverBoard.id, newName);
+        canvasContext.updateCurrentBoard({ name: newName });
     };
 
     const handleUserLogout = async () => {
@@ -134,7 +131,7 @@ function CanvasEditor({
             zoom: startZoom,
             position: startPos,
             size,
-        } = canvasContext.updatedCamera;
+        } = canvasContext.camera;
 
         // The world-space point at the center of the viewport — kept locked throughout the animation
         const centerX = size.x / 2;
@@ -308,22 +305,17 @@ function CanvasEditor({
                     >
                         <p className="font-bold">Debug</p>
                         <p>
-                            Camera Pos: {canvasContext.updatedCamera.position.x}
-                            , {canvasContext.updatedCamera.position.y}
+                            Camera Pos: {canvasContext.camera.position.x},{" "}
+                            {canvasContext.camera.position.y}
                         </p>
                         <p>
-                            Camera Zoom:{" "}
-                            {canvasContext.updatedCamera.zoom.toFixed(2)}
+                            Camera Zoom: {canvasContext.camera.zoom.toFixed(2)}
                         </p>
                         <p>FPS: {fps}</p>
-                        <p>Objects: {canvasContext.allObjects.size} total</p>
+                        <p>Objects: {canvasContext.objects.size} total</p>
                         <p>
-                            Server:{" "}
-                            {
-                                canvasContext.getServerCurrentBoard().objects
-                                    .length
-                            }{" "}
-                            | Local unsaved:{" "}
+                            Server: {canvasContext.serverBoard.objects.length} |
+                            Local unsaved:{" "}
                             {canvasContext.unsaved_objects.length} | Local
                             deleting:{" "}
                             {canvasContext.unsaved_deletedObjectIds.size}
@@ -336,15 +328,14 @@ function CanvasEditor({
                         </p>
                         <p>
                             Camera:{" "}
-                            {canvasContext.updatedCamera.position.x !==
-                                canvasContext.getServerCurrentBoard()
-                                    .lastCameraPosition.x ||
-                            canvasContext.updatedCamera.position.y !==
-                                canvasContext.getServerCurrentBoard()
-                                    .lastCameraPosition.y ||
-                            canvasContext.updatedCamera.zoom !==
-                                canvasContext.getServerCurrentBoard()
-                                    .lastCameraZoom
+                            {canvasContext.camera.position.x !==
+                                canvasContext.serverBoard.lastCameraPosition
+                                    .x ||
+                            canvasContext.camera.position.y !==
+                                canvasContext.serverBoard.lastCameraPosition
+                                    .y ||
+                            canvasContext.camera.zoom !==
+                                canvasContext.serverBoard.lastCameraZoom
                                 ? "Unsaved."
                                 : "Saved."}
                         </p>
@@ -361,7 +352,7 @@ function CanvasEditor({
                         data-tour-id="zoom-reset-button"
                     >
                         {Math.round(
-                            canvasContext.updatedCamera.zoom * 100
+                            canvasContext.camera.zoom * 100
                         ).toLocaleString("en-US")}
                         {/* display commas instead of periods */}%
                     </button>

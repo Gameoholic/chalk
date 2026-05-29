@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { BoardData } from "../data";
+import { BoardData, ObjectlessBoardData } from "../data";
 import { Camera, TextObject, Vec2, WorldObject } from "../canvas";
 import { SessionContext } from "./SessionContext";
 import { Tool } from "../tool";
@@ -62,16 +62,15 @@ interface CanvasContextType {
         >
     >;
 
-    // Server-synced helpers
-    getServerCurrentBoard: () => BoardData;
+    // Server-synced data (no optimistic layer) Getting objects/camera from this will return the server state, ignoring unsaved/pending changes
+    serverBoard: BoardData;
 
-    // Computed values
-    // Get OPTIMISTICALLY-UPDATED object state (combines server+local+pending object changes)
-    allObjects: Map<string, WorldObject>;
-    // Get OPTIMISTICALLY-UPDATED camera state (combines server+local+pending camera changes)
-    updatedCamera: Camera;
+    // Computed values (optimistically merged: server + pending + unsaved)
+    objects: Map<string, WorldObject>;
+    camera: Camera;
 
     // Board change data update functions
+    updateCurrentBoard: (updates: Partial<ObjectlessBoardData>) => void;
     onSaveCompleted: (
         savedObjects: WorldObject[],
         deletedIds: Set<string>,
@@ -142,23 +141,22 @@ export function CanvasContextProvider({
         defaultCachedTextProps
     );
 
-    // --- Server-synced helpers ---
-    function getServerCurrentBoard(): BoardData {
-        const currentBoard = sessionContext.boards.find(
-            (board) => board.id === local_currentBoardId
+    // --- Server-synced data ---
+
+    const serverBoard = useMemo(() => {
+        const board = sessionContext.boards.find(
+            (b) => b.id === local_currentBoardId
         );
-        if (!currentBoard) {
-            throw new Error("Couldn't get current board in context!");
-        }
-        return currentBoard;
-    }
+        if (!board) throw new Error("Couldn't get current board in context!");
+        return board;
+    }, [sessionContext.boards, local_currentBoardId]);
 
     // --- Computed values ---
 
-    const allObjects = useMemo(() => {
+    const objects = useMemo(() => {
         const map = new Map<string, WorldObject>();
         // Base: server-synced
-        getServerCurrentBoard().objects.forEach((obj) => map.set(obj.id, obj));
+        serverBoard.objects.forEach((obj) => map.set(obj.id, obj));
         // Pending objects layer on top
         pending_objects.forEach((obj) => map.set(obj.id, obj));
         // Local (freshest) wins over pending
@@ -168,23 +166,23 @@ export function CanvasContextProvider({
         unsaved_deletedObjectIds.forEach((id) => map.delete(id));
         return map;
     }, [
-        getServerCurrentBoard().objects,
+        serverBoard.objects,
         pending_objects,
         unsaved_objects,
         pending_deletedObjectIds,
         unsaved_deletedObjectIds,
     ]);
 
-    const updatedCamera = useMemo<Camera>(() => {
+    const camera = useMemo<Camera>(() => {
         return {
             position:
                 unsaved_cameraPosition ??
                 pending_cameraPosition ??
-                getServerCurrentBoard().lastCameraPosition,
+                serverBoard.lastCameraPosition,
             zoom:
                 unsaved_cameraZoom ??
                 pending_cameraZoom ??
-                getServerCurrentBoard().lastCameraZoom,
+                serverBoard.lastCameraZoom,
             size: local_cameraSize,
         };
     }, [
@@ -193,8 +191,8 @@ export function CanvasContextProvider({
         unsaved_cameraZoom,
         pending_cameraZoom,
         local_cameraSize,
-        getServerCurrentBoard().lastCameraPosition,
-        getServerCurrentBoard().lastCameraZoom,
+        serverBoard.lastCameraPosition,
+        serverBoard.lastCameraZoom,
         defaultBoardCameraSize,
     ]);
 
@@ -240,13 +238,17 @@ export function CanvasContextProvider({
         setUnsavedCameraZoom(null);
     }
 
+    function updateCurrentBoard(updates: Partial<ObjectlessBoardData>) {
+        sessionContext.updateBoardById({ ...serverBoard, ...updates });
+    }
+
     function onSaveCompleted(
         savedObjects: WorldObject[],
         deletedIds: Set<string>,
         cameraPosition: Vec2 | null,
         cameraZoom: number | null
     ) {
-        const board = getServerCurrentBoard();
+        const board = serverBoard;
         const savedIds = new Set(savedObjects.map((o) => o.id));
 
         // Build final object state in one pass
@@ -310,14 +312,15 @@ export function CanvasContextProvider({
                 setLocalStroke,
                 setLocalTextProperties,
 
-                // Server-synced helpers
-                getServerCurrentBoard,
+                // Server-synced data
+                serverBoard,
 
                 // Computed values
-                allObjects,
-                updatedCamera,
+                objects,
+                camera,
 
                 // Board change functions
+                updateCurrentBoard,
                 onSaveCompleted,
                 moveLocalChangesToPendingChanges,
                 mergeLocalIntoPendingChanges,

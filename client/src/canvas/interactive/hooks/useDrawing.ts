@@ -45,7 +45,7 @@ export function useDrawing({
     selectTextObjectForEditing,
 }: useDrawingInteractionsProps) {
     const canvasContext = useContext(CanvasContext);
-    const camera = canvasContext.updatedCamera;
+    const camera = canvasContext.camera;
 
     function handleDrawingInteraction_MouseMove(
         e: React.MouseEvent<HTMLCanvasElement>,
@@ -113,7 +113,7 @@ export function useDrawing({
         interaction.current.path.push(mouseWorldCoords);
 
         function findObjectAtCoords(coords: Vec2): WorldObject | null {
-            return hitTest([...canvasContext.allObjects.values()], coords);
+            return hitTest([...canvasContext.objects.values()], coords);
         }
 
         if (eraserTool.eraserMode === "object") {

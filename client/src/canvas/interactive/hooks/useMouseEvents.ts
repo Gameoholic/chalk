@@ -169,7 +169,7 @@ export function useMouseEvents({
 }: useMouseEventsProps) {
     const canvasContext = useContext(CanvasContext);
     const tool: Tool = canvasContext.local_tool;
-    const camera: Camera = canvasContext.updatedCamera;
+    const camera: Camera = canvasContext.camera;
 
     // what to show as the cursor (when resizing text object corners for example)
     const [cursor, setCursor] = useState<string>("default");
@@ -185,7 +185,7 @@ export function useMouseEvents({
     >(null);
 
     function findObjectAtCoords(coords: Vec2): WorldObject | null {
-        return hitTest([...canvasContext.allObjects.values()], coords);
+        return hitTest([...canvasContext.objects.values()], coords);
     }
 
     // Prevent the default browser context menu on right-click

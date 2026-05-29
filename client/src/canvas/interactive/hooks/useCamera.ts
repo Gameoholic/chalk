@@ -32,21 +32,21 @@ interface useCameraProps {
  */
 export function useCamera({ saveBoard }: useCameraProps) {
     const canvasContext = useContext(CanvasContext);
-    const camera = canvasContext.updatedCamera;
+    const camera = canvasContext.camera;
     function handleCameraDragInteraction_MouseMove(
         e: React.MouseEvent<HTMLCanvasElement>,
         interaction: React.RefObject<CameraDragInteraction>
     ) {
         const dx =
             (e.clientX - interaction.current.lastMousePos.x) /
-            canvasContext.updatedCamera.zoom;
+            canvasContext.camera.zoom;
         const dy =
             (e.clientY - interaction.current.lastMousePos.y) /
-            canvasContext.updatedCamera.zoom;
+            canvasContext.camera.zoom;
 
         canvasContext.setUnsavedCameraPosition({
-            x: canvasContext.updatedCamera.position.x - dx,
-            y: canvasContext.updatedCamera.position.y - dy,
+            x: canvasContext.camera.position.x - dx,
+            y: canvasContext.camera.position.y - dy,
         });
 
         interaction.current.lastMousePos = {
@@ -68,15 +68,15 @@ export function useCamera({ saveBoard }: useCameraProps) {
         const mouseY = e.clientY - rect.top;
         const newZoom =
             e.deltaY < 0
-                ? canvasContext.updatedCamera.zoom * zoomFactor
-                : canvasContext.updatedCamera.zoom / zoomFactor;
+                ? canvasContext.camera.zoom * zoomFactor
+                : canvasContext.camera.zoom / zoomFactor;
         const clampedZoom = Math.max(0.01, Math.min(1000, newZoom));
         const worldX =
-            canvasContext.updatedCamera.position.x +
-            mouseX / canvasContext.updatedCamera.zoom;
+            canvasContext.camera.position.x +
+            mouseX / canvasContext.camera.zoom;
         const worldY =
-            canvasContext.updatedCamera.position.y +
-            mouseY / canvasContext.updatedCamera.zoom;
+            canvasContext.camera.position.y +
+            mouseY / canvasContext.camera.zoom;
         const newPosition = {
             x: worldX - mouseX / clampedZoom,
             y: worldY - mouseY / clampedZoom,

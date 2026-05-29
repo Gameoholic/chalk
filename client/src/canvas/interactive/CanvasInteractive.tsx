@@ -97,9 +97,9 @@ function CanvasInteractive({ saveBoard }: CanvasInteractiveProps) {
     const selectedObjects = useMemo(
         () =>
             [...selectedObjectIds]
-                .map((id) => canvasContext.allObjects.get(id))
+                .map((id) => canvasContext.objects.get(id))
                 .filter(Boolean) as WorldObject[],
-        [selectedObjectIds, canvasContext.allObjects]
+        [selectedObjectIds, canvasContext.objects]
     );
 
     // Explicit editing state — only set on double-click (or after drawing a new text box).
@@ -124,9 +124,9 @@ function CanvasInteractive({ saveBoard }: CanvasInteractiveProps) {
 
     const editingTextObject = useMemo<TextObject | null>(() => {
         if (!editingTextObjectId) return null;
-        const obj = canvasContext.allObjects.get(editingTextObjectId);
+        const obj = canvasContext.objects.get(editingTextObjectId);
         return obj?.type === "text" ? (obj as TextObject) : null;
-    }, [editingTextObjectId, canvasContext.allObjects]);
+    }, [editingTextObjectId, canvasContext.objects]);
 
     // Handle text editing
     const {
@@ -209,8 +209,8 @@ function CanvasInteractive({ saveBoard }: CanvasInteractiveProps) {
     return (
         <div ref={observe} className="h-full w-full touch-none">
             <CanvasRenderer
-                camera={canvasContext.updatedCamera}
-                objects={canvasContext.allObjects}
+                camera={canvasContext.camera}
+                objects={canvasContext.objects}
                 onMouseDown={handleMouseDown}
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
@@ -243,7 +243,7 @@ function CanvasInteractive({ saveBoard }: CanvasInteractiveProps) {
             {selectedObjects.length > 0 && (
                 <EditObjectToolbar
                     selectedObjects={selectedObjects}
-                    camera={canvasContext.updatedCamera}
+                    camera={canvasContext.camera}
                     onUpdate={(updated) => {
                         updated.forEach(updateOrAddObject);
                         _commitObjectChanges(updated, undefined);

@@ -26,7 +26,7 @@ export function useObjectSelection({
     commitObjectChanges,
 }: UseObjectSelectionProps) {
     const canvasContext = useContext(CanvasContext);
-    const camera = canvasContext.updatedCamera;
+    const camera = canvasContext.camera;
 
     const [selectedObjectIds, setSelectedObjectIds] = useState<Set<string>>(
         new Set()
@@ -62,7 +62,7 @@ export function useObjectSelection({
         if (!interaction.current.boxStart || !interaction.current.boxEnd)
             return;
 
-        const allObjects = [...canvasContext.allObjects.values()];
+        const allObjects = [...canvasContext.objects.values()];
 
         const selectionMin: Vec2 = {
             x: Math.min(
@@ -188,7 +188,7 @@ export function useObjectSelection({
         e: React.MouseEvent<HTMLCanvasElement>,
         interaction: React.RefObject<SelectedObjectResizeInteraction>
     ) {
-        const latest = canvasContext.allObjects.get(
+        const latest = canvasContext.objects.get(
             interaction.current.objectId
         );
         if (latest) {
