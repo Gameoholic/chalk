@@ -50,7 +50,10 @@ export async function create(req: AuthenticatedRequest, res: Response) {
     const { name } = req.body;
 
     if (name === undefined) {
-        return res.status(400).json({ error: "Board name required." });
+        throw new ChalkInternalException(400, "Board name required.", {
+            reason: "Board name required.",
+            previousErrorReasons: [],
+        });
     }
 
     const result = await BoardService.createBoardForUser(
@@ -136,8 +139,10 @@ export async function getById(req: AuthenticatedRequest, res: Response) {
 
     const id = req.params.id as string;
     if (id === undefined) {
-        res.status(400).json({ error: "Board id required." });
-        return;
+        throw new ChalkInternalException(400, "Board id required.", {
+            reason: "Board id required.",
+            previousErrorReasons: [],
+        });
     }
 
     const result = await BoardService.getBoardByIdForUser(
@@ -191,8 +196,10 @@ export async function deleteById(req: AuthenticatedRequest, res: Response) {
 
     const id = req.params.id as string;
     if (id === undefined) {
-        res.status(400).json({ error: "Board id required." });
-        return;
+        throw new ChalkInternalException(400, "Board id required.", {
+            reason: "Board id required.",
+            previousErrorReasons: [],
+        });
     }
 
     const result = await BoardService.deleteBoardByIdForUser(
@@ -252,7 +259,10 @@ export async function updateBoard(req: AuthenticatedRequest, res: Response) {
 
     const boardId = req.params.id as string;
     if (boardId === undefined) {
-        return res.status(400).json({ error: "Board id required." });
+        throw new ChalkInternalException(400, "Board id required.", {
+            reason: "Board id required.",
+            previousErrorReasons: [],
+        });
     }
     await new Promise((resolve) => setTimeout(resolve, 3000));
     // Optional parameters to update board with
@@ -343,14 +353,19 @@ export async function upsertWorldObjects(
 
     const boardId = req.params.id as string;
     if (boardId === undefined) {
-        res.status(400).json({ error: "Board id required." });
-        return;
+        throw new ChalkInternalException(400, "Board id required.", {
+            reason: "Board id required.",
+            previousErrorReasons: [],
+        });
     }
 
     const objects = req.body.objects as WorldObject[];
 
     if (!Array.isArray(objects)) {
-        return res.status(400).json({ error: "Objects invalid." });
+        throw new ChalkInternalException(400, "Objects invalid.", {
+            reason: "Objects invalid.",
+            previousErrorReasons: [],
+        });
     }
 
     const result = await BoardService.upsertWorldObjectsToBoard(
@@ -432,14 +447,19 @@ export async function deleteWorldObjects(
 
     const boardId = req.params.id as string;
     if (boardId === undefined) {
-        res.status(400).json({ error: "Board id required." });
-        return;
+        throw new ChalkInternalException(400, "Board id required.", {
+            reason: "Board id required.",
+            previousErrorReasons: [],
+        });
     }
 
     const objectIds = req.body.objectIds as string[];
 
     if (!Array.isArray(objectIds)) {
-        return res.status(400).json({ error: "Object IDs invalid." });
+        throw new ChalkInternalException(400, "Object IDs invalid.", {
+            reason: "Object IDs invalid.",
+            previousErrorReasons: [],
+        });
     }
 
     const result = await BoardService.deleteWorldObjectsFromBoard(
