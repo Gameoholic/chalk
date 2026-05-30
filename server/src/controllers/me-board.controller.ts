@@ -264,7 +264,6 @@ export async function updateBoard(req: AuthenticatedRequest, res: Response) {
             previousErrorReasons: [],
         });
     }
-    await new Promise((resolve) => setTimeout(resolve, 3000));
     // Optional parameters to update board with
     const name = req.body.name as string;
     const objects = req.body.objects as WorldObject[]; // todo this check does nothing. so do all these parameter checks in controller. we need to use zod instead.
