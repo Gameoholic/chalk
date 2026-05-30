@@ -176,6 +176,9 @@ function AfterSuccessfulAuth({ initialBoardId }: { initialBoardId: string }) {
                         setCanvasEditorKey((k) => k + 1);
                         setCurrentBoardId(boardIdToShow);
                         setShowMyBoards(false);
+                        // Reset the (tour-driven) menu-open state so the remounted
+                        // EditorMenu doesn't inherit a stale `true` and auto-open.
+                        setTourMenuOpen(false);
                         updateNewBoardLastOpened(boardIdToShow);
                     }}
                 />
