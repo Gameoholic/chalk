@@ -68,6 +68,11 @@ function CanvasInteractive({ saveBoard }: CanvasInteractiveProps) {
                 "Commit changes was called, but there are no changes to commit."
             );
         }
+        // // Re-apply the final object state at DefaultEventPriority (mouseup) so
+        // // Effect 1 in useSaveBoard always sees the object in unsaved_objects,
+        // // even if prior mousemove setUnsavedObjects calls (ContinuousEventPriority)
+        // // haven't been committed yet when the effect fires.
+        // updatedObjects?.forEach(updateOrAddObject);
         saveBoard();
     }
 
