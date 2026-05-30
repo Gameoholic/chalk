@@ -10,9 +10,14 @@ export async function create(req: AuthenticatedRequest, res: Response) {
     }
 
     if (req.authenticatedUser.role !== "guest") {
-        return res.status(400).json({
-            error: "You may only create a user if currently logged in as a guest user.",
-        });
+        throw new ChalkInternalException(
+            400,
+            "You may only create a user if currently logged in as a guest user.",
+            {
+                reason: "You may only create a user if currently logged in as a guest user.",
+                previousErrorReasons: [],
+            }
+        );
     }
 
     const email = req.body.email as string;
@@ -20,13 +25,22 @@ export async function create(req: AuthenticatedRequest, res: Response) {
     const displayName = req.body.displayName as string;
 
     if (email === undefined) {
-        return res.status(400).json({ error: "Email was not provided." });
+        throw new ChalkInternalException(400, "Email was not provided.", {
+            reason: "Email was not provided.",
+            previousErrorReasons: [],
+        });
     }
     if (password === undefined) {
-        return res.status(400).json({ error: "Password was not provided." });
+        throw new ChalkInternalException(400, "Password was not provided.", {
+            reason: "Password was not provided.",
+            previousErrorReasons: [],
+        });
     }
     if (displayName === undefined) {
-        return res.status(400).json({ error: "Displayname was not provided." });
+        throw new ChalkInternalException(400, "Displayname was not provided.", {
+            reason: "Displayname was not provided.",
+            previousErrorReasons: [],
+        });
     }
 
     const result = await UserService.createUser(

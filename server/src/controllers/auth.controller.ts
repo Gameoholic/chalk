@@ -15,7 +15,14 @@ export async function login(req: Request, res: Response) {
     const email = req.body.email as string;
     const password = req.body.password as string;
     if (!email || !password) {
-        return res.status(400).json({ error: "Not all arguments provided." });
+        throw new ChalkInternalException(
+            400,
+            "Not all arguments provided.", // error string to show to client ("obfuscaed")
+            {
+                reason: "Not all arguments provided.", // internal reason to show in logs ("actual" error)
+                previousErrorReasons: [],
+            }
+        );
     }
 
     const result = await AuthService.login(email, password);
