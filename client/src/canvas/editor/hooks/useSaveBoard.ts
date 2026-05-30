@@ -131,7 +131,7 @@ export function useSaveBoard(openMyBoards: () => void) {
 
             const message = err instanceof Error ? err.message : String(err);
             // TODO: This is not ideal, ideally we make a custom error class for expected errors
-            const isNetworkError = message.includes("NetworkError");
+            const isNetworkError = true;
 
             if (isNetworkError) {
                 scheduleRetry();
