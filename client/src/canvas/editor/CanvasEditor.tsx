@@ -62,6 +62,7 @@ function CanvasEditor({
             const zoom = startZoom + (1.0 - startZoom) * ease;
 
             // Derive position from zoom directly — interpolating them separately causes drift
+            canvasContext.setUnsavedCameraZoom(zoom);
             canvasContext.setUnsavedCameraPosition({
                 x: worldAnchorX - centerX / zoom,
                 y: worldAnchorY - centerY / zoom,
